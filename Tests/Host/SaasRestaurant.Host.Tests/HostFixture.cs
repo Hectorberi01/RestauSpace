@@ -34,6 +34,17 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:SaasRestaurant", _container.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
         builder.UseSetting("Identity:AccessTokens:SigningKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 7)).ToArray()));
+        UseModuleSettings(builder);
+        // Tous les clients de test ont la même adresse.
+        builder.UseSetting("Identity:RateLimiting:Auth:PermitLimit", "1000000");
+        builder.UseSetting("Authorization:PlatformAdminEmails:0", AdminEmail.ToUpperInvariant());
+        builder.UseSetting("Authorization:PlatformAdminEmails:1", UnclaimedAdminEmail);
+        builder.ConfigureTestServices(services => services.AddSingleton<IIdentityNotifier>(this));
+    }
+
+    /// <summary>Clés et réglages exigés en production par les modules (valeurs de test).</summary>
+    public static void UseModuleSettings(IWebHostBuilder builder)
+    {
         builder.UseSetting("Payments:CredentialsKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 11)).ToArray()));
         builder.UseSetting("Notifications:CredentialsKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 13)).ToArray()));
         builder.UseSetting("Storefront:TrackingKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 7 + 3)).ToArray()));
@@ -48,11 +59,6 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Files:R2:AccessKeyId", "host-tests-key");
         builder.UseSetting("Files:R2:SecretAccessKey", "host-tests-secret");
         builder.UseSetting("Files:R2:Bucket", "host-tests");
-        // Tous les clients de test ont la même adresse.
-        builder.UseSetting("Identity:RateLimiting:Auth:PermitLimit", "1000000");
-        builder.UseSetting("Authorization:PlatformAdminEmails:0", AdminEmail.ToUpperInvariant());
-        builder.UseSetting("Authorization:PlatformAdminEmails:1", UnclaimedAdminEmail);
-        builder.ConfigureTestServices(services => services.AddSingleton<IIdentityNotifier>(this));
     }
 
     public static string NewEmail() => $"user{Interlocked.Increment(ref _sequence)}@host-tests.example.com";

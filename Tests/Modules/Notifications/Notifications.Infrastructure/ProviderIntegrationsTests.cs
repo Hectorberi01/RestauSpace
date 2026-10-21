@@ -73,7 +73,8 @@ public sealed class ProviderIntegrationsTests
         var (account, message) = Assert.Single(transport.Sent);
         Assert.Equal(("smtp.example.com", 587, SecureSocketOptions.StartTls, "s3cret pass"), (account.Host, account.Port, account.Security, account.Password));
         Assert.Equal("kofi@example.com", ((MailboxAddress)message.To[0]).Address);
-        Assert.Equal("RestauSpace <bonjour@restauspace.example>", message.From[0].ToString());
+        var from = (MailboxAddress)message.From[0];
+        Assert.Equal(("RestauSpace", "bonjour@restauspace.example"), (from.Name, from.Address));
         Assert.Equal("Réservation confirmée", message.Subject);
         Assert.Equal($"{request.DeliveryId.Value:N}@restauspace.example", result.MessageId!.Value);
         Assert.Null(message.HtmlBody);

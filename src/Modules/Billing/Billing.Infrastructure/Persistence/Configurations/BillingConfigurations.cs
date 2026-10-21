@@ -10,6 +10,7 @@ namespace Billing.Infrastructure.Persistence.Configurations;
 internal sealed class PlanConfiguration : IEntityTypeConfiguration<Plan>
 {
     public const string EntitlementOwnerProperty = "PlanId";
+    public const string EntitlementFeatureIndex = "ix_plan_entitlements_plan_id_feature_code";
 
     public void Configure(EntityTypeBuilder<Plan> builder)
     {
@@ -49,7 +50,7 @@ internal sealed class PlanConfiguration : IEntityTypeConfiguration<Plan>
             entitlement.Ignore(e => e.IsUnlimited);
             entitlement.HasIndex(EntitlementOwnerProperty, nameof(Entitlement.FeatureCode))
                 .IsUnique()
-                .HasDatabaseName("ix_plan_entitlements_plan_id_feature_code");
+                .HasDatabaseName(EntitlementFeatureIndex);
         });
         builder.Navigation(plan => plan.Entitlements).UsePropertyAccessMode(PropertyAccessMode.Field);
 

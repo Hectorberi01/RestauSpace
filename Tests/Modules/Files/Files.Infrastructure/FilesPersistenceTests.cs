@@ -104,8 +104,10 @@ public sealed class FilesPersistenceTests(FilesDatabase database) : IClassFixtur
             (await services.GetRequiredService<IMediaFileRepository>().FindAsync(tenant, file.Id))!.Delete(Clock));
 
         await using var scope = database.NewScope(null);
-        var message = await scope.ServiceProvider.GetRequiredService<FilesDbContext>().OutboxMessages.AsNoTracking()
-            .SingleAsync(candidate => candidate.Type == nameof(FileDeleted) && candidate.Content.Contains(file.Id.Value.ToString()));
+        // content est en jsonb : le filtre sur le texte se fait après lecture.
+        var message = (await scope.ServiceProvider.GetRequiredService<FilesDbContext>().OutboxMessages.AsNoTracking()
+            .Where(candidate => candidate.Type == nameof(FileDeleted)).ToListAsync())
+            .Single(candidate => candidate.Content.Contains(file.Id.Value.ToString(), StringComparison.Ordinal));
         foreach (var consumer in scope.ServiceProvider.GetServices<IOutboxConsumer>())
         {
             await consumer.HandleAsync(new OutboxEnvelope(DependencyInjection.Schema, message.Id, message.Type, message.Content, message.OccurredAtUtc));

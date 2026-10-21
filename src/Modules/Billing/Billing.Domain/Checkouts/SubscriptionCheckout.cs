@@ -132,7 +132,7 @@ public sealed class SubscriptionCheckout : AggregateRoot<SubscriptionCheckoutId>
         EnsurePending();
         Status = SubscriptionCheckoutStatus.Failed;
         ClosedAtUtc = clock.UtcNow;
-        Raise(new SubscriptionCheckoutClosed(TenantId, Id, Status, ClosedAtUtc.Value));
+        Raise(new SubscriptionCheckoutClosed(TenantId, Id, SubscriptionId, Status, ClosedAtUtc.Value));
     }
 
     /// <summary>Sans réponse du prestataire au-delà de la durée de vie : abandonné.</summary>
@@ -143,7 +143,7 @@ public sealed class SubscriptionCheckout : AggregateRoot<SubscriptionCheckoutId>
         DomainException.ThrowIf(clock.UtcNow < ExpiresAtUtc, SubscriptionCheckoutErrors.NotExpired);
         Status = SubscriptionCheckoutStatus.Expired;
         ClosedAtUtc = clock.UtcNow;
-        Raise(new SubscriptionCheckoutClosed(TenantId, Id, Status, ClosedAtUtc.Value));
+        Raise(new SubscriptionCheckoutClosed(TenantId, Id, SubscriptionId, Status, ClosedAtUtc.Value));
     }
 
     private void EnsurePending() => DomainException.ThrowIf(Status != SubscriptionCheckoutStatus.Pending, SubscriptionCheckoutErrors.NotPending);
@@ -193,5 +193,6 @@ public sealed record SubscriptionCheckoutPaid(
 public sealed record SubscriptionCheckoutClosed(
     TenantId TenantId,
     SubscriptionCheckoutId CheckoutId,
+    SubscriptionId SubscriptionId,
     SubscriptionCheckoutStatus Status,
     DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);

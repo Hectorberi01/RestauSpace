@@ -47,7 +47,7 @@ public sealed class LoyaltyModelTests : IDisposable
     [Fact]
     public void The_model_holds_the_accounts_their_ledger_the_rewards_the_programs_and_the_outbox()
     {
-        string[] expected = ["loyalty_accounts", "loyalty_transactions", "rewards", "loyalty_programs", "outbox_deliveries", "outbox_messages"];
+        string[] expected = ["loyalty_accounts", "loyalty_transactions", "rewards", "loyalty_programs", "stored_value_cards", "outbox_deliveries", "outbox_messages"];
 
         Assert.Equal(expected.Order(StringComparer.Ordinal), Tables.Select(table => table.Name).Order(StringComparer.Ordinal));
     }
@@ -108,7 +108,7 @@ public sealed class LoyaltyModelTests : IDisposable
             .Select(entity => entity.ClrType.Name)
             .ToList();
 
-        Assert.Equal(2, Model.GetEntityTypes().Count(entity => typeof(IAggregateRoot).IsAssignableFrom(entity.ClrType)));
+        Assert.Equal(3, Model.GetEntityTypes().Count(entity => typeof(IAggregateRoot).IsAssignableFrom(entity.ClrType)));
         Assert.Empty(aggregates);
     }
 

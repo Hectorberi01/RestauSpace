@@ -26,5 +26,6 @@
     <ProjectReference Include="..\..\..\src\Modules\Reporting\Reporting.Domain\Reporting.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Reviews\Reviews.Domain\Reviews.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Staff\Staff.Domain\Staff.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Floor\Floor.Domain\Floor.Domain.csproj" />
   </ItemGroup>
 </Project>

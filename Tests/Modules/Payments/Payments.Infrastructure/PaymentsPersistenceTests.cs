@@ -235,7 +235,9 @@ public sealed class PaymentsPersistenceTests(PaymentsDatabase database) : IClass
         Assert.Equal(
             new[] { "bank_transfer", "card_terminal", "cash", "courier_cash", "delivery_platform", "gift_card", "mobile_money" },
             catalog.Where(provider => provider.Type == PaymentProviderType.OnSite).Select(provider => provider.Code.Value).Order(StringComparer.Ordinal).ToArray());
-        Assert.All(catalog, provider => Assert.True(provider.IsEnabled && provider.SupportedCurrencies.Count == 0));
+        Assert.All(
+            catalog.Where(provider => provider.Type == PaymentProviderType.OnSite),
+            provider => Assert.True(provider.IsEnabled && provider.SupportedCurrencies.Count == 0));
         Assert.NotNull(loaded);
         Assert.True(loaded.IsEnabled);
         Assert.Equal((PaymentMode.TenantManaged, PaymentConfigurationStatus.Configured), (loaded.Mode, loaded.Status));

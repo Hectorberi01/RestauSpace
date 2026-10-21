@@ -46,7 +46,11 @@ public sealed class BillingModelTests : IDisposable
     [Fact]
     public void The_model_holds_the_plans_their_entitlements_the_subscriptions_their_payments_the_counters_and_the_outbox()
     {
-        string[] expected = ["plans", "plan_entitlements", "subscriptions", "subscription_payments", "subscription_payment_lines", "tenant_add_ons", "usage_counters", "outbox_deliveries", "outbox_messages"];
+        string[] expected =
+        [
+            "plans", "plan_entitlements", "subscriptions", "subscription_payments", "subscription_payment_lines", "subscription_checkouts",
+            "tenant_add_ons", "usage_counters", "invoice_sequences", "online_payment_routes", "outbox_deliveries", "outbox_messages",
+        ];
 
         Assert.Equal(expected.Order(StringComparer.Ordinal), Tables.Select(table => table.Name).Order(StringComparer.Ordinal));
     }
@@ -69,7 +73,8 @@ public sealed class BillingModelTests : IDisposable
             Assert.Equal(DependencyInjection.Schema, table.Schema);
             Assert.Matches(snakeCase, table.Name);
             Assert.All(table.Columns, column => Assert.Matches(snakeCase, column.Name));
-            Assert.All(table.Indexes, index => Assert.StartsWith("ix_" + table.Name, index.Name, StringComparison.Ordinal));
+            // ix_ : index ; ux_ : index unique filtré.
+            Assert.All(table.Indexes, index => Assert.Matches("^(ix|ux)_" + table.Name, index.Name));
             Assert.All(table.CheckConstraints, check => Assert.StartsWith("ck_" + table.Name + "_", check.Name, StringComparison.Ordinal));
         });
     }
@@ -107,7 +112,7 @@ public sealed class BillingModelTests : IDisposable
             .Select(entity => entity.ClrType.Name)
             .ToList();
 
-        Assert.Equal(4, aggregates.Count);
+        Assert.Equal(6, aggregates.Count);
         Assert.Empty(unprotected);
     }
 

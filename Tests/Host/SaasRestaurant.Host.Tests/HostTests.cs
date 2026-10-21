@@ -251,6 +251,7 @@ public sealed class HostTests(HostFixture host) : IClassFixture<HostFixture>
             builder.UseSetting("Identity:Emails:Links:VerifyEmail", verifyLink);
             builder.UseSetting("Identity:Emails:Links:ResetPassword", "https://app.example.com/reset?token={token}");
             builder.UseSetting("Identity:Emails:Links:AcceptInvitation", "https://app.example.com/invite?token={token}");
+            HostFixture.UseModuleSettings(builder);
         });
 
         if (refusal is null)
@@ -271,6 +272,7 @@ public sealed class HostTests(HostFixture host) : IClassFixture<HostFixture>
             builder.UseEnvironment("Production");
             builder.UseSetting("ConnectionStrings:SaasRestaurant", "Host=localhost;Database=unused");
             builder.UseSetting("Identity:AccessTokens:SigningKey", Convert.ToBase64String(new byte[32]));
+            HostFixture.UseModuleSettings(builder);
         });
 
         var exception = Assert.ThrowsAny<Exception>(() => broken.CreateClient());

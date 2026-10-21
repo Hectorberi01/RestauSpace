@@ -54,11 +54,12 @@ public static class ApiKeyRateLimiting
             var previous = limiter.OnRejected;
             limiter.OnRejected = async (rejected, cancellationToken) =>
             {
-                if (rejected.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-                {
-                    rejected.HttpContext.Response.Headers.RetryAfter =
-                        Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
-                }
+                // Fenêtre glissante : pas toujours de métadonnée RetryAfter, un segment de fenêtre suffit alors.
+                var seconds = rejected.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                    ? retryAfter.TotalSeconds
+                    : options.Window.TotalSeconds / options.SegmentsPerWindow;
+                rejected.HttpContext.Response.Headers.RetryAfter =
+                    Math.Max(1, Math.Ceiling(seconds)).ToString(CultureInfo.InvariantCulture);
 
                 if (previous is not null)
                 {

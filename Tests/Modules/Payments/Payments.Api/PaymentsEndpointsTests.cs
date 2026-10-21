@@ -252,11 +252,14 @@ public sealed class PaymentsEndpointsTests(PaymentsApi api) : IClassFixture<Paym
         var sandbox = catalog.EnumerateArray().Single(provider => provider.GetProperty("code").GetString() == "sandbox").GetProperty("id").GetGuid();
 
         var configurations = (await client.GetFromJsonAsync<JsonElement>("/payments/configurations")).GetRawText();
-        await AssertProblemAsync(
+        // Identifiants de la plateforme (abonnements) : acceptés pour un prestataire en ligne, jamais renvoyés.
+        await AssertStatusAsync(
             await api.ActingFor(null).PutAsJsonAsync(
-                $"/admin/payment-providers/{sandbox}/credentials", new { credentials = new Dictionary<string, string> { ["webhook_secret"] = "platform" } }),
-            HttpStatusCode.UnprocessableEntity,
-            "payments.configuration.platform_mode_not_allowed");
+                $"/admin/payment-providers/{sandbox}/credentials", new { credentials = new Dictionary<string, string> { ["webhook_secret"] = "platform-secret" } }),
+            HttpStatusCode.NoContent);
+        var platformCatalog = (await api.ActingFor(null).GetFromJsonAsync<JsonElement>("/admin/payment-providers")).GetRawText();
+        Assert.DoesNotContain("platform-secret", platformCatalog, StringComparison.Ordinal);
+        Assert.DoesNotContain("payments/platform/", platformCatalog, StringComparison.Ordinal);
 
         Assert.DoesNotContain(PaymentsApi.SandboxSecret, configurations, StringComparison.Ordinal);
         Assert.DoesNotContain("payments/tenant/", configurations, StringComparison.Ordinal);

@@ -81,6 +81,9 @@ internal sealed class BillingUnitOfWork(BillingDbContext context) : IBillingUnit
                     new DomainException(SubscriptionErrors.AlreadySubscribed),
                 { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: UsageCounterConfiguration.TenantFeatureIndex } =>
                     new ConcurrencyException(BillingApplicationErrors.ConcurrentUpdate),
+                // Le même droit remplacé en même temps : l'ajout heurte celui de l'autre écriture.
+                { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: PlanConfiguration.EntitlementFeatureIndex } =>
+                    new ConcurrencyException(BillingApplicationErrors.ConcurrentUpdate),
                 { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: TenantAddOnConfiguration.ActiveIndex } =>
                     new DomainException(TenantAddOnErrors.AlreadyActive),
                 _ => null,

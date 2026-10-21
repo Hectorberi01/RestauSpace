@@ -211,8 +211,10 @@ public sealed class IntegrationsPersistenceTests(IntegrationsDatabase database) 
             (await services.GetRequiredService<IWebhookDeliveryRepository>().FindAsync(tenant, delivery.Id))!.DeadLetter("operator", Clock));
 
         await using var scope = database.NewScope(null);
-        var message = await scope.ServiceProvider.GetRequiredService<IntegrationsDbContext>().OutboxMessages.AsNoTracking()
-            .SingleAsync(candidate => candidate.Type == nameof(WebhookDeadLettered) && candidate.Content.Contains(delivery.Id.Value.ToString()));
+        // content est en jsonb : le filtre sur le texte se fait après lecture.
+        var message = (await scope.ServiceProvider.GetRequiredService<IntegrationsDbContext>().OutboxMessages.AsNoTracking()
+            .Where(candidate => candidate.Type == nameof(WebhookDeadLettered)).ToListAsync())
+            .Single(candidate => candidate.Content.Contains(delivery.Id.Value.ToString(), StringComparison.Ordinal));
 
         Assert.DoesNotContain("whsec_", message.Content, StringComparison.Ordinal);
         Assert.DoesNotContain(endpoint.SecretReference.Value, message.Content, StringComparison.Ordinal);
@@ -283,8 +285,10 @@ public sealed class IntegrationsPersistenceTests(IntegrationsDatabase database) 
         });
 
         await using var scope = database.NewScope(null);
-        var message = await scope.ServiceProvider.GetRequiredService<IntegrationsDbContext>().OutboxMessages.AsNoTracking()
-            .SingleAsync(candidate => candidate.Type == nameof(ApiCredentialIssued) && candidate.Content.Contains(credential.Id.Value.ToString()));
+        // content est en jsonb : le filtre sur le texte se fait après lecture.
+        var message = (await scope.ServiceProvider.GetRequiredService<IntegrationsDbContext>().OutboxMessages.AsNoTracking()
+            .Where(candidate => candidate.Type == nameof(ApiCredentialIssued)).ToListAsync())
+            .Single(candidate => candidate.Content.Contains(credential.Id.Value.ToString(), StringComparison.Ordinal));
 
         Assert.Contains(author.Id!.Value.ToString(), message.Content, StringComparison.Ordinal);
         Assert.Contains("orders.view", message.Content, StringComparison.Ordinal);

@@ -69,7 +69,7 @@ public sealed class StaffEndpointsTests(StaffApi api) : IClassFixture<StaffApi>
         await AssertStatusAsync(await api.As(chef).PostAsync($"/me/memberships/{tenant.Value}/accept", null), HttpStatusCode.NoContent);
 
         var chefPermissions = await ReadAsync(await api.As(chef, tenant).GetAsync("/staff/me/permissions"));
-        Assert.Equal(new[] { "locations.manage" }, chefPermissions.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!));
+        Assert.Equal(new[] { "locations.manage", "staff.schedule" }, chefPermissions.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!));
         // Un manager ne gère pas le personnel.
         await AssertStatusAsync(await api.As(chef, tenant).GetAsync("/staff/members"), HttpStatusCode.Forbidden);
         var members = await ReadAsync(await owner.GetAsync("/staff/members"));
