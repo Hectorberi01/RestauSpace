@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using SaasRestaurant.BuildingBlocks.Infrastructure;
 using SaasRestaurant.BuildingBlocks.Domain;
 using Testcontainers.PostgreSql;
 
@@ -89,15 +90,42 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
             """,
             connection);
         command.Parameters.AddWithValue("id", $"%{id}%");
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await using (var reader = await command.ExecuteReaderAsync())
         {
-            lines.Add(string.Join(" ; ", Enumerable.Range(0, reader.FieldCount).Select(i => $"{reader.GetName(i)}={(reader.IsDBNull(i) ? "null" : reader.GetValue(i))}")));
+            while (await reader.ReadAsync())
+            {
+                lines.Add(string.Join(" ; ", Enumerable.Range(0, reader.FieldCount).Select(i => $"{reader.GetName(i)}={(reader.IsDBNull(i) ? "null" : reader.GetValue(i))}")));
+            }
         }
 
         var lifetime = Services.GetRequiredService<IHostApplicationLifetime>();
         lines.Add($"Hôte arrêté : {lifetime.ApplicationStopping.IsCancellationRequested}.");
-        lines.AddRange(_errors.Entries.Take(20));
+
+        // Verrous consultatifs tenus (celui de l'outbox bloque la distribution s'il n'est jamais rendu).
+        await using (var locks = new NpgsqlCommand(
+            "SELECT l.pid, l.granted, a.state, left(a.query, 120) FROM pg_locks l LEFT JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory'",
+            connection))
+        await using (var reader = await locks.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                lines.Add($"Verrou : pid={reader.GetValue(0)} accordé={reader.GetValue(1)} état={reader.GetValue(2)} requête={reader.GetValue(3)}");
+            }
+        }
+
+        // Une distribution lancée à la main : nombre de messages traités, ou l'exception.
+        try
+        {
+            var dispatched = await Services.GetRequiredService<OutboxDispatcher<global::Tenants.Infrastructure.Persistence.TenantsDbContext>>().DispatchPendingAsync();
+            lines.Add($"Distribution manuelle : {dispatched} message(s).");
+        }
+        catch (Exception exception)
+        {
+            lines.Add($"Distribution manuelle en échec : {exception}");
+        }
+
+        // Hors bruit des migrations (tables d'historique absentes au premier démarrage).
+        lines.AddRange(_errors.Entries.Where(entry => !entry.Contains("__ef_migrations_history", StringComparison.Ordinal)).Take(20));
         return string.Join(Environment.NewLine, lines);
     }
 
