@@ -39,6 +39,7 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Storefront:TrackingKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 7 + 3)).ToArray()));
         builder.UseSetting("Notifications:OtpKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 17)).ToArray()));
         builder.UseSetting("Integrations:SecretsKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 19)).ToArray()));
+        builder.UseSetting("Fiscal:TokenKey", Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i * 23)).ToArray()));
         // Le job des webhooks ne tourne pas : aucun envoi réseau depuis les tests de l'hôte.
         builder.UseSetting("Integrations:RunWorkers", "false");
         builder.UseSetting("Storefront:RunWorkers", "false");
