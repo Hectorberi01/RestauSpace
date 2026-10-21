@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Identity.Application.Commands;
 
 namespace Identity.Api;
 
@@ -85,6 +86,7 @@ public sealed class AuthEndpointsTests(IdentityApi api) : IClassFixture<Identity
         Assert.NotEqual(first.Text("refreshToken"), second.Text("refreshToken"));
         await (await api.WithToken(second.Text("accessToken")).GetAsync("/me")).AssertStatusAsync(HttpStatusCode.OK);
 
+        api.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
         await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = first.Text("refreshToken") }))
             .AssertProblemAsync(HttpStatusCode.Unauthorized, "identity.session.refresh_token_replayed");
         foreach (var token in new[] { second.Text("refreshToken"), otherDevice.Text("refreshToken") })
@@ -213,6 +215,7 @@ public sealed class AuthEndpointsTests(IdentityApi api) : IClassFixture<Identity
         await (await api.WithToken(otherDevice.Text("accessToken")).GetAsync("/me")).AssertStatusAsync(HttpStatusCode.OK);
 
         // Plus tard, l'ancien jeton est un rejeu comme un autre.
+        api.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
         await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = tokens.Text("refreshToken") }))
             .AssertProblemAsync(HttpStatusCode.Unauthorized, "identity.session.refresh_token_replayed");
     }

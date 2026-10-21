@@ -5,7 +5,7 @@ namespace Identity.Application.Commands;
 
 /// <summary>
 /// Échange un refresh token contre une nouvelle paire. Le jeton présenté cesse de fonctionner ; le présenter à
-/// nouveau plus tard est traité comme un vol et révoque toutes les sessions de l'utilisateur.
+/// nouveau plus de 10 s après est traité comme un vol et révoque toutes les sessions de l'utilisateur.
 /// </summary>
 /// <param name="TenantId">
 /// Restaurant pour lequel agit le nouvel access token (le client envoie celui qu'il avait sélectionné). Revérifié à
@@ -28,6 +28,8 @@ public sealed class RefreshSessionHandler(
     IClock clock)
     : ICommandHandler<RefreshSessionCommand, AuthTokensDto>
 {
+    public static readonly TimeSpan ConcurrentRefreshWindow = TimeSpan.FromSeconds(10);
+
     public async Task<AuthTokensDto> HandleAsync(RefreshSessionCommand command, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(command.RefreshToken))
@@ -42,7 +44,10 @@ public sealed class RefreshSessionHandler(
             throw new UnauthenticatedException(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
-        if (command.AfterConflict && user.Sessions.Any(session => session.Hash == presented && session.WasRotated))
+        // Même jeton envoyé deux fois coup sur coup (double envoi, nouvelle tentative réseau) : conflit, pas un vol.
+        // Au-delà de ConcurrentRefreshWindow, le rejeu révoque toutes les sessions.
+        var rotated = user.Sessions.SingleOrDefault(session => session.Hash == presented && session.WasRotated);
+        if (rotated is not null && (command.AfterConflict || rotated.RevokedAtUtc >= clock.UtcNow - ConcurrentRefreshWindow))
         {
             throw new ConcurrencyException(IdentityApplicationErrors.ConcurrentUpdate);
         }

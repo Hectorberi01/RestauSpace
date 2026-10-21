@@ -99,6 +99,7 @@ public sealed class TenantSelectionTests
     {
         var (user, stolen) = await GivenSignedInMemberAsync();
         await _fixture.Refresh.HandleAsync(new RefreshSessionCommand(stolen.RefreshToken));
+        _fixture.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
 
         var replay = await Assert.ThrowsAsync<UnauthenticatedException>(() => _fixture.Refresh.HandleAsync(
             new RefreshSessionCommand(stolen.RefreshToken, TenantId: TenantId.New().Value)));

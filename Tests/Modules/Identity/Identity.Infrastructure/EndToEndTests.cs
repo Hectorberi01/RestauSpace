@@ -45,6 +45,7 @@ public sealed class EndToEndTests(IdentityDatabase database) : IClassFixture<Ide
             .HandleAsync(new GetUserSessionsQuery(userId)));
         Assert.Equal(new[] { second.SessionId, otherDevice.SessionId }.Order(), sessions.Select(session => session.Id).Order());
 
+        database.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
         var replay = await Assert.ThrowsAsync<UnauthenticatedException>(() => RefreshAsync(first.RefreshToken));
         Assert.Equal(UserErrors.RefreshTokenReplayed.Code, replay.Code);
 

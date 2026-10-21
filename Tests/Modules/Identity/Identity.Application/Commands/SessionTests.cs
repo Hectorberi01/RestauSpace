@@ -198,6 +198,7 @@ public sealed class SessionTests
         var legitimate = await _fixture.Refresh.HandleAsync(new RefreshSessionCommand(stolen.RefreshToken));
         var otherDevice = await _fixture.GivenSessionAsync();
         var savesBefore = _fixture.SaveCount;
+        _fixture.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
 
         var exception = await Assert.ThrowsAsync<UnauthenticatedException>(
             () => _fixture.Refresh.HandleAsync(new RefreshSessionCommand(stolen.RefreshToken)));
