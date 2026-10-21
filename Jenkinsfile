@@ -8,5 +8,11 @@ pipeline{
                 sh 'dotnet build'
             }
         }
+        stage('Test'){
+            steps{
+                echo 'Testing...'
+                sh 'dotnet test'
+            }
+        }
     }
 }
