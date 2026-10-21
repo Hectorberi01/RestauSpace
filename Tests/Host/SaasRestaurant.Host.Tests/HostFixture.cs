@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using SaasRestaurant.BuildingBlocks.Domain;
 using Testcontainers.PostgreSql;
@@ -26,6 +28,7 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine").Build();
     private readonly List<(string Email, string Token)> _sent = [];
+    private readonly ErrorLog _errors = new();
 
     public Task InitializeAsync() => _container.StartAsync();
 
@@ -40,7 +43,11 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Identity:RateLimiting:Auth:PermitLimit", "1000000");
         builder.UseSetting("Authorization:PlatformAdminEmails:0", AdminEmail.ToUpperInvariant());
         builder.UseSetting("Authorization:PlatformAdminEmails:1", UnclaimedAdminEmail);
-        builder.ConfigureTestServices(services => services.AddSingleton<IIdentityNotifier>(this));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IIdentityNotifier>(this);
+            services.AddSingleton<ILoggerProvider>(_errors);
+        });
     }
 
     /// <summary>Clés et réglages exigés en production par les modules (valeurs de test).</summary>
@@ -88,7 +95,39 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
             lines.Add(string.Join(" ; ", Enumerable.Range(0, reader.FieldCount).Select(i => $"{reader.GetName(i)}={(reader.IsDBNull(i) ? "null" : reader.GetValue(i))}")));
         }
 
+        var lifetime = Services.GetRequiredService<IHostApplicationLifetime>();
+        lines.Add($"Hôte arrêté : {lifetime.ApplicationStopping.IsCancellationRequested}.");
+        lines.AddRange(_errors.Entries.Take(20));
         return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>Les erreurs journalisées par l'hôte pendant les tests (diagnostic).</summary>
+    private sealed class ErrorLog : ILoggerProvider
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> _entries = new();
+
+        public IEnumerable<string> Entries => _entries;
+
+        public ILogger CreateLogger(string categoryName) => new Logger(categoryName, _entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(string category, System.Collections.Concurrent.ConcurrentQueue<string> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (IsEnabled(logLevel))
+                {
+                    entries.Enqueue($"[{logLevel}] {category} : {formatter(state, exception)} {exception?.GetType().Name} {exception?.Message} {exception?.InnerException?.Message}");
+                }
+            }
+        }
     }
 
     public static string NewEmail() => $"user{Interlocked.Increment(ref _sequence)}@host-tests.example.com";
