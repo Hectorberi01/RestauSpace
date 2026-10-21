@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using SaasRestaurant.BuildingBlocks.Domain;
 using Testcontainers.PostgreSql;
 
@@ -59,6 +60,35 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Files:R2:AccessKeyId", "host-tests-key");
         builder.UseSetting("Files:R2:SecretAccessKey", "host-tests-secret");
         builder.UseSetting("Files:R2:Bucket", "host-tests");
+    }
+
+    /// <summary>Diagnostic d'un test qui attend l'outbox : messages du module qui citent l'id, leurs livraisons, et l'attente.</summary>
+    public async Task<string> OutboxStateAsync(string schema, Guid id)
+    {
+        await using var connection = new NpgsqlConnection(_container.GetConnectionString());
+        await connection.OpenAsync();
+        var lines = new List<string>();
+        await using (var pending = new NpgsqlCommand($"SELECT count(*) FROM {schema}.outbox_messages WHERE processed_at_utc IS NULL", connection))
+        {
+            lines.Add($"{schema} : {await pending.ExecuteScalarAsync()} message(s) non traité(s).");
+        }
+
+        await using var command = new NpgsqlCommand(
+            $"""
+            SELECT m.id, m.type, m.processed_at_utc, m.attempt_count, m.next_attempt_at_utc, m.last_error,
+                   (SELECT string_agg(d.consumer || '=' || d.status::text || coalesce(' ' || d.last_error, ''), ' | ')
+                    FROM {schema}.outbox_deliveries d WHERE d.message_id = m.id)
+            FROM {schema}.outbox_messages m WHERE m.content::text LIKE @id ORDER BY m.id
+            """,
+            connection);
+        command.Parameters.AddWithValue("id", $"%{id}%");
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            lines.Add(string.Join(" ; ", Enumerable.Range(0, reader.FieldCount).Select(i => $"{reader.GetName(i)}={(reader.IsDBNull(i) ? "null" : reader.GetValue(i))}")));
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     public static string NewEmail() => $"user{Interlocked.Increment(ref _sequence)}@host-tests.example.com";

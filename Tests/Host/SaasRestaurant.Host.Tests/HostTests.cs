@@ -112,6 +112,11 @@ public sealed class HostTests(HostFixture host) : IClassFixture<HostFixture>
             await Task.Delay(500);
         }
 
+        if (entries.GetArrayLength() == 0)
+        {
+            Assert.Fail("Aucune écriture d'audit. " + await host.OutboxStateAsync("tenants", tenantId));
+        }
+
         var entry = Assert.Single(entries.EnumerateArray());
         Assert.Equal(tenantId.ToString(), entry.GetProperty("targetId").GetString());
         Assert.Equal("Chez Hector", entry.GetProperty("metadata").GetProperty("name").GetString());
