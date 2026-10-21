@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <Using Include="Xunit" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Application" />
+    <Using Include="SaasRestaurant.Testing" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Files\Files.Infrastructure\Files.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\SaasRestaurant.Testing\SaasRestaurant.Testing.csproj" />
+  </ItemGroup>
+</Project>

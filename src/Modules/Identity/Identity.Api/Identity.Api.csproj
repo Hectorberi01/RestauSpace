@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Application" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <ProjectReference Include="..\Identity.Application\Identity.Application.csproj" />
+    <ProjectReference Include="..\Identity.Infrastructure\Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SaasRestaurant.BuildingBlocks.Api\SaasRestaurant.BuildingBlocks.Api.csproj" />
+  </ItemGroup>
+</Project>

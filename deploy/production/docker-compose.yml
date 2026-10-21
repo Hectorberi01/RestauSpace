@@ -1,0 +1,139 @@
+# Production, serveur applicatif : API + console + site + back-office, derrière le Traefik du serveur (réseau « proxy »).
+# PostgreSQL est sur le serveur de base (DATABASE_HOST). L'observabilité est sur un autre serveur : l'API lui envoie
+# traces, logs et métriques en OTLP/HTTP avec un jeton.
+#
+#   cp .env.example .env && cp api.env.example api.env     # puis renseigner les deux (chmod 600)
+#   ./deploy.sh                                             # build, migrations, démarrage
+name: restauspace
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+x-traefik: &traefik
+  traefik.enable: "true"
+  traefik.docker.network: ${TRAEFIK_NETWORK:-proxy}
+
+services:
+  # Migrations de tous les modules, puis arrêt ; l'API ne démarre qu'après leur réussite.
+  migrations:
+    <<: *logging
+    image: restauspace-api:${RELEASE:-latest}
+    command: ["--migrate-only"]
+    env_file: api.env
+    environment: &api-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST:?DATABASE_HOST manquant dans .env};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB:?POSTGRES_DB manquant dans .env};Username=${POSTGRES_USER:?POSTGRES_USER manquant dans .env};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=${DATABASE_POOL_SIZE:-50};Keepalive=30
+      Database__MigrateOnStartup: "false"
+      ReverseProxy__Enabled: "true"
+      Observability__ServiceName: restauspace-api
+      Observability__OtlpEndpoint: ${OBSERVABILITY_OTLP_URL:-}
+      Observability__OtlpProtocol: http/protobuf
+      OTEL_EXPORTER_OTLP_HEADERS: Authorization=Bearer ${OBSERVABILITY_TOKEN:-}
+    restart: "no"
+    networks: [proxy]
+
+  api:
+    <<: [*restart, *logging]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: restauspace-api:${RELEASE:-latest}
+    env_file: api.env
+    environment: *api-environment
+    volumes:
+      - api-keys:/home/app/.aspnet/DataProtection-Keys
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    networks: [proxy]
+    labels:
+      <<: *traefik
+      traefik.http.routers.rs-api.rule: Host(`api.${DOMAIN}`)
+      traefik.http.routers.rs-api.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-api.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.services.rs-api.loadbalancer.server.port: "8080"
+      traefik.http.services.rs-api.loadbalancer.healthcheck.path: /health
+      traefik.http.services.rs-api.loadbalancer.healthcheck.interval: 15s
+
+  console:
+    <<: [*restart, *logging]
+    build:
+      context: ../../restaurantos-app
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_FILES_ORIGINS: ${FILES_ORIGINS:-}
+    image: restauspace-console:${RELEASE:-latest}
+    networks: [proxy]
+    labels:
+      <<: *traefik
+      traefik.http.routers.rs-console.rule: Host(`app.${DOMAIN}`)
+      traefik.http.routers.rs-console.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-console.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.services.rs-console.loadbalancer.server.port: "3000"
+
+  site:
+    <<: [*restart, *logging]
+    build:
+      context: ../../restaurantos-site
+      args:
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_ADMIN_URL: https://admin.${DOMAIN}
+        NEXT_PUBLIC_CONSOLE_URL: https://app.${DOMAIN}/connexion
+        NEXT_PUBLIC_SIGNUP_URL: https://app.${DOMAIN}/inscription
+        NEXT_PUBLIC_STOREFRONT_KEY: ${STOREFRONT_KEY:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+        NEXT_PUBLIC_CONTACT_WHATSAPP: ${CONTACT_WHATSAPP:-}
+        NEXT_PUBLIC_CONTACT_PHONE_BJ: ${CONTACT_PHONE_BJ:-}
+        NEXT_PUBLIC_CONTACT_PHONE_FR: ${CONTACT_PHONE_FR:-}
+        NEXT_PUBLIC_NEWSLETTER_URL: ${NEWSLETTER_URL:-}
+        NEXT_PUBLIC_SOCIAL_FACEBOOK: ${SOCIAL_FACEBOOK:-}
+        NEXT_PUBLIC_SOCIAL_GITHUB: ${SOCIAL_GITHUB:-}
+        NEXT_PUBLIC_SOCIAL_LINKEDIN: ${SOCIAL_LINKEDIN:-}
+        NEXT_PUBLIC_SOCIAL_X: ${SOCIAL_X:-}
+        NEXT_PUBLIC_SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE:-}
+    image: restauspace-site:${RELEASE:-latest}
+    networks: [proxy]
+    labels:
+      <<: *traefik
+      traefik.http.routers.rs-site.rule: Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)
+      traefik.http.routers.rs-site.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-site.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.rs-site.middlewares: rs-www-to-apex
+      traefik.http.middlewares.rs-www-to-apex.redirectregex.regex: ^https://www\.(.+)
+      traefik.http.middlewares.rs-www-to-apex.redirectregex.replacement: https://$${1}
+      traefik.http.middlewares.rs-www-to-apex.redirectregex.permanent: "true"
+      traefik.http.services.rs-site.loadbalancer.server.port: "3000"
+
+  admin:
+    <<: [*restart, *logging]
+    build:
+      context: ../../restaurantos-super-admin
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
+    image: restauspace-admin:${RELEASE:-latest}
+    networks: [proxy]
+    labels:
+      <<: *traefik
+      traefik.http.routers.rs-admin.rule: Host(`admin.${DOMAIN}`)
+      traefik.http.routers.rs-admin.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-admin.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.rs-admin.middlewares: rs-admin-allowlist
+      # Adresses autorisées à ouvrir le back-office (CIDR, séparées par des virgules).
+      traefik.http.middlewares.rs-admin-allowlist.ipallowlist.sourcerange: ${ADMIN_ALLOWED_IPS:-0.0.0.0/0}
+      traefik.http.services.rs-admin.loadbalancer.server.port: "3000"
+
+volumes:
+  api-keys:
+
+networks:
+  proxy:
+    name: ${TRAEFIK_NETWORK:-proxy}
+    external: true

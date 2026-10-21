@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Application" />
+    <ProjectReference Include="..\Locations.Domain\Locations.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SaasRestaurant.BuildingBlocks.Application\SaasRestaurant.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+</Project>

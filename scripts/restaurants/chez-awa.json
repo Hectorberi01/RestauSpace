@@ -1,0 +1,43 @@
+{
+  "restaurant": {
+    "name": "Chez Awa (test)",
+    "currency": "XOF",
+    "timeZone": "Africa/Porto-Novo",
+    "pricesIncludeTax": true
+  },
+  "location": {
+    "name": "Chez Awa · Cadjèhoun",
+    "address": {"street": "Boulevard de la Marina", "city": "Cotonou", "postalCode": null, "countryCode": "BJ"},
+    "seats": 60,
+    "opens": "11:00",
+    "closes": "23:30"
+  },
+  "taxes": [
+    {"code": "TVA18", "name": "TVA 18 %", "rate": 0.18}
+  ],
+  "optionGroups": [
+    {"name": "Accompagnement", "min": 1, "max": 1, "options": [["Alloco", 500], ["Frites", 500], ["Riz blanc", 0], ["Akassa", 0]]},
+    {"name": "Sauce", "min": 0, "max": 2, "options": [["Piment", 0], ["Sauce arachide", 300], ["Sauce tomate", 0]]},
+    {"name": "Glaçons", "min": 0, "max": 1, "options": [["Avec glaçons", 0], ["Sans glaçons", 0]]}
+  ],
+  "stations": ["Grill", "Cuisine froide", "Bar"],
+  "defaultStation": "Grill",
+  "products": [
+    {"section": "Entrées", "name": "Salade d’avocat", "price": 2500, "station": "Cuisine froide", "description": "Avocat, tomate, oignon, vinaigrette citron."},
+    {"section": "Entrées", "name": "Beignets de crevettes", "price": 3000, "station": "Grill"},
+    {"section": "Plats", "name": "Poulet braisé", "price": 4500, "station": "Grill", "groups": ["Accompagnement", "Sauce"], "variants": [["Demi-poulet", 0], ["Poulet entier", 3500]]},
+    {"section": "Plats", "name": "Poisson braisé (tilapia)", "price": 5000, "station": "Grill", "groups": ["Accompagnement", "Sauce"]},
+    {"section": "Plats", "name": "Amiwo au poulet", "price": 3500, "station": "Grill"},
+    {"section": "Plats", "name": "Riz au gras", "price": 2500, "station": "Grill", "groups": ["Sauce"]},
+    {"section": "Desserts", "name": "Salade de fruits", "price": 1500, "station": "Cuisine froide"},
+    {"section": "Boissons", "name": "Bissap", "price": 1000, "station": "Bar", "groups": ["Glaçons"], "variants": [["50 cl", 0], ["1 l", 800]]},
+    {"section": "Boissons", "name": "Jus de gingembre", "price": 1000, "station": "Bar", "groups": ["Glaçons"]},
+    {"section": "Boissons", "name": "Eau minérale 1,5 l", "price": 800, "station": "Bar"},
+    {"section": "Boissons", "name": "Bière La Béninoise 65 cl", "price": 1200, "station": "Bar"}
+  ],
+  "menu": {"name": "Carte principale", "sections": ["Entrées", "Plats", "Desserts", "Boissons"]},
+  "diningAreas": [
+    {"name": "Salle principale", "tables": [["T1", 2], ["T2", 2], ["T3", 4], ["T4", 4], ["T5", 6], ["T6", 8]]},
+    {"name": "Terrasse", "tables": [["T7", 4], ["T8", 4], ["T9", 4], ["T10", 6]]}
+  ]
+}

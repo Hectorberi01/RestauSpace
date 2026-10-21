@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Application" />
+    <Using Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <InternalsVisibleTo Include="Printing.Infrastructure.Tests" />
+    <ProjectReference Include="..\Printing.Application\Printing.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SaasRestaurant.BuildingBlocks.Infrastructure\SaasRestaurant.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

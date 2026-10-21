@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-brand-50: #f4f1ff;
+  --color-brand-100: #ebe5ff;
+  --color-brand-200: #d6ccff;
+  --color-brand-400: #8f78ff;
+  --color-brand-500: #6d52fa;
+  --color-brand-600: #5b3df5;
+  --color-brand-700: #4a2ee0;
+  --color-ink-900: #0f172a;
+  --color-ink-800: #1e293b;
+  --color-ink-600: #475569;
+  --color-ink-500: #64748b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-white text-ink-900 antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-brand-400);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Apparition au défilement (components/motion.tsx) : uniquement quand le script est actif. */
+.js-motion [data-reveal],
+.js-motion [data-reveal-stagger] > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js-motion [data-reveal].is-visible,
+.js-motion [data-reveal-stagger].is-visible > * {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-8px) rotate(var(--tilt, 0deg));
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-float {
+    animation: none;
+  }
+}
+
+/* Curseurs du simulateur de prix. */
+.range {
+  appearance: none;
+  height: 0.5rem;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 9999px;
+  background: #fff;
+  border: 4px solid var(--color-brand-600);
+  box-shadow: 0 4px 12px rgb(91 61 245 / 0.35);
+  transition: transform 0.15s;
+}
+
+.range::-webkit-slider-thumb:hover,
+.range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.range::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: #fff;
+  border: 4px solid var(--color-brand-600);
+  box-shadow: 0 4px 12px rgb(91 61 245 / 0.35);
+}
+
+/* Micro-animation des boutons : léger soulèvement au survol, enfoncement au clic. */
+.btn-motion {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.btn-motion:hover {
+  transform: translateY(-1px);
+}
+
+.btn-motion:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Cartes : remontée et léger agrandissement au survol. */
+.card-lift {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s, border-color 0.35s;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px) scale(1.012);
+}
+
+/* Chargement : reflet qui balaie le bloc. */
+.skeleton {
+  background: linear-gradient(90deg, rgb(241 245 249) 0%, rgb(226 232 240) 40%, rgb(241 245 249) 80%) 0 0 / 200% 100%;
+  animation: shine 1.4s linear infinite;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.3s ease-in both;
+}
+
+.animate-pop {
+  animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-page {
+  animation: page-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Fenêtre « Demander une démo » : fond flouté, ouverture et fermeture animées. */
+.demo-dialog[open] {
+  animation: dialog-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.demo-dialog[open]::backdrop {
+  background: rgb(15 23 42 / 0.45);
+  backdrop-filter: blur(6px);
+  animation: backdrop-in 0.3s ease-out both;
+}
+
+.demo-dialog.is-closing {
+  animation: dialog-out 0.2s ease-in both;
+}
+
+.demo-dialog.is-closing::backdrop {
+  animation: backdrop-out 0.2s ease-in both;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Moins d'animations demandé par le système : tout devient instantané. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-lift:hover,
+  .btn-motion:hover,
+  .btn-motion:active {
+    transform: none;
+  }
+}

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <Using Include="Xunit" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.Testing" />
+    <ProjectReference Include="..\..\..\..\src\Modules\Staff\Staff.Domain\Staff.Domain.csproj" />
+    <ProjectReference Include="..\..\..\SaasRestaurant.Testing\SaasRestaurant.Testing.csproj" />
+  </ItemGroup>
+</Project>

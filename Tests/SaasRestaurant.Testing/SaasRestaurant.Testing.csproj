@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\SaasRestaurant.BuildingBlocks.Domain\SaasRestaurant.BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+</Project>

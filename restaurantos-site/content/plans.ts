@@ -1,0 +1,75 @@
+import catalogue from './catalogue.json';
+
+export type Market = 'bj' | 'fr';
+export type Interval = 'Monthly' | 'Yearly';
+
+interface CatalogueEntitlement {
+  featureCode: string;
+  enabled: boolean;
+  limit: number | null;
+}
+
+interface CataloguePlan {
+  name: string;
+  price: number;
+  currencyCode: string;
+  billingInterval: Interval;
+  entitlements: CatalogueEntitlement[];
+}
+
+export interface Tier {
+  name: string;
+  audience: string;
+  highlighted: boolean;
+  monthly: CataloguePlan;
+  yearly?: CataloguePlan;
+}
+
+export const markets: Record<Market, {label: string; currency: string; taxNote: string}> = {
+  fr: {label: 'France', currency: 'EUR', taxNote: 'Prix en euros hors taxes.'},
+  bj: {label: 'Bénin et zone UEMOA', currency: 'XOF', taxNote: 'Prix en francs CFA.'},
+};
+
+const audiences: Record<string, string> = {
+  Découverte: 'Pour essayer avec un petit volume',
+  Essentiel: 'Pour un restaurant indépendant',
+  Pro: 'Pour un restaurant établi, avec livraison',
+  Groupe: 'Pour une enseigne de 2 à 5 établissements',
+};
+
+export const quotaRows: {code: string; label: string}[] = [
+  {code: 'locations.count', label: 'Établissements'},
+  {code: 'staff.count', label: 'Membres de l’équipe'},
+  {code: 'orders.monthly', label: 'Commandes par mois'},
+  {code: 'notifications.email.monthly', label: 'Emails par mois'},
+  {code: 'notifications.sms.monthly', label: 'SMS par mois'},
+  {code: 'notifications.whatsapp.monthly', label: 'Messages WhatsApp par mois'},
+  {code: 'notifications.push.monthly', label: 'Notifications push par mois'},
+];
+
+const plans = (catalogue as {plans: CataloguePlan[]}).plans;
+
+export function tiers(market: Market): Tier[] {
+  const currency = markets[market].currency;
+  const monthly = plans.filter(p => p.currencyCode === currency && p.billingInterval === 'Monthly');
+  return monthly.map(plan => ({
+    name: plan.name,
+    audience: audiences[plan.name] ?? '',
+    highlighted: plan.name === 'Pro',
+    monthly: plan,
+    yearly: plans.find(p => p.currencyCode === currency && p.billingInterval === 'Yearly' && p.name === `${plan.name} annuel`),
+  }));
+}
+
+export function quota(plan: CataloguePlan, code: string): string {
+  const entitlement = plan.entitlements.find(e => e.featureCode === code);
+  if (!entitlement || !entitlement.enabled) return '—';
+  if (entitlement.limit === null) return 'Illimité';
+  return new Intl.NumberFormat('fr-FR').format(entitlement.limit);
+}
+
+export function price(amount: number, currency: string): string {
+  return new Intl.NumberFormat('fr-FR', {style: 'currency', currency, maximumFractionDigits: amount % 1 ? 2 : 0}).format(amount);
+}
+
+export const trialDays = 14;

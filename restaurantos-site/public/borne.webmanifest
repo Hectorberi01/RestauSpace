@@ -1,0 +1,11 @@
+{
+  "name": "Borne de commande",
+  "short_name": "Borne",
+  "start_url": "/borne",
+  "scope": "/borne",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [{"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml"}]
+}

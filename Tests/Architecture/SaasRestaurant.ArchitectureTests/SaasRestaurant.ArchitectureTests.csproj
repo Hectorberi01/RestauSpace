@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <Using Include="Xunit" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\SaasRestaurant.BuildingBlocks.Domain\SaasRestaurant.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\SaasRestaurant.BuildingBlocks.Infrastructure\SaasRestaurant.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Contracts\SaasRestaurant.Contracts\SaasRestaurant.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Identity\Identity.Api\Identity.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Tenants\Tenants.Api\Tenants.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Locations\Locations.Api\Locations.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Staff\Staff.Api\Staff.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Catalog\Catalog.Api\Catalog.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Floor\Floor.Api\Floor.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Reservations\Reservations.Api\Reservations.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Orders\Orders.Api\Orders.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Kitchen\Kitchen.Api\Kitchen.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Payments\Payments.Api\Payments.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Inventory\Inventory.Api\Inventory.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Customers\Customers.Api\Customers.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Api\Notifications.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Promotions\Promotions.Api\Promotions.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Loyalty\Loyalty.Api\Loyalty.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Billing\Billing.Api\Billing.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Reporting\Reporting.Api\Reporting.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Files\Files.Api\Files.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Api\Integrations.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Reviews\Reviews.Api\Reviews.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Delivery\Delivery.Api\Delivery.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Storefront\Storefront.Api\Storefront.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Printing\Printing.Api\Printing.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Audit\Audit.Api\Audit.Api.csproj" />
+  </ItemGroup>
+</Project>

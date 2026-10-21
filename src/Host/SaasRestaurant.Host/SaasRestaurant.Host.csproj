@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <InternalsVisibleTo Include="SaasRestaurant.Host.Tests" />
+    <ProjectReference Include="..\..\BuildingBlocks\SaasRestaurant.BuildingBlocks.Api\SaasRestaurant.BuildingBlocks.Api.csproj" />
+    <ProjectReference Include="..\..\Contracts\SaasRestaurant.Contracts\SaasRestaurant.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Tenants\Tenants.Api\Tenants.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Locations\Locations.Api\Locations.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Staff\Staff.Api\Staff.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Catalog\Catalog.Api\Catalog.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Floor\Floor.Api\Floor.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Reservations\Reservations.Api\Reservations.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Orders\Orders.Api\Orders.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Kitchen\Kitchen.Api\Kitchen.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Payments\Payments.Api\Payments.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Inventory\Inventory.Api\Inventory.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Customers\Customers.Api\Customers.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Notifications.Api\Notifications.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Promotions\Promotions.Api\Promotions.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Loyalty\Loyalty.Api\Loyalty.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Billing\Billing.Api\Billing.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Reporting\Reporting.Api\Reporting.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Files\Files.Api\Files.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Integrations\Integrations.Api\Integrations.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Reviews\Reviews.Api\Reviews.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Audit\Audit.Api\Audit.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Delivery\Delivery.Api\Delivery.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Storefront\Storefront.Api\Storefront.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Printing\Printing.Api\Printing.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Fiscal\Fiscal.Api\Fiscal.Api.csproj" />
+  </ItemGroup>
+</Project>

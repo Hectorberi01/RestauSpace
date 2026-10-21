@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede8ff;
+  --color-brand-200: #dcd3ff;
+  --color-brand-300: #c0aefe;
+  --color-brand-400: #9f80fb;
+  --color-brand-500: #7f56f3;
+  --color-brand-600: #6b3ee6;
+  --color-brand-700: #5a2fc8;
+  --color-brand-800: #4a28a2;
+  --color-brand-900: #3d2283;
+  --color-ink-900: #0f172a;
+  --color-ink-800: #1e293b;
+  --color-ink-600: #475569;
+  --color-ink-500: #64748b;
+  --color-night-900: #0b1220;
+  --color-night-800: #121b2d;
+  --color-night-700: #1c2740;
+}
+
+body {
+  @apply bg-[#f7f7fb] text-ink-900 antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-brand-400);
+  outline-offset: 2px;
+}
+
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.4);
+}

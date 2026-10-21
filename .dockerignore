@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/*.user
+**/node_modules/
+.git/
+.claude-sync/
+Tests/
+docs/
+deploy/
+scripts/
+restaurantos-*/
+*.md
+docker-compose*.yml
+Dockerfile
+.dockerignore

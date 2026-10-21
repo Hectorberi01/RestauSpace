@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Domain" />
+    <Using Include="SaasRestaurant.BuildingBlocks.Application" />
+    <ProjectReference Include="..\Delivery.Application\Delivery.Application.csproj" />
+    <ProjectReference Include="..\Delivery.Infrastructure\Delivery.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SaasRestaurant.BuildingBlocks.Api\SaasRestaurant.BuildingBlocks.Api.csproj" />
+  </ItemGroup>
+</Project>

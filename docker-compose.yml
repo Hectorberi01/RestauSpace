@@ -1,0 +1,97 @@
+# Développement local avec Docker.
+#   docker compose up -d                                  PostgreSQL seul (port 5433), pour dotnet run / pnpm dev
+#   docker compose --profile api up -d --build            + API (http://localhost:5080)
+#   docker compose --profile api --profile web up -d --build
+#                                                         + back-office (3000), console (3001), site (3002)
+# L'observabilité (deploy/observability) est facultative : l'API lui envoie ses traces sur le port 4317 de la machine.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: saasrestaurant
+      POSTGRES_USER: saasrestaurant
+      POSTGRES_PASSWORD: saasrestaurant
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saasrestaurant -d saasrestaurant"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: saasrestaurant-api:dev
+    profiles: [api]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__SaasRestaurant: Host=postgres;Port=5432;Database=saasrestaurant;Username=saasrestaurant;Password=saasrestaurant
+      Database__MigrateOnStartup: "true"
+      Observability__OtlpEndpoint: http://host.docker.internal:4317
+      Observability__ServiceName: saasrestaurant-api
+      Files__Local__Directory: /home/app/files
+      Files__Local__PublicBaseUrl: http://localhost:${API_PORT:-5080}
+      Files__PublicMedia__BaseUrl: http://localhost:${API_PORT:-5080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${API_PORT:-5080}:8080"
+    volumes:
+      - api-keys:/home/app/.aspnet/DataProtection-Keys
+      - api-files:/home/app/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Applications web : images de production construites avec les adresses locales (figées au build).
+  admin:
+    build:
+      context: restaurantos-super-admin
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-5080}
+    image: saasrestaurant-admin:dev
+    profiles: [web]
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  console:
+    build:
+      context: restaurantos-app
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-5080}
+        NEXT_PUBLIC_SITE_URL: http://localhost:3002
+    image: saasrestaurant-console:dev
+    profiles: [web]
+    ports:
+      - "127.0.0.1:3001:3000"
+    restart: unless-stopped
+
+  site:
+    build:
+      context: restaurantos-site
+      args:
+        NEXT_PUBLIC_SITE_URL: http://localhost:3002
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-5080}
+        NEXT_PUBLIC_ADMIN_URL: http://localhost:3000/admin
+        NEXT_PUBLIC_CONSOLE_URL: http://localhost:3001/connexion
+        NEXT_PUBLIC_SIGNUP_URL: http://localhost:3001/inscription
+        NEXT_PUBLIC_STOREFRONT_KEY: ${STOREFRONT_KEY:-}
+    image: saasrestaurant-site:dev
+    profiles: [web]
+    environment:
+      # Le serveur du site joint l'API par le réseau Docker (localhost désigne son propre conteneur).
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      - "127.0.0.1:3002:3000"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  api-keys:
+  api-files:
