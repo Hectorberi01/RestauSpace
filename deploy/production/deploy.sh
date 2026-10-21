@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Déploiement sur le serveur applicatif : met le code à jour, construit les images, applique les migrations, redémarre.
+# Déploiement sur le serveur applicatif : met le code à jour, récupère ou construit les images, migre, redémarre.
 #   ./deploy.sh              branche courante
-#   ./deploy.sh v1.4.0       une étiquette ou un commit précis
+#   ./deploy.sh 1a2b3c4      un commit ou une étiquette (Jenkins passe le commit construit)
+# IMAGE_REGISTRY renseigné dans .env : images tirées du registre. Vide : construites ici.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,18 +15,28 @@ docker network inspect "$(grep -E '^TRAEFIK_NETWORK=' .env | cut -d= -f2 || echo
   || { echo "Réseau Traefik introuvable (TRAEFIK_NETWORK)" >&2; exit 1; }
 
 git -C ../.. fetch --tags --quiet
-if [ -n "${1:-}" ]; then git -C ../.. checkout --quiet "$1"; else git -C ../.. pull --ff-only --quiet; fi
-release="$(git -C ../.. rev-parse --short HEAD)"
+if [ -n "${1:-}" ]; then
+  git -C ../.. checkout --quiet "$1"
+else
+  git -C ../.. checkout --quiet "${DEPLOY_BRANCH:-main}" && git -C ../.. pull --ff-only --quiet
+fi
+# 12 caractères : la même étiquette que celle des images poussées par Jenkins.
+release="$(git -C ../.. rev-parse --short=12 HEAD)"
 sed -i "s/^RELEASE=.*/RELEASE=${release}/" .env
 echo "Version ${release}"
 
-docker compose build --pull
+registry="$(grep -E '^IMAGE_REGISTRY=' .env | cut -d= -f2- || true)"
+if [ -n "$registry" ]; then
+  docker compose pull --quiet
+else
+  docker compose -f docker-compose.yml -f docker-compose.build.yml build --pull
+fi
 docker compose up -d --remove-orphans
 docker compose ps
 
 # Images des versions précédentes : on garde les 3 dernières de chaque application.
 for image in restauspace-api restauspace-console restauspace-site restauspace-admin; do
-  docker image ls "$image" --format '{{.Tag}}' | grep -v -e '^latest$' -e "^${release}$" | tail -n +3 \
-    | xargs -r -I{} docker image rm "$image:{}" >/dev/null 2>&1 || true
+  docker image ls "${registry}${image}" --format '{{.Tag}}' | grep -v -e '^latest$' -e "^${release}$" | tail -n +3 \
+    | xargs -r -I{} docker image rm "${registry}${image}:{}" >/dev/null 2>&1 || true
 done
 echo "Déployé : ${release}"

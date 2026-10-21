@@ -2,8 +2,10 @@
 # PostgreSQL est sur le serveur de base (DATABASE_HOST). L'observabilité est sur un autre serveur : l'API lui envoie
 # traces, logs et métriques en OTLP/HTTP avec un jeton.
 #
+# Images : depuis le registre (IMAGE_REGISTRY, construites par Jenkins) ou construites ici (docker-compose.build.yml).
+#
 #   cp .env.example .env && cp api.env.example api.env     # puis renseigner les deux (chmod 600)
-#   ./deploy.sh                                             # build, migrations, démarrage
+#   ./deploy.sh [commit]                                    # images, migrations, démarrage
 name: restauspace
 
 x-restart: &restart
@@ -22,7 +24,7 @@ services:
   # Migrations de tous les modules, puis arrêt ; l'API ne démarre qu'après leur réussite.
   migrations:
     <<: *logging
-    image: restauspace-api:${RELEASE:-latest}
+    image: ${IMAGE_REGISTRY:-}restauspace-api:${RELEASE:-latest}
     command: ["--migrate-only"]
     env_file: api.env
     environment: &api-environment
@@ -39,10 +41,7 @@ services:
 
   api:
     <<: [*restart, *logging]
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-    image: restauspace-api:${RELEASE:-latest}
+    image: ${IMAGE_REGISTRY:-}restauspace-api:${RELEASE:-latest}
     env_file: api.env
     environment: *api-environment
     volumes:
@@ -62,13 +61,7 @@ services:
 
   console:
     <<: [*restart, *logging]
-    build:
-      context: ../../restaurantos-app
-      args:
-        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
-        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
-        NEXT_PUBLIC_FILES_ORIGINS: ${FILES_ORIGINS:-}
-    image: restauspace-console:${RELEASE:-latest}
+    image: ${IMAGE_REGISTRY:-}restauspace-console:${RELEASE:-latest}
     networks: [proxy]
     labels:
       <<: *traefik
@@ -79,26 +72,7 @@ services:
 
   site:
     <<: [*restart, *logging]
-    build:
-      context: ../../restaurantos-site
-      args:
-        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
-        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
-        NEXT_PUBLIC_ADMIN_URL: https://admin.${DOMAIN}
-        NEXT_PUBLIC_CONSOLE_URL: https://app.${DOMAIN}/connexion
-        NEXT_PUBLIC_SIGNUP_URL: https://app.${DOMAIN}/inscription
-        NEXT_PUBLIC_STOREFRONT_KEY: ${STOREFRONT_KEY:-}
-        NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
-        NEXT_PUBLIC_CONTACT_WHATSAPP: ${CONTACT_WHATSAPP:-}
-        NEXT_PUBLIC_CONTACT_PHONE_BJ: ${CONTACT_PHONE_BJ:-}
-        NEXT_PUBLIC_CONTACT_PHONE_FR: ${CONTACT_PHONE_FR:-}
-        NEXT_PUBLIC_NEWSLETTER_URL: ${NEWSLETTER_URL:-}
-        NEXT_PUBLIC_SOCIAL_FACEBOOK: ${SOCIAL_FACEBOOK:-}
-        NEXT_PUBLIC_SOCIAL_GITHUB: ${SOCIAL_GITHUB:-}
-        NEXT_PUBLIC_SOCIAL_LINKEDIN: ${SOCIAL_LINKEDIN:-}
-        NEXT_PUBLIC_SOCIAL_X: ${SOCIAL_X:-}
-        NEXT_PUBLIC_SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE:-}
-    image: restauspace-site:${RELEASE:-latest}
+    image: ${IMAGE_REGISTRY:-}restauspace-site:${RELEASE:-latest}
     networks: [proxy]
     labels:
       <<: *traefik
@@ -113,12 +87,7 @@ services:
 
   admin:
     <<: [*restart, *logging]
-    build:
-      context: ../../restaurantos-super-admin
-      args:
-        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
-        NEXT_PUBLIC_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
-    image: restauspace-admin:${RELEASE:-latest}
+    image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}
     networks: [proxy]
     labels:
       <<: *traefik

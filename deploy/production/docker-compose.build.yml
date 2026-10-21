@@ -1,0 +1,57 @@
+# Construction des 4 images (Jenkins, ou deploy.sh sans IMAGE_REGISTRY).
+# NEXT_PUBLIC_* : figées au build, lues dans le fichier passé en --env-file (build.env côté Jenkins, .env sur le VPS).
+#   docker compose --env-file build.env -f docker-compose.build.yml build && ... push
+name: restauspace
+
+x-platform: &platform
+  platform: ${BUILD_PLATFORM:-linux/amd64}
+
+services:
+  api:
+    <<: *platform
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: ${IMAGE_REGISTRY:-}restauspace-api:${RELEASE:-latest}
+
+  console:
+    <<: *platform
+    build:
+      context: ../../restaurantos-app
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN:?DOMAIN manquant}
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_FILES_ORIGINS: ${FILES_ORIGINS:-}
+    image: ${IMAGE_REGISTRY:-}restauspace-console:${RELEASE:-latest}
+
+  site:
+    <<: *platform
+    build:
+      context: ../../restaurantos-site
+      args:
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_ADMIN_URL: https://admin.${DOMAIN}
+        NEXT_PUBLIC_CONSOLE_URL: https://app.${DOMAIN}/connexion
+        NEXT_PUBLIC_SIGNUP_URL: https://app.${DOMAIN}/inscription
+        NEXT_PUBLIC_STOREFRONT_KEY: ${STOREFRONT_KEY:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+        NEXT_PUBLIC_CONTACT_WHATSAPP: ${CONTACT_WHATSAPP:-}
+        NEXT_PUBLIC_CONTACT_PHONE_BJ: ${CONTACT_PHONE_BJ:-}
+        NEXT_PUBLIC_CONTACT_PHONE_FR: ${CONTACT_PHONE_FR:-}
+        NEXT_PUBLIC_NEWSLETTER_URL: ${NEWSLETTER_URL:-}
+        NEXT_PUBLIC_SOCIAL_FACEBOOK: ${SOCIAL_FACEBOOK:-}
+        NEXT_PUBLIC_SOCIAL_GITHUB: ${SOCIAL_GITHUB:-}
+        NEXT_PUBLIC_SOCIAL_LINKEDIN: ${SOCIAL_LINKEDIN:-}
+        NEXT_PUBLIC_SOCIAL_X: ${SOCIAL_X:-}
+        NEXT_PUBLIC_SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE:-}
+    image: ${IMAGE_REGISTRY:-}restauspace-site:${RELEASE:-latest}
+
+  admin:
+    <<: *platform
+    build:
+      context: ../../restaurantos-super-admin
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
+    image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}

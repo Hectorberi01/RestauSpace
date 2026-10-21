@@ -65,11 +65,30 @@ cp .env.example .env && cp api.env.example api.env && chmod 600 .env api.env
 ./deploy.sh
 ```
 
-`deploy.sh` : `git pull`, build des 4 images (étiquetées par le commit), migrations, démarrage, nettoyage des vieilles
-images. `./deploy.sh <commit>` déploie une version précise (retour arrière si les migrations sont compatibles).
+Une seule fois sur le VPS, pour tirer les images privées de GHCR (jeton GitHub `read:packages`) :
+`docker login ghcr.io -u Hectorberi01`.
 
-Les variables `NEXT_PUBLIC_*` sont figées au build : après un changement de `DOMAIN`, des contacts ou de
-`STOREFRONT_KEY`, relancer `./deploy.sh`.
+`deploy.sh [commit]` : met le dépôt sur ce commit, tire les 4 images du registre (`IMAGE_REGISTRY`), migrations,
+démarrage, nettoyage des vieilles images. `IMAGE_REGISTRY` vide : les images sont construites sur le VPS
+(`docker-compose.build.yml`). Retour arrière : `./deploy.sh <commit précédent>`, si les migrations sont compatibles.
+
+Les variables `NEXT_PUBLIC_*` sont figées au build (dans `build.env` de Jenkins) : après un changement de `DOMAIN`, des
+contacts ou de `STOREFRONT_KEY`, relancer le pipeline.
+
+### Jenkins (sur le Mac)
+
+`Jenkinsfile` à la racine. Toutes les branches : tests .NET, typecheck et build des 3 fronts. `main` : build des images
+en `linux/amd64` et push sur `ghcr.io/hectorberi01/`, validation manuelle (24 h), puis `ssh … ./deploy.sh <commit>`.
+
+À configurer :
+- Docker Desktop lancé (images et Testcontainers) ; plugins Pipeline, Git, Credentials Binding, SSH Agent.
+- Job **Multibranch Pipeline** sur `https://github.com/Hectorberi01/RestauSpace.git`. GitHub ne peut pas joindre le
+  Mac : déclencheur « Scan périodique » toutes les 5 minutes.
+- Identifiants : `ghcr` (compte GitHub + jeton `write:packages`), `restauspace-build-env` (Secret file, copie remplie de
+  `build.env.example`), `restauspace-vps-ssh` (clé SSH du compte de déploiement).
+- Administrer Jenkins › Système › variables : `RESTAUSPACE_DEPLOY_HOST=deploy@<ip du VPS>` ;
+  `RESTAUSPACE_DEPLOY_DIR` si le dépôt n'est pas dans `~/restauspace`.
+- VPS : la clé publique dans `~deploy/.ssh/authorized_keys`, `deploy` membre du groupe `docker`, dépôt cloné.
 
 ### Observabilité
 

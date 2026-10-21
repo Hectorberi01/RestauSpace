@@ -7,9 +7,11 @@ TestResults/
 src/Host/SaasRestaurant.Host/data/
 deploy/production/.env
 deploy/production/api.env
+deploy/production/build.env
 deploy/production/backups/
 deploy/observability/.env
 deploy/observability/secrets/*
 !deploy/observability/secrets/README.md
 deploy/database/.env
 deploy/database/tls/
+

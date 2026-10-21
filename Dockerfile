@@ -1,14 +1,18 @@
 # syntax=docker/dockerfile:1.7-labs
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# SDK sur l'architecture de la machine de build (Mac ARM), sortie compilée pour la cible (VPS amd64).
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
 WORKDIR /source
 COPY Directory.Build.props Directory.Packages.props ./
 COPY --parents src/**/*.csproj ./
-RUN dotnet restore src/Host/SaasRestaurant.Host/SaasRestaurant.Host.csproj
+RUN dotnet restore src/Host/SaasRestaurant.Host/SaasRestaurant.Host.csproj -a $TARGETARCH
 COPY src/ src/
 RUN dotnet publish src/Host/SaasRestaurant.Host/SaasRestaurant.Host.csproj \
     --configuration Release \
     --no-restore \
+    -a $TARGETARCH \
+    --self-contained false \
     --output /app \
     /p:UseAppHost=false
 
