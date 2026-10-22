@@ -11,7 +11,8 @@ internal sealed record DemoRequestAlertSettings(string? NotificationEmail, strin
 /// (ni nom, ni email, ni téléphone, ni message) : seulement le lien vers le back-office, où la demande se consulte
 /// après connexion. Sans destinataire configuré, rien n'est envoyé. Une erreur d'envoi est retentée par l'outbox.
 /// </summary>
-internal sealed class DemoRequestAlertFlow(IEmailSender sender, DemoRequestAlertSettings settings, ILogger<DemoRequestAlertFlow> logger)
+// L'expéditeur est lu à l'envoi : un consommateur impossible à construire bloquerait toute l'outbox du module.
+internal sealed class DemoRequestAlertFlow(IServiceProvider services, DemoRequestAlertSettings settings, ILogger<DemoRequestAlertFlow> logger)
     : IOutboxConsumer
 {
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken = default)
@@ -25,6 +26,12 @@ internal sealed class DemoRequestAlertFlow(IEmailSender sender, DemoRequestAlert
         if (string.IsNullOrWhiteSpace(settings.NotificationEmail))
         {
             logger.LogInformation("Demo request received ({MessageId}); no Sales:DemoRequestNotificationEmail configured.", message.Id);
+            return;
+        }
+
+        if (services.GetService<IEmailSender>() is not { } sender)
+        {
+            logger.LogWarning("Demo request received ({MessageId}); no email sender configured.", message.Id);
             return;
         }
 

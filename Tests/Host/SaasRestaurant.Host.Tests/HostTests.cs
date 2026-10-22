@@ -92,6 +92,14 @@ public sealed class HostTests(HostFixture host) : IClassFixture<HostFixture>
     }
 
     [Fact]
+    public void Every_outbox_consumer_can_be_built()
+    {
+        // Un seul consommateur impossible à construire bloque la distribution de TOUTES les outbox.
+        using var scope = host.Services.CreateScope();
+        Assert.NotEmpty(scope.ServiceProvider.GetServices<SaasRestaurant.BuildingBlocks.Application.IOutboxConsumer>());
+    }
+
+    [Fact]
     public async Task Creating_a_restaurant_is_written_to_the_audit_journal_through_the_outbox()
     {
         var client = await host.SignedInAsync(HostFixture.AdminEmail);
