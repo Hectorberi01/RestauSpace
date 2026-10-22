@@ -74,6 +74,7 @@ pipeline {
         '''
       }
     }
+    
 
     stage('Front') {
       // Typecheck partout. Build Next.js hors main : sur main il est fait par les images.
