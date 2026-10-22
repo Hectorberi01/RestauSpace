@@ -100,6 +100,7 @@ pipeline {
         ]) {
           sh '''
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            grep -q '^DOMAIN=.' "$BUILD_ENV" || { echo "restauspace-build-env : DOMAIN absent (voir build.env.example)" >&2; exit 1; }
             cd deploy/production
             docker compose --env-file "$BUILD_ENV" -f docker-compose.build.yml build --pull
             docker compose --env-file "$BUILD_ENV" -f docker-compose.build.yml push
