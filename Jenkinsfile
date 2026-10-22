@@ -22,6 +22,9 @@ pipeline {
     DOTNET_NOLOGO = '1'
     NEXT_TELEMETRY_DISABLED = '1'
     IMAGE_REGISTRY = 'ghcr.io/hectorberi01/'
+    // Node.js pour les fronts, installé une fois dans JENKINS_HOME (absent de l'image Jenkins).
+    NODE_VERSION = '22.12.0'
+    COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
   }
 
   stages {
@@ -46,6 +49,24 @@ pipeline {
         always {
           archiveArtifacts artifacts: 'TestResults/**/*.trx', allowEmptyArchive: true
         }
+      }
+    }
+
+    stage('Node.js') {
+      steps {
+        sh '''
+          dir="$JENKINS_HOME/tools/node-v$NODE_VERSION"
+          if [ ! -x "$dir/bin/node" ]; then
+            case "$(uname -m)" in
+              x86_64) arch=x64 ;;
+              aarch64|arm64) arch=arm64 ;;
+              *) echo "Architecture non gérée : $(uname -m)" >&2; exit 1 ;;
+            esac
+            mkdir -p "$dir"
+            curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$arch.tar.gz" | tar -xz -C "$dir" --strip-components=1
+          fi
+          "$dir/bin/node" --version
+        '''
       }
     }
 
@@ -115,9 +136,11 @@ pipeline {
 
 // Installation, typecheck et (hors main) build d'une application Next.js.
 def front() {
-  sh 'corepack pnpm install --frozen-lockfile'
-  sh 'corepack pnpm typecheck'
-  if (env.BRANCH_NAME != 'main') {
-    sh 'corepack pnpm build'
+  withEnv(["PATH+NODE=${env.JENKINS_HOME}/tools/node-v${env.NODE_VERSION}/bin", "COREPACK_HOME=${env.JENKINS_HOME}/tools/corepack"]) {
+    sh 'corepack pnpm install --frozen-lockfile'
+    sh 'corepack pnpm typecheck'
+    if (env.BRANCH_NAME != 'main') {
+      sh 'corepack pnpm build'
+    }
   }
 }
