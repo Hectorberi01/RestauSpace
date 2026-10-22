@@ -100,7 +100,11 @@ pipeline {
         ]) {
           sh '''
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            grep -q '^DOMAIN=.' "$BUILD_ENV" || { echo "restauspace-build-env : DOMAIN absent (voir build.env.example)" >&2; exit 1; }
+            if ! grep -q '^DOMAIN=.' "$BUILD_ENV"; then
+              # Noms des variables seulement, jamais les valeurs.
+              echo "restauspace-build-env : DOMAIN absent. Fichier reçu : $(wc -c < "$BUILD_ENV") octets, variables : $(grep -o '^[A-Za-z_][A-Za-z0-9_]*=' "$BUILD_ENV" | tr -d '=' | paste -sd ' ' -)" >&2
+              exit 1
+            fi
             cd deploy/production
             docker compose --env-file "$BUILD_ENV" -f docker-compose.build.yml build --pull
             docker compose --env-file "$BUILD_ENV" -f docker-compose.build.yml push
