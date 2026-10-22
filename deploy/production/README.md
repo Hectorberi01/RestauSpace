@@ -81,7 +81,7 @@ contacts ou de `STOREFRONT_KEY`, relancer le pipeline.
 en `linux/amd64` et push sur `ghcr.io/hectorberi01/`, validation manuelle (24 h), puis `ssh … ./deploy.sh <commit>`.
 
 À configurer :
-- Docker Desktop lancé (images et Testcontainers) ; plugins Pipeline, Git, Credentials Binding, SSH Agent.
+- Docker Desktop lancé (images et Testcontainers) ; plugins Pipeline, Git, Credentials Binding.
 - Job **Multibranch Pipeline** sur `https://github.com/Hectorberi01/RestauSpace.git`. GitHub ne peut pas joindre le
   Mac : déclencheur « Scan périodique » toutes les 5 minutes.
 - Identifiants : `ghcr` (compte GitHub + jeton `write:packages`), `restauspace-build-env` (Secret file, copie remplie de

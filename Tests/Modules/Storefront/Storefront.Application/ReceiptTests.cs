@@ -88,7 +88,8 @@ public sealed class ReceiptTests : IStorefrontReceipts, IStorefrontReceiptMessag
         Assert.Null(_sent[0].CustomerId);
         Assert.Equal((customer, (PhoneNumber?)null, ReceiptChannel.Sms), (_sent[1].CustomerId, _sent[1].Phone, _sent[1].Channel));
         Assert.StartsWith("https://chezawa.bj/recu?jeton=", _sent[0].Url, StringComparison.Ordinal);
-        Assert.DoesNotContain("97", _sent[0].IdempotencyKey, StringComparison.Ordinal);
+        // La clé ne contient pas le numéro (une empreinte hexadécimale peut contenir « 97 » par hasard).
+        Assert.DoesNotContain("97000001", _sent[0].IdempotencyKey, StringComparison.Ordinal);
         Assert.NotEqual(_sent[0].IdempotencyKey, _sent[1].IdempotencyKey);
     }
 

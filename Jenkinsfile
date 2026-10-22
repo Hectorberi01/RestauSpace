@@ -5,7 +5,7 @@
 // Identifiants Jenkins attendus :
 //   ghcr                  Username/password : compte GitHub + jeton (write:packages)
 //   restauspace-build-env Secret file : deploy/production/build.env (voir build.env.example)
-//   restauspace-vps-ssh   SSH Username with private key : compte de déploiement du VPS
+//   restauspace-vps-ssh   SSH Username with private key : compte de déploiement du VPS (Credentials Binding)
 // Variable globale (Administrer Jenkins > Système) : RESTAUSPACE_DEPLOY_HOST=deploy@<ip du VPS>
 pipeline {
   agent any
@@ -128,11 +128,12 @@ pipeline {
     stage('Déploiement') {
       when { branch 'main' }
       steps {
-        sshagent(credentials: ['restauspace-vps-ssh']) {
+        // Clé SSH du VPS via Credentials Binding (pas besoin du plugin SSH Agent).
+        withCredentials([sshUserPrivateKey(credentialsId: 'restauspace-vps-ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
           sh '''
             [ -n "$RESTAUSPACE_DEPLOY_HOST" ] || { echo "RESTAUSPACE_DEPLOY_HOST manquant (Administrer Jenkins > Système)" >&2; exit 1; }
-            ssh -o StrictHostKeyChecking=accept-new "$RESTAUSPACE_DEPLOY_HOST" \
-              "cd ${RESTAUSPACE_DEPLOY_DIR:-restauspace/deploy/production} && ./deploy.sh $RELEASE"
+            case "$RESTAUSPACE_DEPLOY_HOST" in *@*) target="$RESTAUSPACE_DEPLOY_HOST" ;; *) target="$SSH_USER@$RESTAUSPACE_DEPLOY_HOST" ;; esac
+            ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "$target" "cd ${RESTAUSPACE_DEPLOY_DIR:-restauspace/deploy/production} && ./deploy.sh $RELEASE"
           '''
         }
       }
