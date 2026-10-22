@@ -24,7 +24,6 @@ pipeline {
     IMAGE_REGISTRY = 'ghcr.io/hectorberi01/'
     // Node.js pour les fronts, installé une fois dans JENKINS_HOME (absent de l'image Jenkins).
     NODE_VERSION = '22.12.0'
-    COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
   }
 
   stages {
@@ -65,7 +64,13 @@ pipeline {
             mkdir -p "$dir"
             curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$arch.tar.gz" | tar -xz -C "$dir" --strip-components=1
           fi
-          "$dir/bin/node" --version
+          export PATH="$dir/bin:$PATH"
+          # pnpm installé avec npm (le corepack de Node 22.12 refuse les nouvelles clés de signature de npm).
+          version=$(node -p "require('./restaurantos-app/package.json').packageManager.split('@')[1]")
+          if [ "$(pnpm --version 2>/dev/null)" != "$version" ]; then
+            npm install -g --no-fund --no-audit "pnpm@$version"
+          fi
+          node --version && pnpm --version
         '''
       }
     }
@@ -136,11 +141,11 @@ pipeline {
 
 // Installation, typecheck et (hors main) build d'une application Next.js.
 def front() {
-  withEnv(["PATH+NODE=${env.JENKINS_HOME}/tools/node-v${env.NODE_VERSION}/bin", "COREPACK_HOME=${env.JENKINS_HOME}/tools/corepack"]) {
-    sh 'corepack pnpm install --frozen-lockfile'
-    sh 'corepack pnpm typecheck'
+  withEnv(["PATH+NODE=${env.JENKINS_HOME}/tools/node-v${env.NODE_VERSION}/bin"]) {
+    sh 'pnpm install --frozen-lockfile'
+    sh 'pnpm typecheck'
     if (env.BRANCH_NAME != 'main') {
-      sh 'corepack pnpm build'
+      sh 'pnpm build'
     }
   }
 }
