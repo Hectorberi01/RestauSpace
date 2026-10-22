@@ -23,7 +23,7 @@ pipeline {
     NEXT_TELEMETRY_DISABLED = '1'
     IMAGE_REGISTRY = 'ghcr.io/hectorberi01/'
     // Node.js pour les fronts, installé une fois dans JENKINS_HOME (absent de l'image Jenkins).
-    NODE_VERSION = '22.12.0'
+    NODE_VERSION = '22.20.0'
   }
 
   stages {
@@ -65,7 +65,7 @@ pipeline {
             curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$arch.tar.gz" | tar -xz -C "$dir" --strip-components=1
           fi
           export PATH="$dir/bin:$PATH"
-          # pnpm installé avec npm (le corepack de Node 22.12 refuse les nouvelles clés de signature de npm).
+          # pnpm installé avec npm (le corepack de certaines versions de Node refuse les nouvelles clés de signature de npm).
           version=$(node -p "require('./restaurantos-app/package.json').packageManager.split('@')[1]")
           if [ "$(pnpm --version 2>/dev/null)" != "$version" ]; then
             npm install -g --no-fund --no-audit "pnpm@$version"
