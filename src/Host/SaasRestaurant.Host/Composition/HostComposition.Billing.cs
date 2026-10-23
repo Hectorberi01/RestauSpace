@@ -97,6 +97,7 @@ internal static partial class HostComposition
             string.IsNullOrWhiteSpace(online["Provider"]) ? null : online["Provider"]!.Trim().ToLowerInvariant(),
             Uri.TryCreate(online["ReturnUrl"], UriKind.Absolute, out var back) ? back : null));
         builder.Services.AddScoped<ISubscriptionCollector, SubscriptionCollectorFromPayments>();
+        builder.Services.AddScoped<Payments.Application.Abstractions.IPlatformCollectionListener, SubscriptionCheckoutsFromPlatformWebhooks>();
         builder.Services.AddScoped<INotificationEntitlementChecker, NotificationEntitlementsFromBilling>();
         builder.Services.AddScoped<PlanLimitsFromBilling>();
         builder.Services.AddScoped<SignUpFlow>();

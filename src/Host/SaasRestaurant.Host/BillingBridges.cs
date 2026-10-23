@@ -39,6 +39,43 @@ internal sealed class BillingTenantsFromTenants(CachedTenants tenants) : IBillin
 }
 
 /// <summary>
+/// Payments -> Billing : un webhook signé du compte de la plateforme annonce une transaction. Le règlement d'abonnement
+/// qui la porte est relu tout de suite chez le prestataire (sinon le job s'en charge). Une transaction inconnue est ignorée.
+/// </summary>
+internal sealed class SubscriptionCheckoutsFromPlatformWebhooks(IServiceScopeFactory scopes, ILogger<SubscriptionCheckoutsFromPlatformWebhooks> logger)
+    : Payments.Application.Abstractions.IPlatformCollectionListener
+{
+    public async Task TransactionChangedAsync(string provider, string providerReference, CancellationToken cancellationToken = default)
+    {
+        (TenantId TenantId, SubscriptionCheckoutId Id)? pending;
+        await using (var lookup = scopes.CreateAsyncScope())
+        {
+            pending = await lookup.ServiceProvider.GetRequiredService<ISubscriptionCheckoutRepository>()
+                .FindPendingByReferenceAsync(provider.Trim().ToLowerInvariant(), providerReference, cancellationToken);
+        }
+
+        if (pending is not { } checkout)
+        {
+            return;
+        }
+
+        await using var scope = scopes.CreateAsyncScope();
+        scope.ServiceProvider.GetRequiredService<BackgroundTenant>().ActFor(checkout.TenantId);
+        try
+        {
+            var status = await scope.ServiceProvider.GetRequiredService<ICommandHandler<Billing.Application.Commands.SettleSubscriptionCheckoutCommand, SubscriptionCheckoutStatus>>()
+                .HandleAsync(new Billing.Application.Commands.SettleSubscriptionCheckoutCommand(checkout.TenantId.Value, checkout.Id.Value), cancellationToken);
+            logger.LogInformation("Subscription checkout {CheckoutId} after platform webhook: {Status}.", checkout.Id.Value, status);
+        }
+        catch (Exception exception) when (exception is ConcurrencyException or DomainException)
+        {
+            // Le job relira le règlement.
+            logger.LogWarning("Subscription checkout {CheckoutId} postponed: {Error}.", checkout.Id.Value, exception.GetType().Name);
+        }
+    }
+}
+
+/// <summary>
 /// Billing -> Payments : les abonnements sont encaissés sur le compte marchand de la PLATEFORME, chez le prestataire que le
 /// restaurant choisit parmi ceux proposés par le super-admin pour la devise (à défaut, <c>Billing:OnlinePayment:Provider</c>),
 /// dont les identifiants sont rangés au coffre. Sans prestataire prêt, le paiement en ligne n'est pas proposé. Le prestataire fait foi : l'état est relu chez lui.

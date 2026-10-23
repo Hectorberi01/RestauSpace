@@ -539,17 +539,21 @@ export default function SubscriptionPage() {
         <>
           <Button variant="secondary" onClick={() => setChoosing(null)}>Annuler</Button>
           <Button busy={busy === 'plan'} onClick={() => choosing && run('plan', async () => {
+            const paying = choosing.price > 0;
             if (data) await changePlan(choosing.id);
             else await subscribe(choosing.id);
             setChoosing(null);
             await refresh();
-          }, data ? 'Plan changé.' : 'Abonnement démarré.')}>Confirmer</Button>
+            // Plan payant : ouvre tout de suite le choix du moyen de paiement.
+            if (paying) setPayRequest(Date.now());
+          }, data ? 'Plan changé.' : 'Abonnement démarré.')}>{choosing && choosing.price > 0 ? 'Confirmer et payer' : 'Confirmer'}</Button>
         </>
       }>
         {choosing && (
           <div className="space-y-2 text-sm text-ink-700">
             <p><strong>{choosing.name}</strong> : {money(choosing.price, choosing.currencyCode)} / {per(choosing)}.</p>
             <p>{data ? 'Le nouveau plan et ses limites s’appliquent tout de suite ; le nouveau tarif s’applique à la prochaine échéance.' : 'Votre abonnement démarre aujourd’hui.'}</p>
+            {choosing.price > 0 && <p>Vous choisissez ensuite votre moyen de paiement. Pendant l’essai, le paiement règle la première période après l’essai.</p>}
           </div>
         )}
       </Modal>

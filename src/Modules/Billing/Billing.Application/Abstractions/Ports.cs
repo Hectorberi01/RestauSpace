@@ -132,6 +132,9 @@ public interface ISubscriptionCheckoutRepository
     /// <summary>Job SEULEMENT : les règlements en attente de tous les tenants, les plus anciens d'abord.</summary>
     Task<IReadOnlyList<(TenantId TenantId, SubscriptionCheckoutId Id)>> ListPendingAsync(int take, CancellationToken cancellationToken = default);
 
+    /// <summary>Le règlement en attente qui porte cette transaction du prestataire (tous tenants : webhook de la plateforme).</summary>
+    Task<(TenantId TenantId, SubscriptionCheckoutId Id)?> FindPendingByReferenceAsync(string provider, string providerReference, CancellationToken cancellationToken = default);
+
     void Add(SubscriptionCheckout checkout);
 }
 

@@ -213,6 +213,13 @@ public sealed class BillingFixture
         Task.FromResult<IReadOnlyList<(TenantId, SubscriptionCheckoutId)>>(Checkouts.Where(checkout => checkout.Status == SubscriptionCheckoutStatus.Pending)
             .OrderBy(checkout => checkout.CreatedAtUtc).Take(take).Select(checkout => (checkout.TenantId, checkout.Id)).ToList());
 
+    Task<(TenantId TenantId, SubscriptionCheckoutId Id)?> ISubscriptionCheckoutRepository.FindPendingByReferenceAsync(
+        string provider, string providerReference, CancellationToken cancellationToken) =>
+        Task.FromResult(Checkouts
+            .Where(checkout => checkout.Status == SubscriptionCheckoutStatus.Pending && checkout.Provider == provider && checkout.ProviderReference == providerReference)
+            .Select(checkout => ((TenantId, SubscriptionCheckoutId)?)(checkout.TenantId, checkout.Id))
+            .FirstOrDefault());
+
     void ISubscriptionCheckoutRepository.Add(SubscriptionCheckout checkout) => Checkouts.Add(checkout);
 
     string? ISubscriptionCollector.DefaultProvider => CollectorProvider;

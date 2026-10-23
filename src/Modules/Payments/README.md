@@ -367,6 +367,7 @@ de la signature) et `/platform/payment-providers` (l'hôte y chaîne la policy d
 | `POST` | `/payments/{id}/retry` · `/cancel` (`{ reason }`) | | `payments.collect` |
 | `POST` | `/payments/{id}/refunds` | `{ reason, amount? }` -> `{ id }` | `payments.refund` |
 | `POST` | `/payments/webhooks/{provider}/{methodId}` | corps brut signé (256 Kio max) | anonyme |
+| `POST` | `/payments/webhooks/{provider}` | webhook du compte de la PLATEFORME : vérifié avec ses identifiants, rien n'est conservé ; l'hôte relit aussitôt le règlement d'abonnement qui porte la transaction | anonyme |
 
 Webhooks : `200` conservé, déjà reçu ou sans intérêt ; `400` signature invalide ; `404` adresse inconnue ; `413` trop
 gros. Erreurs du personnel : `401`, `403`, `404`, `409`, `422` (code dans `code`).

@@ -320,6 +320,17 @@ internal sealed class SubscriptionCheckoutRepository(BillingDbContext context) :
         return rows.Select(row => (row.TenantId, row.Id)).ToList();
     }
 
+    public async Task<(TenantId TenantId, SubscriptionCheckoutId Id)?> FindPendingByReferenceAsync(
+        string provider, string providerReference, CancellationToken cancellationToken = default)
+    {
+        var row = await Checkouts.AsNoTracking()
+            .Where(checkout => checkout.Status == SubscriptionCheckoutStatus.Pending
+                && checkout.Provider == provider && checkout.ProviderReference == providerReference)
+            .Select(checkout => new { checkout.TenantId, checkout.Id })
+            .FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : (row.TenantId, row.Id);
+    }
+
     public void Add(SubscriptionCheckout checkout) => context.SubscriptionCheckouts.Add(checkout);
 }
 

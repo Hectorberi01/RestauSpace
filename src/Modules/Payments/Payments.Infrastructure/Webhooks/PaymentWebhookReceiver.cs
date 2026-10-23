@@ -52,6 +52,61 @@ public sealed class PaymentWebhookReceiver
         _clock = clock;
     }
 
+    /// <summary>
+    /// Webhook du compte de la PLATEFORME (<c>/payments/webhooks/{prestataire}</c>) : vérifié avec ses identifiants, rien
+    /// n'est conservé ; renvoie la référence de la transaction relue chez le prestataire.
+    /// </summary>
+    public async Task<(WebhookReceipt Receipt, string? Reference)> ReceivePlatformAsync(
+        string provider, IReadOnlyDictionary<string, string> headers, string body, CancellationToken cancellationToken = default)
+    {
+        PaymentProviderCode code;
+        try
+        {
+            code = PaymentProviderCode.Create(provider);
+        }
+        catch (DomainException)
+        {
+            return (WebhookReceipt.UnknownEndpoint, null);
+        }
+
+        if (!_integrations.TryGetValue(code, out var integration))
+        {
+            return (WebhookReceipt.UnknownEndpoint, null);
+        }
+
+        IReadOnlyDictionary<string, string>? secrets;
+        try
+        {
+            secrets = await _secrets.ReadAsync(PaymentCredentialReference.ForPlatform(code), cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return (WebhookReceipt.Invalid, null);
+        }
+
+        if (secrets is null)
+        {
+            return (WebhookReceipt.UnknownEndpoint, null);
+        }
+
+        WebhookReadResult read;
+        try
+        {
+            read = await integration.CreateWebhookReader(secrets).ReadAsync(headers, body, _clock.UtcNow, cancellationToken);
+        }
+        catch (PaymentGatewayException)
+        {
+            return (WebhookReceipt.Unavailable, null);
+        }
+
+        return read switch
+        {
+            { Status: WebhookReadStatus.Invalid } or { Status: WebhookReadStatus.Verified, Webhook: null } => (WebhookReceipt.Invalid, null),
+            { Webhook: { } webhook } => (WebhookReceipt.Accepted, webhook.Reference),
+            _ => (WebhookReceipt.Ignored, null),
+        };
+    }
+
     public async Task<WebhookReceipt> ReceiveAsync(
         string provider, Guid configurationId, IReadOnlyDictionary<string, string> headers, string body, CancellationToken cancellationToken = default)
     {

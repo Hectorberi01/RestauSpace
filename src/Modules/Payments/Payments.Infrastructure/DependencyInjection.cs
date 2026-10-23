@@ -75,6 +75,7 @@ public static class DependencyInjection
 
         services.AddScoped<IOutboxConsumer, PaymentGatewayRelay>();
         services.AddScoped<PaymentWebhookReceiver>();
+        services.TryAddScoped<IPlatformCollectionListener, NoPlatformCollectionListener>();
         services.AddSingleton<PaymentWebhookProcessor>();
         services.AddHostedService(provider => provider.GetRequiredService<PaymentWebhookProcessor>());
         return services;

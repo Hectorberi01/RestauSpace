@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Payments.Application;
+using Payments.Application.Abstractions;
 using Payments.Application.Commands;
 using Payments.Application.Queries;
 using Payments.Domain;
@@ -313,7 +314,34 @@ public static class PaymentsEndpoints
         webhooks.MapPost("/{provider}/{configurationId:guid}", ReceiveAsync);
         webhooks.MapPut("/{provider}/{configurationId:guid}", ReceiveAsync);
 
+        // Compte de la plateforme (abonnements) : une seule adresse par prestataire.
+        webhooks.MapPost("/{provider}", ReceivePlatformAsync);
+
         return webhooks;
+    }
+
+    private static async Task<Results<Ok, NotFound, BadRequest, StatusCodeHttpResult>> ReceivePlatformAsync(
+        string provider, HttpRequest request, PaymentWebhookReceiver receiver, IPlatformCollectionListener listener, CancellationToken ct)
+    {
+        if (await ReadBodyAsync(request, ct) is not { } body)
+        {
+            return TypedResults.StatusCode(StatusCodes.Status413PayloadTooLarge);
+        }
+
+        var headers = request.Headers.ToDictionary(header => header.Key, header => header.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+        var (receipt, reference) = await receiver.ReceivePlatformAsync(provider, headers, body, ct);
+        if (reference is not null)
+        {
+            await listener.TransactionChangedAsync(provider, reference, ct);
+        }
+
+        return receipt switch
+        {
+            WebhookReceipt.Accepted or WebhookReceipt.Duplicate or WebhookReceipt.Ignored => TypedResults.Ok(),
+            WebhookReceipt.UnknownEndpoint => TypedResults.NotFound(),
+            WebhookReceipt.Unavailable => TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable),
+            _ => TypedResults.BadRequest(),
+        };
     }
 
     private static async Task<Results<Ok, NotFound, BadRequest, StatusCodeHttpResult>> ReceiveAsync(

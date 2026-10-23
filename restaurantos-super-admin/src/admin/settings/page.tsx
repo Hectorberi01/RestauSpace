@@ -229,7 +229,7 @@ function Payments(){
         </div></td></tr>)}</tbody></table></div>:<p className="muted">Aucun prestataire ne correspond à « {query} ».</p>:<EmptyState title="Aucun prestataire" description="Ajoutez un prestataire en ligne (intégration du code) ou sur place (espèces, TPE...)."/>}
     </section>
     {form&&<PaymentForm key={form.provider?.id??'new'} provider={form.provider} integrations={integrations} open onClose={()=>{setForm(null);void reload();setVersion(v=>v+1)}}/>}
-    {credentials&&<CredentialsDialog open title={`Compte plateforme · ${credentials.displayName}`} fields={integrations.find(i=>i.code===credentials.code)?.credentialFields??credentials.credentialFields} onClose={()=>setCredentials(null)} save={values=>act('Identifiants enregistrés',()=>paymentProviders.setCredentials(credentials.id,values))}/>}
+    {credentials&&<CredentialsDialog open title={`Compte plateforme · ${credentials.displayName}`} note={<PaymentWebhookNote code={credentials.code}/>} fields={integrations.find(i=>i.code===credentials.code)?.credentialFields??credentials.credentialFields} onClose={()=>setCredentials(null)} save={values=>act('Identifiants enregistrés',()=>paymentProviders.setCredentials(credentials.id,values))}/>}
   </>;
 }
 
@@ -255,6 +255,11 @@ function NotificationForm({integrations,open,onClose,initialCode}:{integrations:
     <label className="settings-field"><span>Compte utilisé</span><select value={configurationType} onChange={e=>setConfigurationType(e.target.value as NotificationConfigurationType)}>{(Object.keys(configurationLabels) as NotificationConfigurationType[]).map(c=><option key={c} value={c}>{configurationLabels[c]}</option>)}</select></label>
     <div className="settings-field"><span>Fonctionnalités</span><Checks options={Object.keys(featureLabels) as NotificationFeature[]} labels={featureLabels} value={features} onChange={setFeatures}/></div>
   </Modal>;
+}
+
+/** Webhook du compte plateforme chez le prestataire : une adresse par prestataire, sans id. */
+function PaymentWebhookNote({code}:{code:string}){
+  return <p className="notice">Webhook à déclarer chez le prestataire (compte de la plateforme) : <code>{`${API_URL}/v1/payments/webhooks/${code}`}</code>. Il confirme les paiements d’abonnement tout de suite ; sans lui, la page de paiement puis une relecture toutes les 15 minutes s’en chargent.</p>;
 }
 
 /** Où déclarer le webhook de remise et comment il est authentifié, pour le prestataire dont on saisit le compte. */
