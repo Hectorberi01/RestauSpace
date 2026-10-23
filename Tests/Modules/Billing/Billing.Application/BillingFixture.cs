@@ -263,6 +263,9 @@ public sealed class BillingFixture
     Task<SaasSubscription?> ISubscriptionRepository.FindAsync(TenantId tenantId, SubscriptionId id, CancellationToken cancellationToken) =>
         Task.FromResult<SaasSubscription?>(Subscriptions.SingleOrDefault(s => s.TenantId == tenantId && s.Id == id));
 
+    Task<bool> ISubscriptionRepository.HasOtherAsync(TenantId tenantId, SubscriptionId? except, CancellationToken cancellationToken) =>
+        Task.FromResult(Subscriptions.Any(s => s.TenantId == tenantId && s.Id != except));
+
     void ISubscriptionRepository.Add(SaasSubscription subscription) => Subscriptions.Add(subscription);
 
     Task<SaasSubscription?> IPlatformSubscriptions.FindAsync(SubscriptionId id, CancellationToken cancellationToken) =>

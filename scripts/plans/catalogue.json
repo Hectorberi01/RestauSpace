@@ -715,6 +715,20 @@
       ]
     },
     {
+      "name": "API",
+      "price": 15000,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
       "name": "Site web",
       "price": 5,
       "currencyCode": "EUR",
@@ -753,6 +767,20 @@
           "featureCode": "storefront.kiosk",
           "enabled": true,
           "limit": 1
+        }
+      ]
+    },
+    {
+      "name": "API",
+      "price": 25,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
         }
       ]
     }

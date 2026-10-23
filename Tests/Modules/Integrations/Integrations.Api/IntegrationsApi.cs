@@ -133,6 +133,8 @@ public sealed class IntegrationsApi : IAsyncLifetime, IIntegrationTenants, IPerm
     public Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Tenants.TryGetValue(tenantId, out var writable) && writable);
 
+    public Task<bool> AllowsApiKeysAsync(TenantId tenantId, CancellationToken cancellationToken = default) => Task.FromResult(true);
+
     public Task<bool> HasTenantPermissionAsync(
         UserId userId, TenantId tenantId, string permission, CancellationToken cancellationToken = default) =>
         Task.FromResult(!(Denied.TryGetValue(tenantId, out var denied) && denied.Contains(permission)));

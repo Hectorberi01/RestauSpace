@@ -373,6 +373,17 @@ public class SaasSubscriptionTests
     }
 
     [Fact]
+    public void ChangePlan_is_allowed_after_an_expired_trial()
+    {
+        var subscription = SuspendedAtTrialEnd();
+
+        subscription.ChangePlan(_pro, _clock);
+
+        Assert.Equal(_pro.PlanId, subscription.PlanId);
+        Assert.Equal(SubscriptionStatus.Suspended, subscription.Status);
+    }
+
+    [Fact]
     public void Events_of_subscription_and_plan_have_distinct_names()
     {
         Assert.NotEqual(typeof(SubscriptionPlanChanged).Name, typeof(PlanDefinitionChanged).Name);

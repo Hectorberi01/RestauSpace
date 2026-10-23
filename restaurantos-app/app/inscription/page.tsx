@@ -263,7 +263,7 @@ function CheckInbox({email, trialDays, free}: {email: string; trialDays: number;
           Votre restaurant est créé. Nous avons envoyé un lien de confirmation à <strong className="break-all text-ink-900">{email}</strong> : ouvrez-le, confirmez avec votre mot de passe, puis connectez-vous.
         </p>
         <p className="mt-3 text-sm text-ink-600">
-          {free ? 'Votre plan gratuit démarre tout de suite.' : `Votre essai de ${trialDays} jours a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
+          {free ? 'Votre plan gratuit démarre tout de suite, pour un mois. Ensuite, choisissez un plan payant pour continuer.' : `Votre essai de ${trialDays} jours a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
         </p>
         <div className="mt-6 space-y-3">
           <Link href="/connexion" className="flex h-11 w-full items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Aller à la connexion</Link>

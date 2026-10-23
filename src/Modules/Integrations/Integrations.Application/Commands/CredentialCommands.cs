@@ -44,6 +44,7 @@ public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, I
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireApiKeysOptionAsync(cancellationToken);
         var scopes = (command.Scopes ?? Array.Empty<string>()).Select(ApiScope.Create).ToList();
         await RequireHeldAsync(scopes, cancellationToken);
         var key = ApiKeys.NewKey();

@@ -295,6 +295,18 @@ public sealed class IntegrationsUseCaseTests
     }
 
     [Fact]
+    public async Task Issuing_a_key_requires_the_api_option()
+    {
+        _fixture.WithoutApiOption.Add(_fixture.TenantA);
+
+        var refused = await Assert.ThrowsAsync<DomainException>(() =>
+            _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("POS", ["orders.view"], null)));
+
+        Assert.Equal(IntegrationsApplicationErrors.ApiOptionRequired, refused.Error);
+        Assert.Empty(_fixture.Credentials);
+    }
+
+    [Fact]
     public async Task A_revoked_expired_rotated_or_malformed_key_no_longer_authenticates()
     {
         var revoked = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("A", ["orders.view"], null));

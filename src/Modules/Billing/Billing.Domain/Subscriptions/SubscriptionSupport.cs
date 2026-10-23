@@ -39,7 +39,7 @@ public static class SubscriptionErrors
     public static readonly DomainError AlreadySubscribed = new("billing.subscription.already_subscribed", "The tenant already has a live subscription.", DomainErrorKind.Conflict);
     public static readonly DomainError PlanArchived = new("billing.subscription.plan_archived", "An archived plan cannot be subscribed to.");
     public static readonly DomainError PlanIsAddOn = new("billing.subscription.plan_is_add_on", "An add-on is added to a subscription; it cannot be its plan.");
-    public static readonly DomainError PlanChangeNotAllowed = new("billing.subscription.plan_change_not_allowed", "The plan can only be changed while trialing or active.");
+    public static readonly DomainError PlanChangeNotAllowed = new("billing.subscription.plan_change_not_allowed", "The plan can only be changed while trialing, active or after an expired trial.");
     public static readonly DomainError Cancelled = new("billing.subscription.cancelled", "A cancelled subscription is final; start a new subscription instead.");
     public static readonly DomainError CannotActivate = new("billing.subscription.cannot_activate", "Only a trialing, past due or suspended subscription can be activated.");
     public static readonly DomainError NotActive = new("billing.subscription.not_active", "The subscription is not active.");

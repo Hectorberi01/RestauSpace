@@ -43,6 +43,15 @@ public sealed class IntegrationsWorkspace(
         }
     }
 
+    /// <summary>Créer une clé d'API demande l'option API de l'abonnement.</summary>
+    public async Task RequireApiKeysOptionAsync(CancellationToken cancellationToken)
+    {
+        if (!await tenants.AllowsApiKeysAsync(CurrentTenant, cancellationToken))
+        {
+            throw new DomainException(IntegrationsApplicationErrors.ApiOptionRequired);
+        }
+    }
+
     public async Task<WebhookEndpoint> LoadEndpointAsync(Guid id, CancellationToken cancellationToken) =>
         (id == Guid.Empty ? null : await endpoints.FindAsync(CurrentTenant, WebhookEndpointId.From(id), cancellationToken))
         ?? throw new NotFoundException(IntegrationsApplicationErrors.EndpointNotFound);

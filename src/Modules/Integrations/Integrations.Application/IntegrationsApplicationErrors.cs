@@ -23,6 +23,8 @@ public static class IntegrationsApplicationErrors
     // Une clé ne reçoit que des droits que son auteur détient lui-même.
     public static readonly DomainError ScopeNotHeld =
         new("integrations.api_credential.scope_not_held", "You can only grant a key permissions that you hold yourself.");
+    public static readonly DomainError ApiOptionRequired =
+        new("integrations.api_credential.option_required", "API keys are an option of your subscription: add it first.");
     public static readonly DomainError PageInvalid = new("integrations.page_invalid", "Skip must be zero or more and take between 1 and 100.");
 }
 

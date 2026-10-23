@@ -27,11 +27,20 @@ namespace SaasRestaurant.Host;
 // modules (par l'outbox) deviennent des livraisons vers les endpoints des restaurants. Aucun module n'en référence un
 // autre : seul le host les relie.
 
-/// <summary>Integrations -> Tenants : le tenant accepte-t-il les écritures métier ? Inconnu = non.</summary>
-internal sealed class IntegrationTenantsFromTenants(CachedTenants tenants) : IIntegrationTenants
+/// <summary>
+/// Integrations -> Tenants et Billing : écritures métier acceptées (inconnu = non) ; clés d'API incluses dans
+/// l'abonnement (droit <c>storefront.api</c>). Fail-closed : un tenant autre que celui du contexte n'a droit à rien.
+/// </summary>
+internal sealed class IntegrationTenantsFromTenants(
+    CachedTenants tenants, ITenantContext tenantContext, IQueryHandler<Billing.Application.Queries.GetFeatureLimitQuery, Billing.Application.Queries.FeatureLimitDto> limits)
+    : IIntegrationTenants
 {
     public Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         tenants.AcceptsBusinessWritesAsync(tenantId, cancellationToken);
+
+    public async Task<bool> AllowsApiKeysAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        tenantContext.CurrentTenantId == tenantId
+        && (await limits.HandleAsync(new Billing.Application.Queries.GetFeatureLimitQuery(Billing.Application.BillingFeatures.StorefrontApi), cancellationToken)).Enabled;
 }
 
 /// <summary>

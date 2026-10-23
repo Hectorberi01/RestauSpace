@@ -20,6 +20,12 @@ public sealed class StartSubscriptionHandler(BillingWorkspace workspace, IClock 
     }
 }
 
+/// <summary>Le plan gratuit (Découverte) : un plan de base à 0.</summary>
+internal static class FreePlan
+{
+    public static bool Is(Plan plan) => plan.Price.Amount == 0m;
+}
+
 internal static class SubscriptionStart
 {
     public static async Task<Guid> StartAsync(
@@ -28,25 +34,50 @@ internal static class SubscriptionStart
         var plan = await workspace.LoadPlanAsync(planId, cancellationToken);
         await workspace.EnsurePlanCurrencyAsync(tenant, plan, cancellationToken);
         var now = clock.UtcNow;
+        var end = now + trialLength;
+        if (FreePlan.Is(plan))
+        {
+            // Plan gratuit : une seule fois, pour un mois.
+            DomainException.ThrowIf(await workspace.Subscriptions.HasOtherAsync(tenant, null, cancellationToken), BillingApplicationErrors.FreePlanUnavailable);
+            end = now.AddMonths(workspace.Settings.FreePlanMonths);
+        }
+
         var isFirst = await workspace.LiveSubscriptions.HasNoLiveSubscriptionAsync(tenant, cancellationToken);
-        var subscription = SaasSubscription.StartTrial(tenant, plan.ToReference(), Period.Create(now, now + trialLength), isFirst, clock);
+        var subscription = SaasSubscription.StartTrial(tenant, plan.ToReference(), Period.Create(now, end), isFirst, clock);
         workspace.Subscriptions.Add(subscription);
         await workspace.SaveAsync(cancellationToken);
         return subscription.Id.Value;
     }
 }
 
-/// <summary>Passe à un autre plan actif, pendant l'essai ou une période payée (même plan = rien).</summary>
+/// <summary>
+/// Passe à un autre plan actif, pendant l'essai, une période payée ou après un essai expiré (même plan = rien). Le plan
+/// gratuit : seulement pendant l'essai du premier abonnement, sans dépasser son premier mois.
+/// </summary>
 public sealed record ChangeSubscriptionPlanCommand(Guid PlanId) : ICommand;
 
 public sealed class ChangeSubscriptionPlanHandler(BillingWorkspace workspace, IClock clock) : ICommandHandler<ChangeSubscriptionPlanCommand>
 {
     public async Task HandleAsync(ChangeSubscriptionPlanCommand command, CancellationToken cancellationToken = default)
     {
-        await workspace.RequireWritableTenantAsync(cancellationToken);
         var subscription = await workspace.LoadLiveSubscriptionAsync(cancellationToken);
+        // Essai expiré : le restaurant est suspendu, mais doit pouvoir choisir un plan payant.
+        if (subscription.SuspensionReason != SuspensionReason.TrialExpired)
+        {
+            await workspace.RequireWritableTenantAsync(cancellationToken);
+        }
+
         var plan = await workspace.LoadPlanAsync(command.PlanId, cancellationToken);
         await workspace.EnsurePlanCurrencyAsync(subscription.TenantId, plan, cancellationToken);
+        if (FreePlan.Is(plan) && plan.Id != subscription.PlanId)
+        {
+            DomainException.ThrowIf(
+                subscription.Status != SubscriptionStatus.Trialing
+                || subscription.CurrentPeriod.EndUtc > subscription.StartedAtUtc.AddMonths(workspace.Settings.FreePlanMonths)
+                || await workspace.Subscriptions.HasOtherAsync(subscription.TenantId, subscription.Id, cancellationToken),
+                BillingApplicationErrors.FreePlanUnavailable);
+        }
+
         subscription.ChangePlan(plan.ToReference(), clock);
         await workspace.SaveAsync(cancellationToken);
     }
@@ -187,8 +218,8 @@ public enum SubscriptionDueOutcome
 
 /// <summary>
 /// Job d'échéance, pour un abonnement de son tenant (contexte du job) dont la période est terminée :
-/// résiliation programmée -> résilié ; plan gratuit (plan et options à 0) -> période suivante, sans paiement ;
-/// essai -> suspendu (essai expiré) ; période payée -> impayé ; impayé au-delà du délai de grâce -> suspendu (impayé).
+/// résiliation programmée -> résilié ; période payée d'un plan gratuit (plan et options à 0, cas d'une offre) -> période
+/// suivante, sans paiement ; essai, plan gratuit compris (Découverte : un mois) -> suspendu (essai expiré) ; période payée -> impayé ; impayé au-delà du délai de grâce -> suspendu (impayé).
 /// Rejouable : un abonnement déjà traité ne change plus.
 /// </summary>
 public sealed record ProcessDueSubscriptionCommand(Guid SubscriptionId) : ICommand<SubscriptionDueOutcome>;
@@ -214,7 +245,7 @@ public sealed class ProcessDueSubscriptionHandler(BillingWorkspace workspace, IC
             await workspace.CancelAddOnsAsync(subscription.TenantId, clock, cancellationToken);
             outcome = SubscriptionDueOutcome.Cancelled;
         }
-        else if (subscription.Status is SubscriptionStatus.Trialing or SubscriptionStatus.Active
+        else if (subscription.Status == SubscriptionStatus.Active
             && await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken) is { } plan
             && (await workspace.ChargeAsync(plan, subscription.TenantId, cancellationToken)).Amount == 0m)
         {

@@ -545,7 +545,7 @@ La récompense doit être active, dans la devise de l'établissement, et le sold
 
 | Où | Ajout |
 |---|---|
-| **Catalogue** | `scripts/plans/catalogue.json` contient maintenant 6 options mensuelles (`"kind": "AddOn"`) : **Site web** 3 000 XOF / 5 € (`storefront.web`), **Application mobile** 10 000 XOF / 15 € (`storefront.mobile_app`), **Borne** 7 500 XOF / 12 € par borne (`storefront.kiosk`, limite 1 multipliée par la quantité). `scripts/seed-plans.py` les crée (le type fait partie de la clé de comparaison) |
+| **Catalogue** | `scripts/plans/catalogue.json` contient maintenant 6 options mensuelles (`"kind": "AddOn"`) : **Site web** 3 000 XOF / 5 € (`storefront.web`), **Application mobile** 10 000 XOF / 15 € (`storefront.mobile_app`), **Borne** 7 500 XOF / 12 € par borne (`storefront.kiosk`, limite 1 multipliée par la quantité), **API** 15 000 XOF / 25 € (`storefront.api` : obligatoire pour créer une clé d'API, `integrations.api_credential.option_required` sinon ; les clés existantes restent valides). `scripts/seed-plans.py` les crée (le type fait partie de la clé de comparaison) |
 | **Billing, restaurant** | Le restaurateur souscrit une option, change sa quantité ou la résilie lui-même. Activation **immédiate**, pendant l'essai ou une période payée (en retard ou suspendu : régulariser d'abord). Résiliation immédiate, possible même suspendu |
 | **Billing, facturation** | Le paiement enregistré par la plateforme pour une période = **plan + options actives × quantité**, recopiés ligne par ligne (`subscription_payment_lines`). Une option mensuelle sur un plan annuel compte 12 mois ; une option annuelle sur un plan mensuel, un douzième. `nextCharge` donne le montant de la prochaine période |
 | **Billing, résiliation** | La résiliation de l'abonnement (par la plateforme, ou programmée puis échue) résilie ses options |
@@ -576,7 +576,7 @@ La récompense doit être active, dans la devise de l'établissement, et le sold
 
 1. **Migration** : `./scripts/migrations-options.sh` (Billing `SubscriptionPaymentLines` : table `subscription_payment_lines`).
 2. **Compiler et tester** : `dotnet build`, puis `dotnet test`.
-3. **Catalogue** : `python3 scripts/seed-plans.py --dry-run`, puis sans `--dry-run` pour créer les 6 options.
+3. **Catalogue** : `python3 scripts/seed-plans.py --dry-run`, puis sans `--dry-run` pour créer les 8 options.
 
 ### Limites connues
 

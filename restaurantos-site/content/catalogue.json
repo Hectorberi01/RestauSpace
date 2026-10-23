@@ -671,6 +671,118 @@
           "limit": null
         }
       ]
+    },
+    {
+      "name": "Site web",
+      "price": 3000,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Application mobile",
+      "price": 10000,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Borne",
+      "price": 7500,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": true,
+          "limit": 1
+        }
+      ]
+    },
+    {
+      "name": "API",
+      "price": 15000,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Site web",
+      "price": 5,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Application mobile",
+      "price": 15,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Borne",
+      "price": 12,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": true,
+          "limit": 1
+        }
+      ]
+    },
+    {
+      "name": "API",
+      "price": 25,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        }
+      ]
     }
   ]
 }

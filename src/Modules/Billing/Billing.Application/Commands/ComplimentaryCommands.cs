@@ -60,7 +60,7 @@ public sealed class AdminEndComplimentaryHandler(BillingWorkspace workspace, ICl
 
 /// <summary>
 /// Le job : prévient le restaurant (contexte du job) que son essai ou son offre se termine bientôt. Vrai si un préavis part ;
-/// un plan gratuit, qui se renouvelle seul, n'est pas prévenu.
+/// un plan gratuit payé (offre), qui se renouvelle seul, n'est pas prévenu.
 /// </summary>
 public sealed record NoticeSubscriptionEndingCommand(Guid SubscriptionId) : ICommand<bool>;
 
@@ -78,7 +78,9 @@ public sealed class NoticeSubscriptionEndingHandler(BillingWorkspace workspace, 
         }
 
         var plan = await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken);
-        var free = plan is not null && (await workspace.ChargeAsync(plan, subscription.TenantId, cancellationToken)).Amount == 0m;
+        // Seul un plan gratuit déjà payé (offre) se renouvelle seul ; la fin du mois Découverte est annoncée.
+        var free = subscription.Status == SubscriptionStatus.Active
+            && plan is not null && (await workspace.ChargeAsync(plan, subscription.TenantId, cancellationToken)).Amount == 0m;
         if (!subscription.NoticeEnding(clock, silently: free))
         {
             return false;

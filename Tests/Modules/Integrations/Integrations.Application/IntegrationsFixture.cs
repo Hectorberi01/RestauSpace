@@ -37,6 +37,9 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     public Dictionary<TenantId, bool> Writable { get; } = [];
 
+    /// <summary>Tenants sans l'option API (les autres l'ont).</summary>
+    public HashSet<TenantId> WithoutApiOption { get; } = [];
+
     public List<WebhookEndpoint> Endpoints { get; } = [];
 
     public List<WebhookDelivery> Deliveries { get; } = [];
@@ -147,6 +150,9 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     Task<bool> IIntegrationTenants.AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken) =>
         Task.FromResult(Writable.TryGetValue(tenantId, out var writable) && writable);
+
+    Task<bool> IIntegrationTenants.AllowsApiKeysAsync(TenantId tenantId, CancellationToken cancellationToken) =>
+        Task.FromResult(!WithoutApiOption.Contains(tenantId));
 
     Task<WebhookEndpoint?> IWebhookEndpointRepository.FindAsync(TenantId tenantId, WebhookEndpointId id, CancellationToken cancellationToken) =>
         Task.FromResult<WebhookEndpoint?>(Endpoints.SingleOrDefault(endpoint => endpoint.TenantId == tenantId && endpoint.Id == id));

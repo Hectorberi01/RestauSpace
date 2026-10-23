@@ -133,4 +133,7 @@ public interface IIntegrationTenants
 {
     /// <summary>Faux pour un tenant suspendu, fermé ou inconnu.</summary>
     Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+
+    /// <summary>Vrai si l'abonnement inclut les clés d'API (droit <c>storefront.api</c>, plan ou option).</summary>
+    Task<bool> AllowsApiKeysAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 }

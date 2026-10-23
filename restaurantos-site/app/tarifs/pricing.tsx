@@ -6,7 +6,7 @@ import {ArrowRight, Check, Crown, Gift, Layers, Minus, Send, Settings2, Store, U
 import {AnimatedPrice} from '@/components/animated-price';
 import {Segmented} from '@/components/segmented';
 import {featureGroups} from '@/content/features';
-import {markets, price, quota, quotaRows, tiers, trialDays, type Market, type Tier} from '@/content/plans';
+import {addOns, markets, price, quota, quotaRows, tiers, trialDays, type Market, type Tier} from '@/content/plans';
 
 const planIcons: Record<string, {icon: LucideIcon; tone: string}> = {
   Découverte: {icon: Send, tone: 'bg-sky-50 text-sky-600 ring-sky-100'},
@@ -88,7 +88,7 @@ export function Pricing() {
                 ) : (
                   <AnimatedPrice amount={plan.price} currency={currency} className="block whitespace-nowrap text-3xl font-bold tracking-tight text-ink-900" />
                 )}
-                <p className="mt-1 text-sm text-ink-500">{free ? 'Sans engagement' : `${ht.trim() ? 'HT ' : ''}par ${yearly ? 'an' : 'mois'}`}</p>
+                <p className="mt-1 text-sm text-ink-500">{free ? 'Pendant un mois, une seule fois' : `${ht.trim() ? 'HT ' : ''}par ${yearly ? 'an' : 'mois'}`}</p>
                 {yearly && !free && <p className="animate-rise text-sm text-ink-500">soit {price(perMonth(plan.price, currency), currency)}{ht} par mois</p>}
               </div>
               <ul className="mt-5 flex-1 space-y-2.5 border-t border-slate-100 pt-5 text-sm">
@@ -127,6 +127,20 @@ export function Pricing() {
           ))}
         </ul>
       </div>
+
+      <section data-reveal aria-labelledby="options" className="mt-14">
+        <h2 id="options" className="text-2xl font-bold tracking-tight text-ink-900">Options</h2>
+        <p className="mt-1 text-ink-600">À ajouter à votre plan depuis la console, par mois{ht}.</p>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {addOns(market).map(option => (
+            <li key={option.name} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="font-semibold text-ink-900">{option.name}</p>
+              <p className="mt-1 min-h-10 text-sm text-ink-500">{option.description}</p>
+              <p className="mt-3 text-lg font-bold text-ink-900">{price(option.price, currency)}<span className="text-sm font-normal text-ink-500"> / mois</span></p>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section data-reveal aria-labelledby="comparatif" className="mt-14 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="p-6 sm:p-8">

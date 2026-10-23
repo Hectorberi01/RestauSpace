@@ -14,6 +14,7 @@ interface CataloguePlan {
   price: number;
   currencyCode: string;
   billingInterval: Interval;
+  kind?: 'Base' | 'AddOn';
   entitlements: CatalogueEntitlement[];
 }
 
@@ -31,7 +32,7 @@ export const markets: Record<Market, {label: string; currency: string; taxNote: 
 };
 
 const audiences: Record<string, string> = {
-  Découverte: 'Pour essayer avec un petit volume',
+  Découverte: 'Pour démarrer : un mois gratuit, petit volume',
   Essentiel: 'Pour un restaurant indépendant',
   Pro: 'Pour un restaurant établi, avec livraison',
   Groupe: 'Pour une enseigne de 2 à 5 établissements',
@@ -51,7 +52,7 @@ const plans = (catalogue as {plans: CataloguePlan[]}).plans;
 
 export function tiers(market: Market): Tier[] {
   const currency = markets[market].currency;
-  const monthly = plans.filter(p => p.currencyCode === currency && p.billingInterval === 'Monthly');
+  const monthly = plans.filter(p => p.currencyCode === currency && p.billingInterval === 'Monthly' && p.kind !== 'AddOn');
   return monthly.map(plan => ({
     name: plan.name,
     audience: audiences[plan.name] ?? '',
@@ -59,6 +60,21 @@ export function tiers(market: Market): Tier[] {
     monthly: plan,
     yearly: plans.find(p => p.currencyCode === currency && p.billingInterval === 'Yearly' && p.name === `${plan.name} annuel`),
   }));
+}
+
+const addOnDescriptions: Record<string, string> = {
+  'Site web': 'Commande en ligne sur votre site, avec paiement',
+  'Application mobile': 'Votre application de commande à votre marque',
+  Borne: 'Prise de commande sur place, prix par borne',
+  API: 'Clés d’API pour relier votre caisse ou vos outils',
+};
+
+/** Options mensuelles, à ajouter à n'importe quel plan payant. */
+export function addOns(market: Market): {name: string; description: string; price: number}[] {
+  const currency = markets[market].currency;
+  return plans
+    .filter(p => p.currencyCode === currency && p.kind === 'AddOn')
+    .map(p => ({name: p.name, description: addOnDescriptions[p.name] ?? '', price: p.price}));
 }
 
 export function quota(plan: CataloguePlan, code: string): string {

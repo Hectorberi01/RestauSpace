@@ -115,8 +115,10 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         ArgumentNullException.ThrowIfNull(newPlan);
         ArgumentNullException.ThrowIfNull(clock);
         EnsureNotCancelled();
+        // Après un essai expiré, le restaurant choisit un plan payant avant de payer.
         DomainException.ThrowIf(
-            Status is not (SubscriptionStatus.Trialing or SubscriptionStatus.Active),
+            Status is not (SubscriptionStatus.Trialing or SubscriptionStatus.Active)
+            && !(Status == SubscriptionStatus.Suspended && SuspensionReason == Billing.Domain.SuspensionReason.TrialExpired),
             SubscriptionErrors.PlanChangeNotAllowed);
         DomainException.ThrowIf(IsComplimentary, SubscriptionErrors.Complimentary);
         if (newPlan.PlanId == PlanId)

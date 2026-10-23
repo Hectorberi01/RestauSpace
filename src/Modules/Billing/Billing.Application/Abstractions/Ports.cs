@@ -21,6 +21,9 @@ public interface ISubscriptionRepository
 
     Task<SaasSubscription?> FindAsync(TenantId tenantId, SubscriptionId id, CancellationToken cancellationToken = default);
 
+    /// <summary>Le tenant a-t-il un autre abonnement que <paramref name="except"/>, résiliés compris ?</summary>
+    Task<bool> HasOtherAsync(TenantId tenantId, SubscriptionId? except, CancellationToken cancellationToken = default);
+
     void Add(SaasSubscription subscription);
 }
 

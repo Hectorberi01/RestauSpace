@@ -119,7 +119,7 @@ Les paiements enregistrés avant cette version n'apparaissent pas dans l'histori
 ### Créer le catalogue des plans
 
 `scripts/plans/catalogue.json` décrit 14 plans : Découverte, Essentiel, Pro et Groupe, en XOF et en EUR, mensuels, et
-annuels pour les trois payants (2 mois offerts), et 6 options mensuelles (Site web, Application mobile, Borne, en XOF
+annuels pour les trois payants (2 mois offerts), et 8 options mensuelles (Site web, Application mobile, Borne, API, en XOF
 et en EUR). `scripts/seed-plans.py` les crée par l'API d'administration (règles du
 domaine, outbox et journal d'audit conservés), sans SQL direct. Python 3 suffit, sans dépendance.
 

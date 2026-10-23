@@ -64,7 +64,13 @@ function Usage({data}: {data: MySubscription}) {
   );
 }
 
-function Plans({current, plans, canChange, onChoose}: {current: MySubscription | null; plans: Plan[]; canChange: boolean; onChoose: (plan: Plan) => void}) {
+const addMonths = (iso: string, months: number) => {
+  const date = new Date(iso);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date;
+};
+
+function Plans({current, plans, canChange, freeAllowed, onChoose}: {current: MySubscription | null; plans: Plan[]; canChange: boolean; freeAllowed: boolean; onChoose: (plan: Plan) => void}) {
   const codes = [...new Set(plans.flatMap(plan => plan.entitlements.map(item => item.featureCode)))].sort();
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -89,7 +95,8 @@ function Plans({current, plans, canChange, onChoose}: {current: MySubscription |
                 );
               })}
             </ul>
-            {canChange && !isCurrent && (
+            {plan.price === 0 && <p className="mt-3 text-xs text-ink-500">Un mois, une seule fois, au début de l’abonnement.</p>}
+            {canChange && !isCurrent && (plan.price > 0 || freeAllowed) && (
               <Button className="mt-5" variant={current ? 'secondary' : 'primary'} onClick={() => onChoose(plan)}>{current ? 'Passer à ce plan' : 'Choisir ce plan'}</Button>
             )}
           </Card>
@@ -416,7 +423,12 @@ export default function SubscriptionPage() {
   if (subscription.loading || !plans.data) return <Spinner />;
   const data = subscription.data ?? null;
   const sub = data?.subscription;
-  const canChange = manage && (!sub || sub.status === 'Trialing' || sub.status === 'Active');
+  // Après un essai expiré (Découverte compris), choisir un plan payant reste possible.
+  const trialExpired = sub?.status === 'Suspended' && sub.suspensionReason === 'TrialExpired';
+  const canChangeOptions = manage && (!sub || sub.status === 'Trialing' || sub.status === 'Active');
+  const canChange = canChangeOptions || (manage && trialExpired);
+  // Le serveur vérifie aussi que c'est le premier abonnement.
+  const freeAllowed = !sub || (sub.status === 'Trialing' && new Date(sub.currentPeriodEndUtc) <= addMonths(sub.startedAtUtc, 1));
   const offered = !!sub?.isComplimentary;
   const forever = offered && !sub?.complimentaryUntilUtc;
   const refresh = async () => {
@@ -455,13 +467,13 @@ export default function SubscriptionPage() {
             </div>
             <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div><dt className="text-ink-500">{offered ? 'Offre en cours' : 'Période en cours'}</dt><dd className="font-medium">{forever ? `Depuis le ${day(sub!.currentPeriodStartUtc)}` : `${day(sub!.currentPeriodStartUtc)} → ${day(sub!.currentPeriodEndUtc)}`}</dd></div>
-              {!forever && <div><dt className="text-ink-500">{sub!.cancelAtPeriodEnd ? 'Fin de l’abonnement' : offered ? 'Fin de l’offre' : sub!.status === 'Trialing' ? 'Fin de l’essai' : 'Prochaine échéance'}</dt><dd className="font-medium">{day(sub!.currentPeriodEndUtc)}</dd></div>}
+              {!forever && <div><dt className="text-ink-500">{sub!.cancelAtPeriodEnd ? 'Fin de l’abonnement' : offered ? 'Fin de l’offre' : sub!.status === 'Trialing' ? (data.plan.price === 0 ? 'Fin de la période gratuite' : 'Fin de l’essai') : 'Prochaine échéance'}</dt><dd className="font-medium">{day(sub!.currentPeriodEndUtc)}</dd></div>}
               <div><dt className="text-ink-500">Client depuis</dt><dd className="font-medium">{day(sub!.startedAtUtc)}</dd></div>
             </dl>
             {data.nextCharge && !forever && <NextCharge charge={data.nextCharge} />}
             {offered && <div className="mt-4"><Alert tone="blue">{forever ? 'Votre plan est offert sans limite de durée : rien à payer. Pour changer de plan, ajouter une option ou résilier, contactez l’équipe RestauSpace.' : `Rien à payer jusqu’au ${day(sub!.complimentaryUntilUtc!)}. Ensuite, réglez la période suivante ici pour continuer sans interruption (vous serez prévenu 7 jours avant).`}</Alert></div>}
             {sub!.status === 'PastDue' && <div className="mt-4"><Alert tone="amber">Paiement en retard : régularisez pour éviter la suspension du compte.</Alert></div>}
-            {sub!.status === 'Suspended' && <div className="mt-4"><Alert>Compte suspendu : {suspensionLabel[sub!.suspensionReason ?? 'Other']}. La console est en lecture seule.</Alert></div>}
+            {sub!.status === 'Suspended' && <div className="mt-4"><Alert>Compte suspendu : {suspensionLabel[sub!.suspensionReason ?? 'Other']}. La console est en lecture seule.{trialExpired && (data.plan.price === 0 ? ' Choisissez un plan payant ci-dessous, puis payez pour continuer.' : ' Payez, ou choisissez un autre plan ci-dessous, pour continuer.')}</Alert></div>}
             {sub!.cancelAtPeriodEnd && (
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
                 <CalendarClock className="size-5 shrink-0" aria-hidden="true" />
@@ -508,16 +520,16 @@ export default function SubscriptionPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{data ? 'Changer de plan' : 'Choisir un plan'}</h2>
         {plans.data.length === 0 ? <p className="text-sm text-ink-500">Aucun plan disponible dans votre devise.</p> : (
-          <Plans current={data} plans={plans.data} canChange={canChange && !offered} onChoose={setChoosing} />
+          <Plans current={data} plans={plans.data} canChange={canChange && !offered} freeAllowed={freeAllowed} onChoose={setChoosing} />
         )}
         {data && offered && manage && <p className="text-sm text-ink-500">Votre plan est offert : pour en changer, contactez l’équipe RestauSpace.</p>}
-        {data && !offered && !canChange && manage && <p className="text-sm text-ink-500">Le plan ne peut changer que pendant l’essai ou un abonnement actif.</p>}
+        {data && !offered && !canChange && manage && <p className="text-sm text-ink-500">Le plan ne peut changer que pendant l’essai, un abonnement actif ou après la fin de l’essai.</p>}
       </section>
 
       {data && addOns.data && (
-        <Options data={addOns.data} canChange={canChange && !forever} onChanged={refresh} />
+        <Options data={addOns.data} canChange={canChangeOptions && !forever} onChanged={refresh} />
       )}
-      {data && addOns.data && addOns.data.offered.length + addOns.data.active.length > 0 && !canChange && manage && (
+      {data && addOns.data && addOns.data.offered.length + addOns.data.active.length > 0 && !canChangeOptions && manage && (
         <p className="text-sm text-ink-500">Les options se modifient pendant l’essai ou une période payée.</p>
       )}
 

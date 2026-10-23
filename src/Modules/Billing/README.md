@@ -398,8 +398,11 @@ Migration : `scripts/migrations-abonnements.sh` (`ComplimentaryAndPaymentRoutes`
   ferme. La connexion n'est possible qu'une fois l'email confirmé.
 - **Console** : `/inscription?plan=<nom>&pays=fr|bj` (lien des tarifs du site), puis « Vérifiez votre boîte mail ».
   Pendant l'essai, la carte du plan propose « Payer maintenant » (page Abonnement, règlement en ligne).
-- **Plan gratuit** (plan et options à 0) : à la fin de l'essai ou de la période, le job passe à la période suivante sans
-  paiement (`RenewedFree`) ; aucun préavis de fin n'est envoyé et rien n'est dû en ligne.
+- **Plan gratuit (Découverte)** : un mois (`Billing:FreePlanMonths`, défaut 1), une seule fois par restaurant : au premier
+  abonnement, ou en y passant pendant le premier essai sans dépasser le premier mois. Sinon
+  `billing.subscription.free_plan_unavailable`. Le préavis part 7 jours avant la fin ; à la fin, suspendu (essai expiré).
+  Le restaurant choisit alors un plan payant (changement de plan permis après un essai expiré) puis paie.
+  Seul un plan gratuit déjà payé (offre de la plateforme) se renouvelle seul (`RenewedFree`).
 
 ## 14. Plusieurs prestataires par devise
 

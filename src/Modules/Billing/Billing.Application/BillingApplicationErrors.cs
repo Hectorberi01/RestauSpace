@@ -23,6 +23,8 @@ public static class BillingApplicationErrors
     public static readonly DomainError NothingToPay =
         new("billing.subscription.nothing_to_pay", "The current period is already paid; record the payment once it has ended.");
     public static readonly DomainError TrialLengthInvalid = new("billing.subscription.trial_length_invalid", "A trial lasts 1 to 90 days.");
+    public static readonly DomainError FreePlanUnavailable =
+        new("billing.subscription.free_plan_unavailable", "The free plan is only available once, during the first month.");
     public static readonly DomainError PageInvalid = new("billing.page_invalid", "Skip must be zero or more and take between 1 and 100.");
     public static readonly DomainError PlanCurrencyMismatch =
         new("billing.plan.currency_mismatch", "The plan is not sold in the restaurant's currency.");
@@ -63,6 +65,9 @@ public sealed class BillingSettings
 {
     /// <summary>Durée de l'essai offert quand un restaurant choisit son plan.</summary>
     public TimeSpan TrialLength { get; set; } = TimeSpan.FromDays(14);
+
+    /// <summary>Durée du plan gratuit (Découverte), une seule fois par restaurant : son premier mois.</summary>
+    public int FreePlanMonths { get; set; } = 1;
 
     /// <summary>Délai entre l'échéance impayée (PastDue) et la suspension pour impayé.</summary>
     public TimeSpan PastDueGracePeriod { get; set; } = TimeSpan.FromDays(7);

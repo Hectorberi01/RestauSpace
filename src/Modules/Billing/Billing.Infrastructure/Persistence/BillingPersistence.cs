@@ -37,6 +37,23 @@ internal sealed class SubscriptionRepository(BillingDbContext context) : ISubscr
 
     public void Add(SaasSubscription subscription) => context.Subscriptions.Add(subscription);
 
+    /// <summary>Tenant explicite (plateforme comprise) : requête sans filtre de contexte.</summary>
+    public async Task<bool> HasOtherAsync(TenantId tenantId, SubscriptionId? except, CancellationToken cancellationToken = default)
+    {
+        if (context.Subscriptions.Local.Any(subscription => subscription.TenantId == tenantId && subscription.Id != except))
+        {
+            return true;
+        }
+
+        var query = context.Subscriptions.IgnoreQueryFilters().Where(subscription => subscription.TenantId == tenantId);
+        if (except is { } id)
+        {
+            query = query.Where(subscription => subscription.Id != id);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Plateforme comprise (un administrateur ouvre l'abonnement d'un restaurant, sans tenant dans son jeton) : le tenant
     /// est donné explicitement, d'où la requête sans filtre de contexte.
