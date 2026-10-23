@@ -29,10 +29,10 @@ export const site = {
   },
   legal: {
     company: 'HBA Tech et Trade',
-    form: '',
-    registration: '',
-    address: '',
-    publisher: '',
+    form: 'entreprise individuelle',
+    registration: 'RCCM Cotonou RB/ABC/26 A 142835',
+    address: 'Godomey (Yénandjro), Abomey-Calavi, Atlantique, Bénin',
+    publisher: 'Hector Adjakpa',
     host: '',
   },
 };
