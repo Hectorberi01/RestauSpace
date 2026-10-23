@@ -42,12 +42,18 @@ internal static partial class HostComposition
                 {
                     options.RecordException = false;
                     options.Filter = context => !context.Request.Path.StartsWithSegments("/health");
-                    // Le jeton d'une imprimante est dans son URL (CloudPRNT, relais) : jamais dans une trace.
+                    // Jetons dans l'URL (imprimante, client invité de la vente en ligne) : jamais dans une trace.
                     options.EnrichWithHttpRequest = (activity, request) =>
                     {
-                        if (Printing.Api.PrintingEndpoints.MaskDevicePath(request.Path) is { } masked)
+                        if ((Printing.Api.PrintingEndpoints.MaskDevicePath(request.Path)
+                             ?? Storefront.Api.StorefrontEndpoints.MaskGuestTokenPath(request.Path)) is { } masked)
                         {
                             activity.SetTag("url.path", masked);
+                            if (activity.GetTagItem("url.full") is string full && request.Path.Value is { Length: > 0 } raw)
+                            {
+                                activity.SetTag("url.full", full.Replace(raw, masked, StringComparison.Ordinal));
+                            }
+
                             activity.DisplayName = request.Method + " " + masked;
                         }
                     };

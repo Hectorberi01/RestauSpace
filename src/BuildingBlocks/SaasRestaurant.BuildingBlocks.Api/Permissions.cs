@@ -9,9 +9,11 @@ namespace SaasRestaurant.BuildingBlocks.Api;
 public static class Permissions
 {
     /// <summary>
-    /// La route exige <paramref name="permission"/> au niveau du tenant, pour l'utilisateur et le tenant de l'access token.
-    /// À combiner avec <see cref="Tenancy.TenantMemberPolicy"/> sur le groupe. L'hôte peut garder la réponse en cache
-    /// quelques secondes (Caching:PermissionSeconds).
+    /// La route exige <paramref name="permission"/> pour l'utilisateur et le tenant de l'access token. Si la requête porte
+    /// un établissement (<c>locationId</c> dans la route ou la query), c'est le rôle du membre DANS cet établissement qui
+    /// compte (à défaut, son rôle de tenant) ; sinon son rôle de tenant. À combiner avec
+    /// <see cref="Tenancy.TenantMemberPolicy"/> sur le groupe. L'hôte peut garder la réponse en cache quelques secondes
+    /// (Caching:PermissionSeconds).
     /// </summary>
     public static TBuilder RequirePermission<TBuilder>(this TBuilder endpoint, string permission)
         where TBuilder : IEndpointConventionBuilder
@@ -116,12 +118,33 @@ internal sealed class PermissionAuthorizationHandler(IServiceProvider services) 
             return;
         }
 
-        var aborted = (context.Resource as HttpContext)?.RequestAborted ?? CancellationToken.None;
-        if (await checker.HasTenantPermissionAsync(UserId.From(userId), TenantId.From(tenantId), requirement.Permission, aborted))
+        var http = context.Resource as HttpContext;
+        var aborted = http?.RequestAborted ?? CancellationToken.None;
+        var allowed = LocationOf(http) is { } locationId
+            ? await checker.HasLocationPermissionAsync(
+                UserId.From(userId), TenantId.From(tenantId), LocationId.From(locationId), requirement.Permission, aborted)
+            : await checker.HasTenantPermissionAsync(UserId.From(userId), TenantId.From(tenantId), requirement.Permission, aborted);
+        if (allowed)
         {
             context.Succeed(requirement);
         }
     }
+
+    /// <summary>L'établissement visé par la requête : <c>locationId</c> de la route, sinon de la query.</summary>
+    internal static Guid? LocationOf(HttpContext? http)
+    {
+        if (http is null)
+        {
+            return null;
+        }
+
+        var raw = http.Request.RouteValues.TryGetValue(LocationKey, out var routeValue) && routeValue is not null
+            ? routeValue.ToString()
+            : http.Request.Query[LocationKey].FirstOrDefault();
+        return Guid.TryParse(raw, out var id) && id != Guid.Empty ? id : null;
+    }
+
+    private const string LocationKey = "locationId";
 }
 
 /// <summary>Métadonnée de <see cref="ApiKeyClaims.AllowApiKeyRead{TBuilder}"/> : les scopes qui ouvrent la lecture d'une route.</summary>

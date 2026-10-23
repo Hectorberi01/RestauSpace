@@ -47,7 +47,7 @@ export function Locations() {
                       : location.isPaused
                         ? tr('Commandes en pause')
                         : location.nextOpeningUtc
-                          ? tr('Fermé · ouvre à {p0}', {p0: clock(location.nextOpeningUtc)})
+                          ? tr('Fermé · ouvre à {p0}', {p0: clock(location.nextOpeningUtc, location.timeZoneId)})
                           : tr('Fermé')}
                   </span>
                 </span>

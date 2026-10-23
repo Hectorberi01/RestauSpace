@@ -69,6 +69,27 @@ public sealed class PromotionUseCaseTests
     }
 
     [Fact]
+    public async Task Rules_targeting_a_location_or_product_of_another_tenant_are_refused()
+    {
+        var foreignLocation = LocationId.New();
+        var foreignProduct = ProductId.New();
+        _fixture.ForeignLocations.Add(foreignLocation);
+        _fixture.ForeignProducts.Add(foreignProduct);
+        var promotion = await ActivePromotionAsync();
+
+        var location = await Assert.ThrowsAsync<NotFoundException>(() => _fixture.Create.HandleAsync(new CreatePromotionCommand(
+            "X", Rules() with { LocationIds = [foreignLocation.Value] })));
+        var product = await Assert.ThrowsAsync<NotFoundException>(() => _fixture.ChangeRules.HandleAsync(new ChangePromotionRulesCommand(
+            promotion, Rules() with { ProductIds = [foreignProduct.Value] }, RuleChangePolicy.Unrestricted)));
+        await _fixture.Create.HandleAsync(new CreatePromotionCommand("Y", Rules() with { LocationIds = [Guid.NewGuid()], ProductIds = [Guid.NewGuid()] }));
+
+        Assert.Equal(PromotionsApplicationErrors.LocationNotFound, location.Error);
+        Assert.Equal(PromotionsApplicationErrors.ProductNotFound, product.Error);
+        Assert.Single(_fixture.Promotions, saved => saved.Name == "Y");
+        Assert.Empty(_fixture.PromotionById(promotion).Rules.Conditions.ProductIds);
+    }
+
+    [Fact]
     public async Task Once_used_only_non_destructive_rule_changes_pass_unless_explicitly_allowed()
     {
         var promotion = await ActivePromotionAsync();

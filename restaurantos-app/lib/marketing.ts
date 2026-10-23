@@ -126,7 +126,7 @@ export function benefitLabel(rules: PromotionRules, format: (amount: number, cur
 // ---------- Fidélité
 
 export type AccountStatus = 'Active' | 'Suspended' | 'Closed';
-export type TransactionType = 'Earn' | 'Redeem' | 'Adjust' | 'Expire' | 'Reversal';
+export type TransactionType = 'Earn' | 'Redeem' | 'Adjust' | 'Expire' | 'Reversal' | 'Closure';
 
 export interface LoyaltyProgram {
   isEnabled: boolean;
@@ -174,6 +174,7 @@ export const transactionLabel: Record<TransactionType, string> = {
   Adjust: 'Ajustement',
   Expire: 'Points expirés',
   Reversal: 'Annulation',
+  Closure: 'Clôture du compte',
 };
 
 /** Motifs écrits par les réactions automatiques. */

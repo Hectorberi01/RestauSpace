@@ -403,8 +403,9 @@ internal sealed class ReportingPlatformFeed(IServiceScopeFactory scopes) : IOutb
 /// <summary>
 /// Un export terminé (reporting.ExportCompleted, par l'outbox) est annoncé par Notifications (type
 /// <c>staff.report_ready</c>) : un e-mail par destinataire pour un envoi planifié, sinon une notification dans
-/// l'application au demandeur (rien pour une clé d'API : elle suit l'export par GET /reporting/exports/{id}). Le lien mène à la route de téléchargement (authentifiée, <c>reporting.view</c>) : le
-/// fichier ne voyage jamais dans la notification. Clés d'idempotence : un rejeu n'envoie rien de plus.
+/// l'application au demandeur (rien pour une clé d'API : elle suit l'export par GET /reporting/exports/{id}). Le lien mène à la page « Exports récents » de la console
+/// (<c>Reporting:PublicBaseUrl</c> = adresse de la console), où l'export se télécharge connecté : le fichier ne voyage jamais
+/// dans la notification. Clés d'idempotence : un rejeu n'envoie rien de plus.
 /// </summary>
 internal sealed class ReportingDeliveryFlow(IServiceScopeFactory scopes, IConfiguration configuration)
     : IOutboxConsumer
@@ -434,7 +435,7 @@ internal sealed class ReportingDeliveryFlow(IServiceScopeFactory scopes, IConfig
             ["restaurant.name"] = restaurant.Name,
             ["report.name"] = delivery.Title,
             ["report.period"] = string.Create(CultureInfo.InvariantCulture, $"{delivery.From:yyyy-MM-dd} - {delivery.To:yyyy-MM-dd}"),
-            ["report.url"] = $"{baseUrl}/reporting/exports/{jobId}/file",
+            ["report.url"] = $"{baseUrl}/rapports/planifies",
         };
 
         var send = services.GetRequiredService<ICommandHandler<SendNotificationCommand, SendNotificationResult>>();

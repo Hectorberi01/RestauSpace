@@ -58,6 +58,7 @@ services:
       PGDATABASE: ${POSTGRES_DB:-saasrestaurant}
       PGUSER: ${POSTGRES_USER:-saasrestaurant}
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGSSLMODE: require
       RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
       INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
     entrypoint: ["/bin/sh", "/backup.sh"]
@@ -67,6 +68,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+# Sous-réseau fixe : pg_hba.conf n'y autorise que la sauvegarde (TLS + mot de passe).
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.240.0/28
 
 volumes:
   postgres-data:

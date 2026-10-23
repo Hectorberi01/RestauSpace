@@ -12,7 +12,7 @@ namespace Promotions.Application;
 /// </summary>
 public sealed class PromotionsFixture
     : ITenantContext, IPromotionsUnitOfWork, IPromotionTenants, IPromotionRepository, ICouponRepository, IPromotionUsageLedger,
-      ICouponCodeUniquenessChecker, IOrderPromotionUsages, IPromotionOrders
+      ICouponCodeUniquenessChecker, IOrderPromotionUsages, IPromotionOrders, IPromotionLocations, IPromotionProducts
 {
     private readonly HashSet<IDomainEvent> _recorded = new(ReferenceEqualityComparer.Instance);
 
@@ -44,9 +44,14 @@ public sealed class PromotionsFixture
 
     public FakeClock Clock { get; } = new();
 
+    /// <summary>Établissements et produits inconnus du tenant courant (tous les autres existent).</summary>
+    public HashSet<LocationId> ForeignLocations { get; } = [];
+
+    public HashSet<ProductId> ForeignProducts { get; } = [];
+
     public int SaveCount { get; private set; }
 
-    public PromotionsWorkspace Workspace => new(this, this, this, this, this, this);
+    public PromotionsWorkspace Workspace => new(this, this, this, this, this, this, this, this);
 
     public CreatePromotionHandler Create => new(Workspace, Clock);
 
@@ -200,4 +205,10 @@ public sealed class PromotionsFixture
 
     Task<PromotionOrder?> IPromotionOrders.FindAsync(TenantId tenantId, OrderId orderId, CancellationToken cancellationToken) =>
         Task.FromResult<PromotionOrder?>(Orders.GetValueOrDefault((tenantId, orderId)));
+
+    Task<bool> IPromotionLocations.ExistsAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
+        Task.FromResult(!ForeignLocations.Contains(locationId));
+
+    Task<bool> IPromotionProducts.ExistsAsync(TenantId tenantId, ProductId productId, CancellationToken cancellationToken) =>
+        Task.FromResult(!ForeignProducts.Contains(productId));
 }

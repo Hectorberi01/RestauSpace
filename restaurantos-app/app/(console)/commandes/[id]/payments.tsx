@@ -251,7 +251,7 @@ export function CollectDialog({order, payments, tenders, open, onClose, onDone}:
           )}
           {tender?.type === 'Online' && pushed && (
             <Field label="Numéro du client" hint="Avec l’indicatif du pays : la demande s’affiche sur son téléphone, il la valide avec son code.">
-              <Input type="tel" inputMode="tel" autoComplete="off" maxLength={20} placeholder="+229 97 00 00 00" value={phone} onChange={event => setPhone(event.target.value)} />
+              <Input type="tel" inputMode="tel" autoComplete="off" maxLength={20} placeholder="+229 01 97 00 00 00" value={phone} onChange={event => setPhone(event.target.value)} />
             </Field>
           )}
           {tender?.type === 'Online' && (
@@ -283,7 +283,7 @@ function RetryDialog({payment, onClose, onDone}: {payment: Payment | null; onClo
           }, 'Paiement relancé.');
         }}>
           <Field label="Numéro du client" hint="Avec l’indicatif du pays. Le numéro n’est pas conservé.">
-            <Input type="tel" inputMode="tel" autoComplete="off" maxLength={20} placeholder="+229 97 00 00 00" value={phone} onChange={event => setPhone(event.target.value)} />
+            <Input type="tel" inputMode="tel" autoComplete="off" maxLength={20} placeholder="+229 01 97 00 00 00" value={phone} onChange={event => setPhone(event.target.value)} />
           </Field>
         </form>
       )}

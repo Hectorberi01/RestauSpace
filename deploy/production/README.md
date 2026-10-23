@@ -60,7 +60,7 @@ installé sans TLS (et `host` au lieu de `hostssl` dans son `pg_hba.conf`).
 cd deploy/production
 ./generate-secrets.sh                       # clés à recopier (une seule fois)
 cp .env.example .env && cp api.env.example api.env && chmod 600 .env api.env
-#   .env    : base, OBSERVABILITY_OTLP_URL + OBSERVABILITY_TOKEN, FILES_ORIGINS, contacts du site
+#   .env    : base, OBSERVABILITY_OTLP_URL + OBSERVABILITY_TOKEN (FILES_ORIGINS, contacts : build.env de Jenkins)
 #   api.env : clés générées, SMTP, R2, administrateurs
 ./deploy.sh
 ```
@@ -95,6 +95,16 @@ en `linux/amd64` et push sur `ghcr.io/hectorberi01/`, validation manuelle (24 h)
 L'API envoie traces, métriques et logs en OTLP/HTTP à `OBSERVABILITY_OTLP_URL`, avec l'en-tête
 `Authorization: Bearer OBSERVABILITY_TOKEN`. Le serveur d'observabilité doit accepter ce jeton. URL vide : aucun envoi.
 
+### Photos (Cloudflare R2)
+
+La console envoie et lit les photos directement sur R2. Deux réglages, sinon l'envoi est bloqué par le navigateur :
+- `FILES_ORIGINS=https://<AccountId>.r2.cloudflarestorage.com` dans `build.env` (Jenkins), puis relancer le pipeline ;
+- règle CORS du bucket (Cloudflare › R2 › bucket › Settings › CORS Policy) :
+  ```json
+  [{"AllowedOrigins": ["https://app.restauspace.com"], "AllowedMethods": ["PUT", "GET"],
+    "AllowedHeaders": ["Content-Type"], "MaxAgeSeconds": 3600}]
+  ```
+
 ### Premier démarrage
 
 1. Créer le compte administrateur (email déclaré dans `Authorization__PlatformAdminEmails__0`), valider le lien reçu,
@@ -104,7 +114,10 @@ L'API envoie traces, métriques et logs en OTLP/HTTP à `OBSERVABILITY_OTLP_URL`
         -d '{"email":"<admin>","password":"<mot de passe solide>"}'
    ```
 2. Back-office › Paramètres : prestataires de paiement, notifications, plans.
-3. Console › Vente en ligne : créer l'application « Site web », recopier sa clé dans `STOREFRONT_KEY`, redéployer.
+3. Console › Vente en ligne : créer l'application « Site web » avec l'origine `https://restauspace.com` et la page de
+   retour `https://restauspace.com/commande` et `https://restauspace.com/reservation` (sinon le paiement en ligne et
+   l'acompte sont refusés), recopier sa clé dans
+   `STOREFRONT_KEY` de `build.env` (Jenkins), relancer le pipeline.
 
 ## 4. Sécurité
 

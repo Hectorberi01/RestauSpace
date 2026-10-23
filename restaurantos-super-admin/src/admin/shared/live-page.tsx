@@ -103,13 +103,25 @@ export function LivePage({domain}:{domain:PageDomain}){
     c.key==='subscription'||c.key==='verified'?{...c,render:(r:RecordItem)=><StatusBadge value={r[c.key]}/>}:
     c.key==='date'&&(domain==='audit-logs'||domain==='billing')?{...c,render:(r:RecordItem)=>dateTime(r.date)}:
     c.key==='periodStart'?{...c,render:(r:RecordItem)=>`${date(r.periodStart)} → ${date(r.end)}`}:
-    c.key==='name'?{...c,render:(r:RecordItem)=><code>{r.name}</code>}:c);
+    c.key==='name'?{...c,render:(r:RecordItem)=><span title={String(r.action)}>{r.name}</span>}:c);
+
+  // Création puis rattachement du propriétaire ; le restaurant reste créé si le second appel échoue.
+  const createRestaurant=async(v:Record<string,string|number>)=>{
+    let created=false;
+    const ok=await run('Restaurant créé',async()=>{
+      const {id}=await tenants.create({name:String(v.name).trim(),defaultCurrencyCode:String(v.defaultCurrencyCode).trim().toUpperCase(),timeZoneId:String(v.timeZoneId).trim(),pricesIncludeTax:v.pricesIncludeTax==='TTC'});
+      created=true;
+      try{await tenants.addOwner(id,String(v.ownerEmail).trim())}
+      catch(e){throw new Error(`Restaurant créé, mais sans propriétaire : ${describe(e)}`)}
+    },['restaurants','users','audit-logs']);
+    if(!ok&&created)await reload(touches.restaurants);
+  };
 
   const activePlans=raw.plans.filter(p=>p.status==='Active'&&p.kind!=='AddOn');
   const freeTenants=raw.tenants.filter(t=>t.status!=='Closed'&&(!t.subscriptionStatus||t.subscriptionStatus==='Cancelled'));
 
   const create=domain==='users'?<FormDialog title="Inviter un utilisateur" fields={config.fields} onSave={v=>void run('Invitation envoyée',()=>users.invite(String(v.email).trim()),touches.users)}><Button><Plus size={16}/>Inviter un utilisateur</Button></FormDialog>
-    :domain==='restaurants'?<FormDialog title="Créer un restaurant" fields={config.fields} initial={{defaultCurrencyCode:'EUR',timeZoneId:'Europe/Paris',pricesIncludeTax:'TTC'}} onSave={v=>void run('Restaurant créé',()=>tenants.create({name:String(v.name).trim(),defaultCurrencyCode:String(v.defaultCurrencyCode).trim().toUpperCase(),timeZoneId:String(v.timeZoneId).trim(),pricesIncludeTax:v.pricesIncludeTax==='TTC'}),touches.restaurants)}><Button><Plus size={16}/>Ajouter un restaurant</Button></FormDialog>
+    :domain==='restaurants'?<FormDialog title="Créer un restaurant" fields={config.fields} initial={{defaultCurrencyCode:'EUR',timeZoneId:'Europe/Paris',pricesIncludeTax:'TTC'}} onSave={v=>void createRestaurant(v)}><Button><Plus size={16}/>Ajouter un restaurant</Button></FormDialog>
     :domain==='subscriptions'&&freeTenants.length&&activePlans.length?<StartSubscriptionDialog candidates={freeTenants}><Button><Plus size={16}/>Démarrer un abonnement</Button></StartSubscriptionDialog>
     :null;
 

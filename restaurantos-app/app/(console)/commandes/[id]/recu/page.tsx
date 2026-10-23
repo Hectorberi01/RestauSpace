@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import Link from 'next/link';
 import {ArrowLeft, MessageCircle, Printer, Send} from 'lucide-react';
 import {api} from '@/lib/api';
-import {money, orderTypeLabel} from '@/lib/format';
+import {money, orderTypeLabel, stamp} from '@/lib/format';
 import {useResource} from '@/lib/hooks';
 import {loadLocation} from '@/lib/locations';
 import {loadOrderPayments, methodLabel} from '@/lib/payments';
@@ -19,9 +19,6 @@ import {Alert, Button, Spinner, cx, useAction} from '@/components/ui';
 import {componentLabel, itemUnitPrice} from '@/lib/formulas';
 
 type Format = 'ticket' | 'a4';
-
-const stamp = (iso: string) =>
-  new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}).format(new Date(iso));
 
 /** Taux en pourcentage lisible : 0.18 -> « 18 % ». */
 const rate = (value: number) => `${new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2}).format(value * 100)} %`;
@@ -53,6 +50,8 @@ export default function ReceiptPage({params}: {params: Promise<{id: string}>}) {
   const fmt = (value: number) => money(value, o.currencyCode);
   const site = location.data;
   const locationName = site?.name ?? locations.find(item => item.id === o.locationId)?.name ?? '';
+  // Heure du reçu dans le fuseau de l'établissement (à défaut, celui du restaurant).
+  const timeZone = site?.timeZoneId ?? tenant.timeZoneId;
   const captured = (payments.data?.payments ?? []).filter(payment => payment.capturedAmount > 0);
   const refunded = captured.reduce((sum, payment) => sum + payment.refundedAmount, 0);
   const taxes = [...o.items.reduce((map, item) => {
@@ -74,7 +73,7 @@ export default function ReceiptPage({params}: {params: Promise<{id: string}>}) {
               className={cx('rounded-lg px-3 py-1.5 text-sm font-semibold', format === value ? 'bg-white shadow-sm' : 'text-ink-500')}>{label}</button>
           ))}
         </div>
-        <DevicePrintButton disabled={draft} lines={() => receiptLines(o, payments.data ?? null, tenant, {name: locationName, address: site ? `${site.address.street}, ${site.address.city}` : undefined}, footer)} />
+        <DevicePrintButton disabled={draft} lines={() => receiptLines(o, payments.data ?? null, tenant, {name: locationName, address: site ? `${site.address.street}, ${site.address.city}` : undefined, timeZone}, footer)} />
         <Button variant="secondary" disabled={draft} busy={busy === 'send'} onClick={() => void run('send', () => printReceipt(o.id), 'Reçu envoyé à l’imprimante du restaurant.')}><Send className="size-4" aria-hidden="true" />Imprimante du restaurant</Button>
         {can('storefront.receipts') && (
           <Button variant="secondary" disabled={draft} onClick={() => setSending(true)}><MessageCircle className="size-4" aria-hidden="true" />Envoyer au client</Button>
@@ -96,7 +95,7 @@ export default function ReceiptPage({params}: {params: Promise<{id: string}>}) {
         <div className="my-3 border-t border-dashed border-slate-400" />
         <div className="space-y-0.5">
           <p className="flex justify-between gap-2"><span>{o.status === 'Cancelled' ? 'Commande annulée' : 'Reçu'} n°</span><strong>{o.number}</strong></p>
-          <p className="flex justify-between gap-2"><span>Date</span><span>{stamp(o.completedAtUtc ?? o.placedAtUtc ?? o.createdAtUtc)}</span></p>
+          <p className="flex justify-between gap-2"><span>Date</span><span>{stamp(o.completedAtUtc ?? o.placedAtUtc ?? o.createdAtUtc, timeZone)}</span></p>
           <p className="flex justify-between gap-2"><span>Type</span><span>{orderTypeLabel[o.type]}</span></p>
         </div>
         <div className="my-3 border-t border-dashed border-slate-400" />

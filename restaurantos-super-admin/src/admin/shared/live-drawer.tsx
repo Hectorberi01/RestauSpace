@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState,type ComponentType,type ReactNode} from 'react';
-import {Edit,Pause,Play,Ban,LogOut,Trash2,Check,X,Receipt,Clock,XCircle,Power,Download,Mail,Plus,Gift,Info as InfoIcon,Hash,Store,Coins,Globe,Percent,ShieldCheck,CreditCard,Layers,CalendarDays,FileText,Copy,MoreHorizontal,ShoppingCart,BarChart3} from 'lucide-react';
+import {Edit,Pause,Play,Ban,LogOut,Trash2,Check,X,Receipt,Clock,XCircle,Power,Download,Mail,Plus,Gift,Info as InfoIcon,Hash,Store,Coins,Globe,Percent,ShieldCheck,CreditCard,Layers,CalendarDays,FileText,Copy,MoreHorizontal,ShoppingCart,BarChart3,UserPlus} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
 import {toast} from 'sonner';
@@ -11,6 +11,7 @@ import {StatusBadge,UserAvatar,ActivityTimeline,LoadingSkeleton} from '../../com
 import {describe} from '../../services/api/client';
 import {addOns as addOnsApi,subscriptions as subscriptionsApi,tenants as tenantsApi,type SubscriptionCharge,type TenantAddOnDto,type TenantDto} from '../../services/api/admin-api';
 import {monthly,shortId,subscriptionStatus} from '../../services/api/mappers';
+import {activityLabel} from '../../services/api/profile';
 import {money,date,dateTime} from '../../utils/format';
 import {can,reasonFromLabel,subscriptionReasons,subscriptions,tenantReasons,tenants,users} from './live-actions';
 import {ComplimentaryDialog} from './complimentary';
@@ -40,7 +41,7 @@ function daysLeft(end:string){
 
 function Activity({id,name}:{id:string;name?:string}){
   const {state}=useAdmin();
-  const items=state['audit-logs'].filter(a=>a.targetId===id||(name!==undefined&&a.tenant===name)).slice(0,15).map(a=>({name:String(a.action),detail:String(a.user),date:dateTime(a.date)}));
+  const items=state['audit-logs'].filter(a=>a.targetId===id||(name!==undefined&&a.tenant===name)).slice(0,15).map(a=>({name:activityLabel(String(a.action)),detail:String(a.user),date:dateTime(a.date)}));
   return items.length?<ActivityTimeline items={items}/>:<p className="muted">Aucune entrée récente dans le journal d’audit.</p>;
 }
 
@@ -212,6 +213,7 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
     {tab==='Activité'?<TenantActivity tenantId={r.id}/>:tab==='Vente en ligne'?<TenantOnlineSales tenantId={r.id}/>:tab==='Abonnement'?subscriptionTab:details}
     <div className="drawer-actions">
       {r.apiStatus!=='Closed'&&rename(<Button><Edit size={15}/>Renommer</Button>)}
+      {r.apiStatus!=='Closed'&&<FormDialog title="Ajouter un propriétaire" fields={[{key:'email',label:'Email du propriétaire',type:'email'}]} description="Le compte est invité s’il n’existe pas encore." onSave={v=>void run('Propriétaire ajouté',()=>tenants.addOwner(r.id,String(v.email).trim()),['restaurants','users','audit-logs'])}><Button variant="outline"><UserPlus size={15}/>Ajouter un propriétaire</Button></FormDialog>}
       {can.activateTenant(r)&&<Button variant="outline" onClick={()=>void run('Restaurant activé',()=>tenants.activate(r.id),touches.restaurants)}><Power size={15}/>Activer</Button>}
       {can.reactivateTenant(r)&&<Button variant="outline" onClick={()=>void run('Restaurant réactivé',()=>tenants.reactivate(r.id),touches.restaurants)}><Play size={15}/>Réactiver</Button>}
       {can.suspendTenant(r)&&<FormDialog title="Suspendre le restaurant" fields={[{key:'reason',label:'Motif',type:'select',options:reasons}]} description="Le restaurant ne pourra plus enregistrer d’opérations jusqu’à sa réactivation." onSave={v=>void run('Restaurant suspendu',()=>tenants.suspend(r.id,reasonFromLabel(tenantReasons,v.reason)),touches.restaurants)}><Button variant="outline"><Pause size={15}/>Suspendre</Button></FormDialog>}
@@ -287,7 +289,7 @@ function PaymentDetail({r}:{r:RecordItem}){
 function AuditDetail({r}:{r:RecordItem}){
   const metadata=Array.isArray(r.metadata)?r.metadata:[];
   return <>
-    <Info items={[['Date',dateTime(r.date)],['Action',<code key="a">{String(r.action)}</code>],['Auteur',String(r.user)],['Type d’auteur',String(r.actorType)],['Cible',String(r.resource)],['ID de la cible',<code key="t">{String(r.targetId)}</code>],['Restaurant',String(r.tenant)],['Corrélation',<code key="c">{String(r.correlationId)}</code>]]}/>
+    <Info items={[['Date',dateTime(r.date)],['Action',activityLabel(String(r.action))],['Code d’action',<code key="a">{String(r.action)}</code>],['Auteur',String(r.user)],['Type d’auteur',String(r.actorType)],['Cible',String(r.resource)],['ID de la cible',<code key="t">{String(r.targetId)}</code>],['Restaurant',String(r.tenant)],['Corrélation',<code key="c">{String(r.correlationId)}</code>]]}/>
     <h3>Métadonnées</h3>
     {metadata.length?<div className="feature-list">{metadata.map(m=><p key={m}>{m}</p>)}</div>:<p className="muted">Aucune.</p>}
   </>;
@@ -299,7 +301,7 @@ export function LiveDrawer({domain,id,onClose}:{domain:Exclude<LiveDomain,'plans
   if(!r)return null;
   const title=domain==='audit-logs'?'Entrée du journal':domain==='billing'?'Paiement d’abonnement':r.name;
   if(domain==='restaurants')return <RestaurantDrawer r={r} onClose={onClose}/>;
-  return <DetailDrawer open onClose={onClose} title={title} badge={domain==='users'||domain==='subscriptions'?<StatusBadge value={r.status}/>:undefined} subtitle={domain==='audit-logs'?String(r.action):domain==='billing'?r.name:`ID : ${shortId(r.id)}`}>
+  return <DetailDrawer open onClose={onClose} title={title} badge={domain==='users'||domain==='subscriptions'?<StatusBadge value={r.status}/>:undefined} subtitle={domain==='audit-logs'?activityLabel(String(r.action)):domain==='billing'?r.name:`ID : ${shortId(r.id)}`}>
     {domain==='users'?<UserDetail r={r}/>:domain==='subscriptions'?<SubscriptionDetail r={r}/>:domain==='billing'?<PaymentDetail r={r}/>:<AuditDetail r={r}/>}
   </DetailDrawer>;
 }

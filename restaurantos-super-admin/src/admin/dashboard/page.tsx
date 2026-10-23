@@ -11,6 +11,7 @@ import {formatTotals} from '../shared/live-page';
 import {describe} from '../../services/api/client';
 import {billingAdmin,reporting,type AttentionReason,type BillingOverview,type Granularity,type PlatformDashboard,type ReportRow,type TenantActivity} from '../../services/api/admin-api';
 import {subscriptionStatus,tenantStatus} from '../../services/api/mappers';
+import {activityLabel} from '../../services/api/profile';
 import {money,number,date,dateTime,isoDay} from '../../utils/format';
 import {bucketStart,buckets,period,periodLabel} from '../../utils/period';
 
@@ -174,7 +175,7 @@ export default function Dashboard(){
 
     {status!=='loading'&&<div className="two-columns">
       <section className="panel"><div className="panel-heading"><div><h2>Derniers restaurants</h2><p>Les établissements créés récemment</p></div><Link href="/admin/restaurants">Tout voir</Link></div><div className="simple-table"><table><thead><tr><th>Restaurant</th><th>Plan</th><th>Statut</th><th>Création</th></tr></thead><tbody>{recentTenants.map(r=><tr key={r.id}><td><button className="identity" onClick={()=>setSelection({domain:'restaurants',id:r.id})}><UserAvatar name={r.name}/><span><strong>{r.name}</strong><small>{String(r.subscription)}</small></span></button></td><td><span className="plan-tag">{String(r.plan)}</span></td><td><StatusBadge value={r.status}/></td><td>{date(r.date)}</td></tr>)}{!recentTenants.length&&<tr><td colSpan={4}>Aucun restaurant.</td></tr>}</tbody></table></div></section>
-      <section className="panel"><div className="panel-heading"><div><h2>Activité récente</h2><p>Journal d’audit de la plateforme</p></div><Link href="/admin/audit-logs">Journal</Link></div><ActivityTimeline items={state['audit-logs'].slice(0,6).map(a=>({name:String(a.action),detail:`${a.user} · ${a.tenant}`,date:dateTime(a.date)}))}/></section>
+      <section className="panel"><div className="panel-heading"><div><h2>Activité récente</h2><p>Journal d’audit de la plateforme</p></div><Link href="/admin/audit-logs">Journal</Link></div><ActivityTimeline items={state['audit-logs'].slice(0,6).map(a=>({name:activityLabel(String(a.action)),detail:`${a.user} · ${a.tenant}`,date:dateTime(a.date)}))}/></section>
     </div>}
     {selection&&<LiveDrawer key={selection.id} {...selection} onClose={()=>setSelection(null)}/>}
   </>;

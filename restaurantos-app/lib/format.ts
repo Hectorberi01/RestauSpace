@@ -19,12 +19,26 @@ export function percent(fraction: number): string {
   return new Intl.NumberFormat('fr-FR', {style: 'percent', maximumFractionDigits: 1}).format(fraction);
 }
 
-export function time(iso: string): string {
-  return new Intl.DateTimeFormat('fr-FR', {hour: '2-digit', minute: '2-digit'}).format(new Date(iso));
+/** Formate dans le fuseau donné (celui de l'établissement), sinon dans celui du navigateur. */
+function zoned(iso: string, options: Intl.DateTimeFormatOptions, timeZone?: string): string {
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {...options, timeZone}).format(new Date(iso));
+  } catch {
+    return new Intl.DateTimeFormat('fr-FR', options).format(new Date(iso));
+  }
 }
 
-export function dateTime(iso: string): string {
-  return new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(new Date(iso));
+export function time(iso: string, timeZone?: string): string {
+  return zoned(iso, {hour: '2-digit', minute: '2-digit'}, timeZone);
+}
+
+export function dateTime(iso: string, timeZone?: string): string {
+  return zoned(iso, {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}, timeZone);
+}
+
+/** « 23/10/2026 12:30 » (reçus, tickets). */
+export function stamp(iso: string, timeZone?: string): string {
+  return zoned(iso, {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}, timeZone);
 }
 
 export function minutesSince(iso: string, now = Date.now()): number {

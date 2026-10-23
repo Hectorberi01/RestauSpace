@@ -118,7 +118,7 @@ export function Ordering({locationId, table}: {locationId: string; table?: Table
               {location.isPaused
                 ? tr('Les commandes en ligne sont en pause. Vous pouvez consulter le menu.')
                 : location.nextOpeningUtc
-                  ? tr('L’établissement est fermé : il ouvre à {p0}. Vous pourrez choisir une heure de retrait.', {p0: clock(location.nextOpeningUtc)})
+                  ? tr('L’établissement est fermé : il ouvre à {p0}. Vous pourrez choisir une heure de retrait.', {p0: clock(location.nextOpeningUtc, location.timeZoneId)})
                   : tr('L’établissement ne prend pas de commandes pour le moment.')}
             </span>
           </Notice>
@@ -925,7 +925,7 @@ function Checkout({front, location, catalog, table, cart, onCart, onClose}: {
               </button>
             </div>
             {when === 'now' && delivering && zone && location.delivery && (
-              <p className="mt-2 text-xs text-ink-500">{tr('Livraison estimée vers')} {clock(new Date(Date.now() + (location.delivery.leadMinutes + zone.estimatedMinutes) * 60000).toISOString())}.</p>
+              <p className="mt-2 text-xs text-ink-500">{tr('Livraison estimée vers')} {clock(new Date(Date.now() + (location.delivery.leadMinutes + zone.estimatedMinutes) * 60000).toISOString(), location.timeZoneId)}.</p>
             )}
             {when === 'later' && (
               <label className="mt-2 block text-sm">
@@ -992,7 +992,7 @@ function Checkout({front, location, catalog, table, cart, onCart, onClose}: {
               {tr('Déjà client ?')} <Link href={`/compte?retour=${encodeURIComponent(`/commander/${location.id}`)}`} className="font-medium text-[var(--accent)] hover:underline">{tr('Connectez-vous')}</Link> {tr('pour retrouver vos points.')}
             </p>
             <input autoComplete="name" placeholder={tr('Nom')} value={customer.name} onChange={event => setCustomer(c => ({...c, name: event.target.value}))} className={input} aria-label={tr('Nom')} />
-            <input autoComplete="tel" type="tel" placeholder={delivering ? tr('Téléphone (obligatoire pour la livraison)') : tr('Téléphone (ex. +229 90 00 00 00)')} value={customer.phone} onChange={event => setCustomer(c => ({...c, phone: event.target.value}))} className={input} aria-label={tr('Téléphone')} />
+            <input autoComplete="tel" type="tel" placeholder={delivering ? tr('Téléphone (obligatoire pour la livraison)') : tr('Téléphone (ex. +229 01 97 00 00 00)')} value={customer.phone} onChange={event => setCustomer(c => ({...c, phone: event.target.value}))} className={input} aria-label={tr('Téléphone')} />
             <input autoComplete="email" type="email" placeholder={tr('E-mail (facultatif avec un téléphone)')} value={customer.email} onChange={event => setCustomer(c => ({...c, email: event.target.value}))} className={input} aria-label="E-mail" />
             <label className="flex items-start gap-3 text-sm text-ink-600">
               <input type="checkbox" className="mt-0.5 size-4 accent-[var(--accent)]" checked={customer.consent} onChange={event => setCustomer(c => ({...c, consent: event.target.checked}))} />

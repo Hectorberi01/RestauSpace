@@ -118,7 +118,7 @@ export function ImportDialog({open, onClose, onDone}: {open: boolean; onClose: (
             </label>
             <Button variant="ghost" size="sm" onClick={() => downloadCsv('modele-clients.csv', [
               ['nom', 'email', 'téléphone', 'tags', 'consentements'],
-              ['Awa Houngbédji', 'awa@exemple.com', '+22997000000', 'VIP|Habituée', 'whatsapp|email'],
+              ['Awa Houngbédji', 'awa@exemple.com', '+2290197000000', 'VIP|Habituée', 'whatsapp|email'],
             ])}>Télécharger un modèle</Button>
           </div>
           {rows && (rows.length === 0 ? <Alert>Le fichier ne contient aucune ligne.</Alert> : rows.length > 5000 ? <Alert>5 000 lignes au plus par import.</Alert> : (

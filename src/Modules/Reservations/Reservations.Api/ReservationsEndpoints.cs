@@ -13,7 +13,7 @@ namespace Reservations.Api;
 /// <summary>
 /// Réservations du restaurant sélectionné dans l'access token, gérées par son personnel. Aucune route ne prend de
 /// tenant : ce n'est jamais une valeur de requête. L'hôte chaîne l'autorisation (<c>Tenancy.TenantMemberPolicy</c>) sur
-/// le groupe renvoyé ; les lectures sont ouvertes à tout membre, les réservations exigent
+/// le groupe renvoyé ; les réservations (y compris les lectures qui exposent les coordonnées des clients) exigent
 /// <see cref="ReservationsPermissions.Manage"/>, la politique d'un établissement <see cref="ReservationsPermissions.Configure"/>.
 /// </summary>
 public static class ReservationsEndpoints
@@ -49,7 +49,7 @@ public static class ReservationsEndpoints
             return TypedResults.CreatedAtRoute(new CreatedResponse(id), GetReservationRoute, new { id });
         }).RequirePermission(Manage);
 
-        // Agenda : réservations qui commencent dans [from, to[ (31 jours au plus).
+        // Agenda : réservations qui commencent dans [from, to[ (31 jours au plus). Coordonnées des clients : Manage exigé.
         group.MapGet("/", async (
             DateTimeOffset from,
             DateTimeOffset to,
@@ -57,7 +57,8 @@ public static class ReservationsEndpoints
             ReservationStatus? status,
             IQueryHandler<ListReservationsQuery, IReadOnlyList<ReservationDto>> handler,
             CancellationToken ct) =>
-            TypedResults.Ok(await handler.HandleAsync(new ListReservationsQuery(from, to, locationId, status), ct)));
+            TypedResults.Ok(await handler.HandleAsync(new ListReservationsQuery(from, to, locationId, status), ct)))
+            .RequirePermission(Manage);
 
         group.MapGet("/by-customer/{customerId:guid}", async (
             Guid customerId,
@@ -81,7 +82,8 @@ public static class ReservationsEndpoints
         group.MapGet("/{id:guid}", async (
             Guid id, IQueryHandler<GetReservationByIdQuery, ReservationDto> handler, CancellationToken ct) =>
             TypedResults.Ok(await handler.HandleAsync(new GetReservationByIdQuery(id), ct)))
-            .WithName(GetReservationRoute);
+            .WithName(GetReservationRoute)
+            .RequirePermission(Manage);
 
         group.MapPost("/{id:guid}/confirm", (
             Guid id, ICommandHandler<ConfirmReservationCommand> handler, CancellationToken ct) =>
@@ -153,7 +155,8 @@ public static class ReservationsEndpoints
         group.MapGet("/waitlist", async (
             DateTimeOffset from, DateTimeOffset to, Guid? locationId,
             IQueryHandler<ListWaitlistQuery, IReadOnlyList<WaitlistEntryDto>> handler, CancellationToken ct) =>
-            TypedResults.Ok(await handler.HandleAsync(new ListWaitlistQuery(from, to, locationId), ct)));
+            TypedResults.Ok(await handler.HandleAsync(new ListWaitlistQuery(from, to, locationId), ct)))
+            .RequirePermission(Manage);
 
         group.MapPost("/waitlist", async (
             JoinWaitlistRequest request, ICommandHandler<JoinWaitlistCommand, Guid> handler, CancellationToken ct) =>

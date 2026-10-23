@@ -49,7 +49,10 @@ services:
     depends_on:
       migrations:
         condition: service_completed_successfully
-    networks: [proxy]
+    networks:
+      proxy:
+        # Nom unique sur le réseau partagé (« api » peut exister dans un autre projet).
+        aliases: [restauspace-api]
     labels:
       <<: *traefik
       traefik.http.routers.rs-api.rule: Host(`api.${DOMAIN}`)
@@ -73,6 +76,9 @@ services:
   site:
     <<: [*restart, *logging]
     image: ${IMAGE_REGISTRY:-}restauspace-site:${RELEASE:-latest}
+    environment:
+      # Pages rendues côté serveur : l'API par le réseau Docker, sans repasser par Internet.
+      API_INTERNAL_URL: http://restauspace-api:8080
     networks: [proxy]
     labels:
       <<: *traefik

@@ -180,7 +180,7 @@ export default function LocationPage({params}: {params: Promise<{id: string}>}) 
             <form className="grid grid-cols-1 gap-3 sm:grid-cols-2" onSubmit={submit('contact', () => setContact(location.id, {
               phone: clean(contact.phone), whatsApp: clean(contact.whatsApp), email: clean(contact.email),
             }), 'Coordonnées enregistrées.')}>
-              <Field label="Téléphone" hint="Ex. +229 97 00 00 00"><Input type="tel" disabled={!editable} value={contact.phone} onChange={event => setContactForm(current => ({...current, phone: event.target.value}))} /></Field>
+              <Field label="Téléphone" hint="Ex. +229 01 97 00 00 00"><Input type="tel" disabled={!editable} value={contact.phone} onChange={event => setContactForm(current => ({...current, phone: event.target.value}))} /></Field>
               <Field label="WhatsApp" hint="Numéro WhatsApp, même s’il est identique au téléphone."><Input type="tel" disabled={!editable} value={contact.whatsApp} onChange={event => setContactForm(current => ({...current, whatsApp: event.target.value}))} /></Field>
               <Field label="E-mail" className="sm:col-span-2"><Input type="email" maxLength={254} disabled={!editable} value={contact.email} onChange={event => setContactForm(current => ({...current, email: event.target.value}))} /></Field>
               {editable && <div className="sm:col-span-2"><Button type="submit" variant="secondary" busy={busy === 'contact'} disabled={!contactChanged}>Enregistrer les coordonnées</Button></div>}

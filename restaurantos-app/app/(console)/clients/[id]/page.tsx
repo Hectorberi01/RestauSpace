@@ -153,7 +153,7 @@ export default function CustomerPage({params}: {params: Promise<{id: string}>}) 
                 <Input type="email" disabled={!editable} value={form.email} onChange={event => setForm(value => ({...value, email: event.target.value}))} placeholder="client@exemple.com" />
               </Field>
               <Field label="Téléphone" hint="Format international.">
-                <Input type="tel" disabled={!editable} value={form.phone} onChange={event => setForm(value => ({...value, phone: event.target.value}))} placeholder="+229 97 00 00 00" />
+                <Input type="tel" disabled={!editable} value={form.phone} onChange={event => setForm(value => ({...value, phone: event.target.value}))} placeholder="+229 01 97 00 00 00" />
               </Field>
               {editable && (
                 <div className="flex gap-2 sm:col-span-2">

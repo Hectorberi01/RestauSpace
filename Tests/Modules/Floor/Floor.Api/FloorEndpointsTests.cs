@@ -127,11 +127,13 @@ public sealed class FloorEndpointsTests(FloorApi api) : IClassFixture<FloorApi>
     [Fact]
     public async Task Writes_need_their_floor_permission_but_reads_stay_open_to_members()
     {
-        var (tenant, client, _, area, table) = await GivenTableAsync();
+        var (tenant, client, location, area, table) = await GivenTableAsync();
         api.WithoutPermissions[tenant] = true;
 
         await AssertStatusAsync(await client.GetAsync($"/floor/dining-areas/{area}"), HttpStatusCode.OK);
         await AssertStatusAsync(await client.GetAsync("/floor/table-sessions"), HttpStatusCode.OK);
+        // File d'attente : coordonnées des clients, réservée au service.
+        await AssertStatusAsync(await client.GetAsync($"/floor/waiting-parties?locationId={location}"), HttpStatusCode.Forbidden);
         await AssertStatusAsync(
             await client.PostAsJsonAsync($"/floor/dining-areas/{area}/tables", new { label = "T2", capacity = 2 }), HttpStatusCode.Forbidden);
         await AssertStatusAsync(

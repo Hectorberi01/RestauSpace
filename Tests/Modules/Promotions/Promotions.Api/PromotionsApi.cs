@@ -22,7 +22,7 @@ namespace Promotions.Api;
 /// token (un schéma de test produit les mêmes claims que ceux signés par Identity), l'horloge et les réponses de
 /// Tenants, Orders et Staff (permissions accordées une à une par restaurant). Le job d'expiration est coupé.
 /// </summary>
-public sealed class PromotionsApi : IAsyncLifetime, IPromotionTenants, IPromotionOrders, IPermissionChecker
+public sealed class PromotionsApi : IAsyncLifetime, IPromotionTenants, IPromotionOrders, IPromotionLocations, IPromotionProducts, IPermissionChecker
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine").Build();
 
@@ -45,6 +45,8 @@ public sealed class PromotionsApi : IAsyncLifetime, IPromotionTenants, IPromotio
         builder.Services.AddSingleton<IClock>(new FakeClock(DateTimeOffset.UtcNow));
         builder.Services.AddSingleton<IPromotionTenants>(this);
         builder.Services.AddSingleton<IPromotionOrders>(this);
+        builder.Services.AddSingleton<IPromotionLocations>(this);
+        builder.Services.AddSingleton<IPromotionProducts>(this);
         builder.Services.AddPromotionsModule(_container.GetConnectionString(), options => options.RunWorkers = false);
         builder.Services.AddAuthentication(TestToken.NameScheme)
             .AddScheme<AuthenticationSchemeOptions, TestToken>(TestToken.NameScheme, _ => { });
@@ -96,6 +98,13 @@ public sealed class PromotionsApi : IAsyncLifetime, IPromotionTenants, IPromotio
 
     public Task<PromotionOrder?> FindAsync(TenantId tenantId, OrderId orderId, CancellationToken cancellationToken = default) =>
         Task.FromResult<PromotionOrder?>(Orders.TryGetValue((tenantId, orderId), out var order) ? order : null);
+
+    // Faux Locations et Catalog : tout établissement et produit existe.
+    Task<bool> IPromotionLocations.ExistsAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
+        Task.FromResult(true);
+
+    Task<bool> IPromotionProducts.ExistsAsync(TenantId tenantId, ProductId productId, CancellationToken cancellationToken) =>
+        Task.FromResult(true);
 
     public Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Tenants.TryGetValue(tenantId, out var writable) && writable);

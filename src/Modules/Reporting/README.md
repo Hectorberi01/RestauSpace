@@ -229,7 +229,8 @@ Granularité : jour, semaine ISO, mois, total (périodes bornées à la demande,
 - `ReportingPlatformFeed` : tout événement `Tenant*` ou `Subscription*` -> état courant relu et recopié.
 - `ReportingDeliveryFlow` : `reporting.ExportCompleted` -> Notifications, nouveau type `staff.report_ready` : un e-mail
   par destinataire d'un envoi planifié, sinon une notification dans l'application au demandeur. Le lien pointe vers la
-  route de téléchargement (`Reporting:PublicBaseUrl`), authentifiée : le fichier ne voyage jamais dans un message.
+  page « Exports récents » de la console (`{Reporting:PublicBaseUrl}/rapports/planifies`, adresse de la console) :
+  le téléchargement s'y fait connecté, le fichier ne voyage jamais dans un message.
   Templates de la plateforme (fr, en ; e-mail et in-app) posés au démarrage de Notifications.
 
 ### Routes

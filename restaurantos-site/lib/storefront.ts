@@ -464,7 +464,14 @@ export const money = (value: number, currency: string) => {
   }
 };
 
-export const clock = (utc: string) => new Intl.DateTimeFormat(intlLocale(), {hour: '2-digit', minute: '2-digit'}).format(new Date(utc));
+/** Heure « 12:30 », dans le fuseau de l'établissement s'il est fourni (sinon celui du navigateur). */
+export const clock = (utc: string, timeZone?: string) => {
+  try {
+    return new Intl.DateTimeFormat(intlLocale(), {hour: '2-digit', minute: '2-digit', timeZone}).format(new Date(utc));
+  } catch {
+    return new Intl.DateTimeFormat(intlLocale(), {hour: '2-digit', minute: '2-digit'}).format(new Date(utc));
+  }
+};
 
 export const allergenLabel: Record<string, string> = translated({
   gluten: 'Gluten',
@@ -604,13 +611,15 @@ export interface SignInResult {
   account: CustomerAccount | null;
 }
 
+// Jeton du client en sessionStorage, comme la console : limité à l'onglet (le retour du paiement externe s'y fait).
 const customerKey = 'restaurantos.customer';
 const customerListeners = new Set<() => void>();
 
 export function readCustomerToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(customerKey);
+    window.localStorage.removeItem(customerKey); // ancien emplacement
+    const raw = window.sessionStorage.getItem(customerKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as {token: string; expiresAtUtc: string};
     return Date.parse(parsed.expiresAtUtc) > Date.now() ? parsed.token : null;
@@ -621,14 +630,14 @@ export function readCustomerToken(): string | null {
 
 function rememberCustomer(token: string, expiresAtUtc: string) {
   try {
-    window.localStorage.setItem(customerKey, JSON.stringify({token, expiresAtUtc}));
+    window.sessionStorage.setItem(customerKey, JSON.stringify({token, expiresAtUtc}));
   } catch {}
   customerListeners.forEach(listener => listener());
 }
 
 export function forgetCustomer() {
   try {
-    window.localStorage.removeItem(customerKey);
+    window.sessionStorage.removeItem(customerKey);
   } catch {}
   customerListeners.forEach(listener => listener());
 }

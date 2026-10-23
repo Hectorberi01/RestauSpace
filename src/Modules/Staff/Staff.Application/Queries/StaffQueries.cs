@@ -111,7 +111,24 @@ public sealed class GetMyPermissionsHandler(ITenantContext tenantContext, IStaff
 
         var role = member.EffectiveTenantRole is { } roleId ? await roles.FindAsync(tenantId, roleId, cancellationToken) : null;
         var granted = role?.Permissions.Select(permission => permission.Value).Order(StringComparer.Ordinal).ToList() ?? new List<string>();
-        return new MyPermissionsDto(member.Id.Value, member.Status, member.TenantWideRoleId?.Value, granted, member.HasPin);
+
+        // Rôles d'établissement : ceux que le contrôle d'accès applique sur les routes de cet établissement.
+        var locations = new List<MyLocationPermissionsDto>();
+        foreach (var assignment in member.Assignments)
+        {
+            if (member.EffectiveRoleAt(assignment.LocationId) is not { } locationRoleId
+                || await roles.FindAsync(tenantId, locationRoleId, cancellationToken) is not { } locationRole)
+            {
+                continue;
+            }
+
+            locations.Add(new MyLocationPermissionsDto(
+                assignment.LocationId.Value,
+                locationRoleId.Value,
+                locationRole.Permissions.Select(permission => permission.Value).Order(StringComparer.Ordinal).ToList()));
+        }
+
+        return new MyPermissionsDto(member.Id.Value, member.Status, member.TenantWideRoleId?.Value, granted, member.HasPin, locations);
     }
 }
 

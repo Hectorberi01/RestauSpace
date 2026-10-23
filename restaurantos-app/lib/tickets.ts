@@ -4,12 +4,9 @@ import type {CashSession} from './cash';
 import {movementLabel} from './cash';
 import type {TicketLine} from './escpos';
 import {componentLabel} from './formulas';
-import {money, orderTypeLabel} from './format';
+import {money, orderTypeLabel, stamp} from './format';
 import {methodLabel, type OrderPayments} from './payments';
 import type {Order, Tenant} from './types';
-
-const stamp = (iso: string) =>
-  new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}).format(new Date(iso));
 
 const text = (value: string, extra: Partial<Extract<TicketLine, {kind: 'text'}>> = {}): TicketLine => ({kind: 'text', text: value, ...extra});
 const separator: TicketLine = {kind: 'separator'};
@@ -22,14 +19,14 @@ export interface FiscalFooter {
   qr: string | null;
 }
 
-export function receiptLines(order: Order, payments: OrderPayments | null, tenant: Tenant, location: {name: string; address?: string}, fiscal?: FiscalFooter | null): TicketLine[] {
+export function receiptLines(order: Order, payments: OrderPayments | null, tenant: Tenant, location: {name: string; address?: string; timeZone?: string}, fiscal?: FiscalFooter | null): TicketLine[] {
   const fmt = (value: number) => money(value, order.currencyCode);
   const lines: TicketLine[] = [
     text(restaurantName(tenant), {align: 'center', bold: true, large: true}),
     text(location.name, {align: 'center'}),
   ];
   if (location.address) lines.push(text(location.address, {align: 'center'}));
-  lines.push(separator, text('Reçu n°', {right: order.number}), text('Date', {right: stamp(order.completedAtUtc ?? order.placedAtUtc ?? order.createdAtUtc)}), text('Type', {right: orderTypeLabel[order.type]}), separator);
+  lines.push(separator, text('Reçu n°', {right: order.number}), text('Date', {right: stamp(order.completedAtUtc ?? order.placedAtUtc ?? order.createdAtUtc, location.timeZone)}), text('Type', {right: orderTypeLabel[order.type]}), separator);
   for (const item of order.items) {
     lines.push(text(`${item.quantity} x ${item.productName}${item.variantName ? ` (${item.variantName})` : ''}`, {right: fmt(item.lineTotal)}));
     for (const component of item.components ?? []) lines.push(text(`   ${componentLabel(component, false)}`));

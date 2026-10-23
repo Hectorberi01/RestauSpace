@@ -155,14 +155,20 @@ public sealed class ReservationsEndpointsTests(ReservationsApi api) : IClassFixt
     }
 
     [Fact]
-    public async Task Writes_need_their_permission_but_reads_stay_open_to_members()
+    public async Task Writes_and_guest_details_need_their_permission_but_policies_stay_open_to_members()
     {
         var (tenant, client, location) = GivenRestaurant();
         var id = await CreatedIdAsync(await client.PostAsJsonAsync("/reservations", NewReservation(location)));
         api.WithoutPermissions[tenant] = true;
+        var from = DateTimeOffset.UtcNow.ToString("O");
+        var to = DateTimeOffset.UtcNow.AddDays(7).ToString("O");
 
-        await AssertStatusAsync(await client.GetAsync($"/reservations/{id}"), HttpStatusCode.OK);
         await AssertStatusAsync(await client.GetAsync($"/reservations/policies/{location}"), HttpStatusCode.OK);
+        await AssertStatusAsync(await client.GetAsync($"/reservations/{id}"), HttpStatusCode.Forbidden);
+        await AssertStatusAsync(
+            await client.GetAsync($"/reservations?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}"), HttpStatusCode.Forbidden);
+        await AssertStatusAsync(
+            await client.GetAsync($"/reservations/waitlist?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}"), HttpStatusCode.Forbidden);
         await AssertStatusAsync(await client.PostAsync($"/reservations/{id}/confirm", null), HttpStatusCode.Forbidden);
         await AssertStatusAsync(
             await client.PutAsJsonAsync($"/reservations/policies/{location}", new { maxAdvanceDays = 30 }), HttpStatusCode.Forbidden);

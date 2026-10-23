@@ -9,7 +9,7 @@ namespace Promotions.Api;
 
 /// <summary>
 /// Composition du module Promotions, appelée par l'hôte. L'hôte fournit aussi <c>IPromotionTenants</c> (Tenants),
-/// <c>IPromotionOrders</c> (Orders), le tenant courant (<c>AddRequestTenantContext</c>) et les réactions aux événements
+/// <c>IPromotionOrders</c> (Orders), <c>IPromotionLocations</c> (Locations), <c>IPromotionProducts</c> (Catalog), le tenant courant (<c>AddRequestTenantContext</c>) et les réactions aux événements
 /// des autres modules (outbox).
 /// </summary>
 public static class PromotionsModule

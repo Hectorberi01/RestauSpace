@@ -33,7 +33,7 @@ function ago(iso: string) {
   return days === 1 ? 'hier' : `il y a ${days} jours`;
 }
 
-/** +22997001122 -> +229 97 00 11 22 ; +33612345678 -> +33 6 12 34 56 78. */
+/** +2290197001122 -> +229 01 97 00 11 22 ; +33612345678 -> +33 6 12 34 56 78. */
 function formatPhone(phone: string) {
   const match = /^\+(33|32|41|1|\d{3})(\d+)$/.exec(phone);
   if (!match) return phone;

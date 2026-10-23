@@ -27,7 +27,7 @@ le client).
 {
   "provider": "fedapay",
   "method": "MobileMoney",
-  "payerPhone": "+22997000000",
+  "payerPhone": "+2290197000000",
   "returnUrl": "https://chezawa.bj/commande?jeton=pZ8xQ…"
 }
 ```

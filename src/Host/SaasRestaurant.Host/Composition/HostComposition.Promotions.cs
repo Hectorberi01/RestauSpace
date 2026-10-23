@@ -79,6 +79,8 @@ internal static partial class HostComposition
             options.RunWorkers = builder.Configuration.GetValue("Promotions:RunWorkers", true));
         builder.Services.AddScoped<IPromotionTenants, PromotionTenantsFromTenants>();
         builder.Services.AddScoped<IPromotionOrders, PromotionOrdersFromOrders>();
+        builder.Services.AddScoped<IPromotionLocations, PromotionLocationsFromLocations>();
+        builder.Services.AddScoped<IPromotionProducts, PromotionProductsFromCatalog>();
         builder.Services.AddScoped<IOutboxConsumer, PromotionsFlow>();
         return builder;
     }

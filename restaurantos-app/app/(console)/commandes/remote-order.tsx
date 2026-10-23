@@ -116,7 +116,7 @@ export function RemoteOrderDialog({location, open, onClose}: {location: Location
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={channel === 'DeliveryPlatform' ? 'Numéro du client (facultatif)' : 'Numéro du client'}>
-            <Input type="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+229 97 00 00 00" />
+            <Input type="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="+229 01 97 00 00 00" />
           </Field>
           <Field label="Mode">
             <Select value={type} onChange={event => setType(event.target.value as OrderType)}>

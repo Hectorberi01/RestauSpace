@@ -195,6 +195,8 @@ export const tenants = {
   reactivate: (id: string) => post(`/admin/tenants/${id}/reactivate`),
   close: (id: string) => post(`/admin/tenants/${id}/close`),
   rename: (id: string, name: string) => put(`/admin/tenants/${id}/name`, {name}),
+  /** Rattache un propriétaire au restaurant (compte invité s'il n'existe pas). */
+  addOwner: (id: string, email: string) => post<Created>(`/admin/tenants/${id}/owners`, {email}),
 };
 
 export const plans = {

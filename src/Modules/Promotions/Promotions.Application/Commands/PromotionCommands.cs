@@ -15,6 +15,7 @@ public sealed class CreatePromotionHandler(PromotionsWorkspace workspace, IClock
         ArgumentNullException.ThrowIfNull(command.Rules);
         var rules = command.Rules.ToRules();
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireOwnTargetsAsync(rules, cancellationToken);
 
         var promotion = Promotion.Create(workspace.CurrentTenant, command.Name ?? string.Empty, rules, clock);
         workspace.Promotions.Add(promotion);
@@ -32,11 +33,12 @@ public sealed record ChangePromotionRulesCommand(Guid PromotionId, PromotionRule
 
 public sealed class ChangePromotionRulesHandler(PromotionsWorkspace workspace, IClock clock) : ICommandHandler<ChangePromotionRulesCommand>
 {
-    public Task HandleAsync(ChangePromotionRulesCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(ChangePromotionRulesCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command.Rules);
         var rules = command.Rules.ToRules();
-        return workspace.EditPromotionAsync(command.PromotionId, promotion => promotion.ChangeRules(rules, clock, command.Policy), cancellationToken);
+        await workspace.RequireOwnTargetsAsync(rules, cancellationToken);
+        await workspace.EditPromotionAsync(command.PromotionId, promotion => promotion.ChangeRules(rules, clock, command.Policy), cancellationToken);
     }
 }
 

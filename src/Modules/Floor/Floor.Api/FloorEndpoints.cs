@@ -12,7 +12,8 @@ namespace Floor.Api;
 /// <summary>
 /// Plan de salle et service du restaurant sélectionné dans l'access token. Aucune route ne prend de tenant : ce n'est
 /// jamais une valeur de requête. L'hôte chaîne l'autorisation (<c>Tenancy.TenantMemberPolicy</c>) sur le groupe
-/// renvoyé ; les lectures sont ouvertes à tout membre. Le plan exige <see cref="FloorPermissions.ManageLayout"/>, le
+/// renvoyé ; les lectures sont ouvertes à tout membre, sauf la file d'attente (coordonnées des clients) qui exige
+/// <see cref="FloorPermissions.Serve"/>. Le plan exige <see cref="FloorPermissions.ManageLayout"/>, le
 /// service (sessions, mise hors service) <see cref="FloorPermissions.Serve"/>.
 /// </summary>
 public static class FloorEndpoints
@@ -157,7 +158,8 @@ public static class FloorEndpoints
     {
         parties.MapGet("/", async (
             Guid locationId, IQueryHandler<ListWaitingPartiesQuery, IReadOnlyList<WaitingPartyDto>> handler, CancellationToken ct) =>
-            TypedResults.Ok(await handler.HandleAsync(new ListWaitingPartiesQuery(locationId), ct)));
+            TypedResults.Ok(await handler.HandleAsync(new ListWaitingPartiesQuery(locationId), ct)))
+            .RequirePermission(Serve);
 
         parties.MapPost("/", async (
             AddWaitingPartyRequest request, ICommandHandler<AddWaitingPartyCommand, Guid> handler, CancellationToken ct) =>

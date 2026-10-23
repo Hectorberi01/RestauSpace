@@ -54,6 +54,7 @@ services:
       context: restaurantos-super-admin
       args:
         NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-5080}
+        NEXT_PUBLIC_SITE_URL: http://localhost:3002
     image: saasrestaurant-admin:dev
     profiles: [web]
     ports:

@@ -157,7 +157,7 @@ export function localDateTime(date: string, time: string): Date | null {
   return Number.isNaN(value.getTime()) ? null : value;
 }
 
-/** Téléphone saisi → E.164 (« +22997000000 ») ; null si vide, undefined si invalide. */
+/** Téléphone saisi → E.164 (« +2290197000000 ») ; null si vide, undefined si invalide. */
 export function normalizePhone(value: string): string | null | undefined {
   const compact = value.replace(/[\s().-]/g, '');
   if (!compact) return null;

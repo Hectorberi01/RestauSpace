@@ -54,4 +54,5 @@ services:
       args:
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
         NEXT_PUBLIC_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
     image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}

@@ -11,7 +11,7 @@ Les comptes clients existent pour les sites et les applications mobiles, pas pou
 ### 1. Demander un code : `POST /customer/code`
 
 ```json
-{"channel": "Sms", "address": "+22997000000", "language": "fr"}
+{"channel": "Sms", "address": "+2290197000000", "language": "fr"}
 ```
 
 - `channel` : `Sms`, `WhatsApp` ou `Email` ; `address` : téléphone international pour `Sms` / `WhatsApp`, e-mail pour
@@ -37,7 +37,7 @@ Client existant :
 
 ```json
 {"status": "SignedIn", "token": "cst_V2VsY29tZS…", "expiresAtUtc": "2026-12-13T12:06:00+00:00", "ticket": null,
- "account": {"name": "Afi", "email": null, "phone": "+22997000000", "currencyCode": "XOF", "loyalty": {"…": "…"}}}
+ "account": {"name": "Afi", "email": null, "phone": "+2290197000000", "currencyCode": "XOF", "loyalty": {"…": "…"}}}
 ```
 
 Nouveau client :
@@ -70,7 +70,7 @@ Réponse `204`, même sans session. Le jeton cesse aussitôt de fonctionner ; ef
 
 ```json
 {
-  "name": "Afi", "email": null, "phone": "+22997000000", "currencyCode": "XOF",
+  "name": "Afi", "email": null, "phone": "+2290197000000", "currencyCode": "XOF",
   "loyalty": {
     "enabled": true, "balance": 120, "pointsPerCurrencyUnit": 0.01,
     "rewards": [{"id": "0199…", "name": "Boisson offerte", "pointCost": 100, "discount": 500, "affordable": true}]

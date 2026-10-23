@@ -205,7 +205,7 @@ function JoinDialog({location, day, onClose, onDone}: {location: LocationSummary
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Nom"><Input value={name} maxLength={150} onChange={event => setName(event.target.value)} autoComplete="off" /></Field>
-          <Field label="Téléphone"><Input type="tel" value={phone} placeholder="+229 97 00 00 00" onChange={event => setPhone(event.target.value)} autoComplete="off" /></Field>
+          <Field label="Téléphone"><Input type="tel" value={phone} placeholder="+229 01 97 00 00 00" onChange={event => setPhone(event.target.value)} autoComplete="off" /></Field>
         </div>
         <Field label="Note (facultatif)"><Textarea rows={2} maxLength={500} value={notes} onChange={event => setNotes(event.target.value)} /></Field>
       </div>

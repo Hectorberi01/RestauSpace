@@ -48,4 +48,13 @@ public sealed record RoleDto(Guid Id, string Name, bool IsSystem, IReadOnlyList<
 public sealed record MembershipDto(Guid TenantId, string TenantName, Guid StaffMemberId, StaffStatus Status);
 
 /// <summary>Ce que le membre connecté peut faire au niveau du tenant dans le restaurant sélectionné.</summary>
-public sealed record MyPermissionsDto(Guid StaffMemberId, StaffStatus Status, Guid? TenantWideRoleId, IReadOnlyList<string> Permissions, bool HasPin = false);
+public sealed record MyPermissionsDto(
+    Guid StaffMemberId,
+    StaffStatus Status,
+    Guid? TenantWideRoleId,
+    IReadOnlyList<string> Permissions,
+    bool HasPin = false,
+    IReadOnlyList<MyLocationPermissionsDto>? Locations = null);
+
+/// <summary>Permissions dans un établissement où le membre a un rôle propre (il l'emporte sur le rôle de tenant).</summary>
+public sealed record MyLocationPermissionsDto(Guid LocationId, Guid RoleId, IReadOnlyList<string> Permissions);

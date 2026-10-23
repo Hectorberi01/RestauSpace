@@ -147,7 +147,7 @@ export function NewReservationDialog({location, open, day, onClose, onCreated}: 
     if (policy.data && size > policy.data.maxPartySize) return setError(`Au plus ${policy.data.maxPartySize} couverts par réservation.`);
     if (!name.trim()) return setError('Indiquez le nom du client.');
     const normalizedPhone = normalizePhone(phone);
-    if (normalizedPhone === undefined) return setError('Téléphone au format international, par exemple +229 97 00 00 00.');
+    if (normalizedPhone === undefined) return setError('Téléphone au format international, par exemple +229 01 97 00 00 00.');
     const trimmedEmail = email.trim();
     if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return setError('Adresse email invalide.');
     if (!normalizedPhone && !trimmedEmail) return setError('Indiquez au moins un téléphone ou un email.');
@@ -229,7 +229,7 @@ export function NewReservationDialog({location, open, day, onClose, onCreated}: 
         )}
         <Field label="Nom du client"><Input required maxLength={200} value={name} onChange={event => setName(event.target.value)} autoComplete="off" /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Téléphone"><Input type="tel" inputMode="tel" value={phone} placeholder="+229 97 00 00 00" onChange={event => setPhone(event.target.value)} autoComplete="off" /></Field>
+          <Field label="Téléphone"><Input type="tel" inputMode="tel" value={phone} placeholder="+229 01 97 00 00 00" onChange={event => setPhone(event.target.value)} autoComplete="off" /></Field>
           <Field label="Email"><Input type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="off" /></Field>
         </div>
         <Field label="Note (facultatif)"><Textarea rows={2} maxLength={1000} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Allergies, occasion, placement souhaité…" /></Field>

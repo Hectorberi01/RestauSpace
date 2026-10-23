@@ -37,7 +37,7 @@ En-têtes : `Idempotency-Key` (obligatoire), `X-Human-Check` si exigé, `X-Custo
   "startAt": "2026-10-18T18:00:00+00:00",
   "partySize": 4,
   "name": "Afi",
-  "phone": "+22997000000",
+  "phone": "+2290197000000",
   "email": null,
   "notes": "Anniversaire"
 }

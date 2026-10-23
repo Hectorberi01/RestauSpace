@@ -48,7 +48,7 @@ curl -s {{API_URL}}/v1/storefront/ -H "X-Storefront-Key: $KEY" -H "Accept: appli
         "postalCode": null,
         "countryCode": "BJ",
         "coordinates": {"latitude": 6.365536, "longitude": 2.418378},
-        "contact": {"phone": "+22997001122", "whatsApp": "+22997001122", "email": "contact@chezawa.bj"}
+        "contact": {"phone": "+2290197001122", "whatsApp": "+2290197001122", "email": "contact@chezawa.bj"}
       },
       "specialDays": [
         {"date": "2026-08-01", "isClosed": true, "ranges": [], "reason": "Fête de l'indépendance"},

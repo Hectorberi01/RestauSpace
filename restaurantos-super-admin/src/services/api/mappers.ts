@@ -1,4 +1,5 @@
 import type {RecordItem} from '../../types';
+import {activityLabel,targetLabel} from './profile';
 import type {
   AuditEntryDto,
   PlanDto,
@@ -117,12 +118,12 @@ export function auditRecord(entry: AuditEntryDto, users: Map<string, UserDto>, t
   const actor = entry.actorType === 'User' && entry.actorId ? users.get(entry.actorId)?.email : undefined;
   return {
     id: entry.id,
-    name: entry.action,
+    name: activityLabel(entry.action),
     action: entry.action,
     module: entry.action.split('.')[0] ?? '',
     user: actor ?? (entry.actorType ? `${actorType[entry.actorType]}${entry.actorId ? ' ' + shortId(entry.actorId) : ''}` : 'Inconnu'),
     actorType: entry.actorType ? actorType[entry.actorType] : 'Inconnu',
-    resource: `${entry.targetType} ${shortId(entry.targetId)}`,
+    resource: `${targetLabel(entry.targetType)} ${shortId(entry.targetId)}`,
     targetId: entry.targetId,
     tenant: entry.tenantId ? tenants.get(entry.tenantId)?.name ?? shortId(entry.tenantId) : 'Plateforme',
     correlationId: entry.correlationId,

@@ -76,7 +76,7 @@ internal static partial class HostComposition
         // fidélité), alimentés par les événements des autres modules (ReportingFeed, par l'outbox, une fois par message) ; vue
         // de la plateforme (restaurants, abonnements, MRR) recopiée depuis Tenants et Billing (ReportingPlatformFeed) ; rapports
         // enregistrés, exports CSV et envois planifiés (job du module). Un export terminé est annoncé par Notifications
-        // (ReportingDeliveryFlow) avec un lien vers Reporting:PublicBaseUrl. Les fichiers restent en base jusqu'au module Files.
+        // (ReportingDeliveryFlow) avec un lien vers la console (Reporting:PublicBaseUrl/rapports/planifies). Les fichiers restent en base jusqu'au module Files.
         var reporting = builder.Configuration.GetSection("Reporting");
         builder.Services.AddReportingModule(
             builder.ConnectionStringFor("Reporting", connectionString),

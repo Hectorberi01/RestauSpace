@@ -1,7 +1,7 @@
 'use client';
 import {useEffect, useState} from 'react';
 import {Copy, ExternalLink, MessageCircle, Send} from 'lucide-react';
-import {api, post} from '@/lib/api';
+import {api, describe, post} from '@/lib/api';
 import {loadCustomer} from '@/lib/customers';
 import {fulfillmentOfOrder} from '@/lib/delivery';
 import {normalizePhone} from '@/lib/reservations';
@@ -63,7 +63,7 @@ export function SendReceiptDialog({orderId, customerId, open, onClose}: {orderId
     const controller = new AbortController();
     api<ReceiptLink>(`/online-sales/receipts/${orderId}`, {signal: controller.signal})
       .then(setLink)
-      .catch(reason => !controller.signal.aborted && setError(reason instanceof Error ? reason.message : 'Reçu indisponible.'));
+      .catch(reason => !controller.signal.aborted && setError(reason instanceof Error ? describe(reason) : 'Reçu indisponible.'));
     // Numéro proposé : la fiche client, sinon le téléphone de la livraison ou du retrait.
     (customerId ? loadCustomer(customerId, controller.signal).then(customer => customer.phone) : Promise.resolve(null))
       .then(found => found ?? fulfillmentOfOrder(orderId, controller.signal).then(fulfillment => fulfillment?.customerPhone ?? null))

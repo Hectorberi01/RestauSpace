@@ -20,6 +20,9 @@ public static class IntegrationsApplicationErrors
         new("integrations.event_type.not_published", "This event type is not published to webhooks.");
     public static readonly DomainError NotDeadLettered =
         new("integrations.webhook_delivery.not_dead_lettered", "Only an abandoned delivery can be sent again.");
+    // Une clé ne reçoit que des droits que son auteur détient lui-même.
+    public static readonly DomainError ScopeNotHeld =
+        new("integrations.api_credential.scope_not_held", "You can only grant a key permissions that you hold yourself.");
     public static readonly DomainError PageInvalid = new("integrations.page_invalid", "Skip must be zero or more and take between 1 and 100.");
 }
 

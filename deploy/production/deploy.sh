@@ -11,6 +11,11 @@ cd "$(dirname "$0")"
 for f in .env api.env; do
   [ "$(stat -c %a "$f")" = "600" ] || { chmod 600 "$f"; echo "$f : droits ramenés à 600"; }
 done
+# Chaque clé de chiffrement ou de signature doit être unique (generate-secrets.sh) : une valeur partagée ferait
+# tomber toutes les autres avec elle.
+duplicates="$(grep -E '^(Identity__AccessTokens__SigningKey|Identity__TwoFactor__SecretKey|Payments__CredentialsKey|Notifications__CredentialsKey|Notifications__OtpKey|Integrations__SecretsKey|Fiscal__TokenKey|Storefront__TrackingKey|Files__PublicMedia__SigningKey)=' api.env \
+  | cut -d= -f2- | sort | uniq -d | wc -l)"
+[ "$duplicates" -eq 0 ] || { echo "api.env : plusieurs clés ont la même valeur, régénérez-les avec ./generate-secrets.sh" >&2; exit 1; }
 docker network inspect "$(grep -E '^TRAEFIK_NETWORK=' .env | cut -d= -f2 || echo proxy)" >/dev/null 2>&1 \
   || { echo "Réseau Traefik introuvable (TRAEFIK_NETWORK)" >&2; exit 1; }
 

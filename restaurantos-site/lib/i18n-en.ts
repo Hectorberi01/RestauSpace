@@ -372,7 +372,7 @@ export const en: Record<string, string> = {
   'Trop de demandes : réessayez dans un instant.': 'Too many requests: try again in a moment.',
   'Trop d’essais : demandez un nouveau code.': 'Too many attempts: request a new code.',
   'Téléphone': 'Phone',
-  'Téléphone (ex. +229 90 00 00 00)': 'Phone (e.g. +229 90 00 00 00)',
+  'Téléphone (ex. +229 01 97 00 00 00)': 'Phone (e.g. +229 01 97 00 00 00)',
   'Téléphone (obligatoire pour la livraison)': 'Phone (required for delivery)',
   'Un couvert de moins': 'One guest fewer',
   'Un couvert de plus': 'One more guest',

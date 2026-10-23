@@ -143,7 +143,7 @@ function SignIn({onDone}: {onDone: () => void}) {
           </div>
           <input value={address} onChange={event => setAddress(event.target.value)} className={input} required
             type={isEmail ? 'email' : 'tel'} autoComplete={isEmail ? 'email' : 'tel'} aria-label={isEmail ? tr('Adresse e-mail') : tr('Numéro de téléphone')}
-            placeholder={isEmail ? 'vous@exemple.com' : '+229 90 00 00 00'} />
+            placeholder={isEmail ? 'vous@exemple.com' : '+229 01 97 00 00 00'} />
           {error && <Notice tone="error">{error}</Notice>}
           <AccentButton type="submit" className="w-full" busy={busy} disabled={!address.trim()}>{tr('Recevoir mon code')}</AccentButton>
         </form>

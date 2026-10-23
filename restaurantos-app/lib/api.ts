@@ -1,3 +1,5 @@
+import {moreMessages} from './error-messages';
+
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5080').replace(/\/+$/, '');
 
 export interface Session {
@@ -73,6 +75,18 @@ async function problem(response: Response): Promise<ApiError> {
   return new ApiError(response.status, code, message);
 }
 
+/** Un 401 ne justifie un renouvellement que s'il vient du jeton (pas d'un mauvais mot de passe ou code 2FA). */
+async function expiredToken(response: Response): Promise<boolean> {
+  if (response.status !== 401) return false;
+  try {
+    const body = await response.clone().json();
+    const code = typeof body?.code === 'string' ? body.code : undefined;
+    return !code || code === 'identity.auth.invalid_access_token';
+  } catch {
+    return true;
+  }
+}
+
 async function refresh(): Promise<Session | null> {
   const session = read();
   if (!session) return null;
@@ -142,7 +156,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   };
 
   let response = await send(options.anonymous ? null : await validSession());
-  if (response.status === 401 && !options.anonymous && read()) {
+  if (!options.anonymous && read() && (await expiredToken(response))) {
     const renewed = await refresh();
     if (renewed) response = await send(renewed);
   }
@@ -166,7 +180,7 @@ async function authorized(path: string, init: {method?: 'GET' | 'PUT'; body?: Bl
       signal: init.signal,
     });
   let response = await send(await validSession());
-  if (response.status === 401 && read()) {
+  if (read() && (await expiredToken(response))) {
     const renewed = await refresh();
     if (renewed) response = await send(renewed);
   }
@@ -269,6 +283,7 @@ export async function logout(): Promise<void> {
 }
 
 const messages: Record<string, string> = {
+  ...moreMessages,
   'identity.user.email_not_verified': 'Confirmez d’abord votre adresse : ouvrez le lien reçu par email.',
   'signup.terms_not_accepted': 'Acceptez les conditions d’utilisation pour créer votre compte.',
   'signup.country_unsupported': 'L’inscription en ligne n’est pas encore ouverte dans ce pays : contactez-nous.',
@@ -918,8 +933,11 @@ export function describe(error: unknown): string {
     if (error.code && messages[error.code]) return messages[error.code];
     if (error.status === 401) return 'Session expirée : reconnectez-vous.';
     if (error.status === 403) return 'Vous n’avez pas la permission de faire cette action.';
-    if (error.status === 409) return 'Quelqu’un a modifié cet élément en même temps : rechargez et réessayez.';
+    if (error.code?.endsWith('.concurrent_update')) return 'Quelqu’un a modifié cet élément en même temps : rechargez et réessayez.';
+    if (error.status === 409) return 'Action impossible dans l’état actuel : rechargez la page et réessayez.';
     if (error.status === 429) return 'Trop de requêtes : patientez quelques secondes.';
+    if (error.status >= 500) return 'Erreur du serveur : réessayez dans un instant.';
+    if (error.status === 400 && !error.code) return 'Requête invalide : vérifiez les champs saisis.';
     return error.message;
   }
   if (error instanceof TypeError) return `API injoignable (${API_URL}). Vérifiez votre connexion.`;

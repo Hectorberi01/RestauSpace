@@ -14,7 +14,7 @@ namespace Integrations.Application;
 /// </summary>
 public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, IWebhookEndpointRepository, IWebhookDeliveryRepository,
     IApiCredentialRepository, IApiCredentialLookup, IApiCredentialUsage, IWebhookSecretVault, IWebhookSender, IIntegrationsUnitOfWork,
-    IIntegrationsActor
+    IIntegrationsActor, IPermissionChecker
 {
     public IntegrationsFixture()
     {
@@ -82,7 +82,7 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     public RetryDeadLetteredDeliveryHandler RetryDeadLettered => new(Workspace, Clock);
 
-    public IssueApiCredentialHandler Issue => new(Workspace, Clock);
+    public IssueApiCredentialHandler Issue => new(Workspace, this, Clock);
 
     public RotateApiCredentialHandler RotateKey => new(Workspace, Clock);
 
@@ -124,6 +124,16 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
     }
 
     ChangeActor? IIntegrationsActor.Current => Actor;
+
+    /// <summary>Permissions refusées à l'utilisateur auteur (toutes les autres sont accordées).</summary>
+    public HashSet<string> DeniedPermissions { get; } = new(StringComparer.Ordinal);
+
+    Task<bool> IPermissionChecker.HasTenantPermissionAsync(UserId userId, TenantId tenantId, string permission, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedPermissions.Contains(permission));
+
+    Task<bool> IPermissionChecker.HasLocationPermissionAsync(
+        UserId userId, TenantId tenantId, LocationId locationId, string permission, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedPermissions.Contains(permission));
 
     Task IApiCredentialUsage.RecordUseAsync(CredentialId credentialId, DateTimeOffset nowUtc, DateTimeOffset notSinceUtc, CancellationToken cancellationToken)
     {

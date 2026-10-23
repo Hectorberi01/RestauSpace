@@ -2,7 +2,7 @@
 import {useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent} from 'react';
 import {useRouter} from 'next/navigation';
 import {ClipboardList, CornerDownLeft, Loader2, Search, UserRound, UtensilsCrossed, type LucideIcon} from 'lucide-react';
-import {api, type Page} from '@/lib/api';
+import {all} from '@/lib/api';
 import {money} from '@/lib/format';
 import {searchCustomers, searchQuery} from '@/lib/customers';
 import type {ProductSummary} from '@/lib/types';
@@ -71,8 +71,9 @@ export function GlobalSearch({pages}: {pages: SearchPage[]}) {
 
   useEffect(() => {
     if (!open || products) return;
-    api<Page<ProductSummary>>('/catalog/products', {query: {page: 1, pageSize: 200}})
-      .then(page => setProducts(page.items.filter(product => product.status !== 'Archived')))
+    // Pages de 100 (maximum accepté par l'API), 500 produits au plus.
+    all<ProductSummary>('/catalog/products', {}, 500)
+      .then(items => setProducts(items.filter(product => product.status !== 'Archived')))
       .catch(() => setProducts([]));
   }, [open, products]);
 

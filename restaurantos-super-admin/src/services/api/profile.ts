@@ -151,6 +151,20 @@ export function activityLabel(action: string): string {
   return `${modules[module] ?? module} : ${verb}`;
 }
 
+/** Libellés des types de cible du journal d'audit (AuditBridges.cs). */
+const targets: Record<string, string> = {
+  tenant: 'Restaurant', user: 'Compte', session: 'Session', subscription: 'Abonnement', subscription_checkout: 'Paiement en ligne',
+  plan: 'Plan', staff_member: 'Membre du personnel', role: 'Rôle', payment: 'Paiement', refund: 'Remboursement',
+  payment_configuration: 'Configuration de paiement', payment_provider: 'Prestataire de paiement',
+  notification: 'Notification', notification_configuration: 'Configuration de notification', notification_provider: 'Prestataire de notification',
+  customer: 'Client', consent: 'Consentement', feedback: 'Avis', survey: 'Enquête', stored_value_card: 'Carte cadeau',
+  api_credential: 'Clé d’API', webhook_endpoint: 'Webhook', inventory_item: 'Article de stock', export_job: 'Export',
+};
+
+export function targetLabel(targetType: string): string {
+  return targets[targetType] ?? targetType;
+}
+
 /** +22997001122 -> +229 97 00 11 22 ; +33612345678 -> +33 6 12 34 56 78. */
 export function formatPhone(phone: string): string {
   const match = /^\+(33|32|41|1|\d{3})(\d+)$/.exec(phone);

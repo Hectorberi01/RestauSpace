@@ -69,7 +69,7 @@ export function CustomerPickerDialog({open, initial, success, onClose, onPick}: 
           }, 'Fiche client créée.');
         }}>
           <Field label="Nom"><Input required maxLength={150} autoComplete="off" value={form.name} onChange={event => setForm(value => ({...value, name: event.target.value}))} /></Field>
-          <Field label="Téléphone" hint="Format international."><Input type="tel" autoComplete="off" value={form.phone} placeholder="+229 97 00 00 00" onChange={event => setForm(value => ({...value, phone: event.target.value}))} /></Field>
+          <Field label="Téléphone" hint="Format international."><Input type="tel" autoComplete="off" value={form.phone} placeholder="+229 01 97 00 00 00" onChange={event => setForm(value => ({...value, phone: event.target.value}))} /></Field>
           <Field label="Email"><Input type="email" autoComplete="off" value={form.email} onChange={event => setForm(value => ({...value, email: event.target.value}))} /></Field>
           <p className="text-xs text-ink-500">Tags, préférences et consentements se complètent ensuite sur la fiche.</p>
         </form>

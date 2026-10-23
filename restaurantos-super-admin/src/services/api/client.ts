@@ -1,3 +1,5 @@
+import {errorMessages} from './error-messages';
+
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5080').replace(/\/+$/, '');
 
 export interface Session {
@@ -121,6 +123,17 @@ function url(path: string, query?: Query) {
   return target.toString();
 }
 
+/** 401 dû au jeton (sans code ou jeton invalide) : seul cas où l'on renouvelle la session. */
+async function expiredToken(response: Response): Promise<boolean> {
+  try {
+    const body = await response.clone().json();
+    const code = typeof body?.code === 'string' ? body.code : undefined;
+    return !code || code === 'identity.auth.invalid_access_token';
+  } catch {
+    return true;
+  }
+}
+
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const send = async (session: Session | null) => {
     const headers: Record<string, string> = {Accept: 'application/json'};
@@ -135,7 +148,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   };
 
   let response = await send(options.anonymous ? null : await validSession());
-  if (response.status === 401 && !options.anonymous && read()) {
+  if (response.status === 401 && !options.anonymous && read() && await expiredToken(response)) {
     const renewed = await refresh();
     if (renewed) response = await send(renewed);
   }
@@ -196,6 +209,7 @@ export async function all<T>(path: string, query: Query = {}, limit = 1000): Pro
 }
 
 const messages: Record<string, string> = {
+  ...errorMessages,
   'identity.two_factor.unavailable': 'La validation en deux étapes n’est pas configurée sur le serveur (clé Identity:TwoFactor:SecretKey manquante).',
   'identity.two_factor.code_invalid': 'Code incorrect : vérifiez l’heure de votre téléphone et saisissez le code affiché.',
   'identity.two_factor.code_reused': 'Ce code a déjà servi : attendez le suivant.',
@@ -229,8 +243,14 @@ export function describe(error: unknown): string {
     if (error.code && messages[error.code]) return messages[error.code];
     if (error.status === 401) return 'Session expirée : reconnectez-vous.';
     if (error.status === 403) return 'Accès refusé : ce compte n’est pas administrateur de la plateforme.';
+    if (error.code?.endsWith('.concurrent_update')) return 'Cet élément a été modifié entre-temps : rechargez et réessayez.';
+    if (error.status === 429) return 'Trop de requêtes : patientez quelques secondes.';
+    if (error.status >= 500) return 'Erreur du serveur : réessayez dans un instant.';
+    // Refus sans traduction : message générique, avec le code pour le support.
+    if (error.code) return `Action refusée (${error.code}).`;
+    if (error.status === 400) return 'Requête invalide : vérifiez les champs saisis.';
     return error.message;
   }
-  if (error instanceof TypeError) return `API injoignable (${API_URL}). Vérifiez qu’elle est démarrée.`;
+  if (error instanceof TypeError) return 'Serveur injoignable : vérifiez votre connexion.';
   return error instanceof Error ? error.message : String(error);
 }

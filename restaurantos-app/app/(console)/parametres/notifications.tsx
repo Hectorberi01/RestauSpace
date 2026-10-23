@@ -50,7 +50,7 @@ function TestDialog({target, onClose}: {target: Target | null; onClose: () => vo
             Un court message de test est envoyé avec le compte enregistré. Il n’apparaît pas dans l’historique et ne compte pas dans votre quota.
           </p>
           <Field label={channel === 'Email' ? 'Adresse email du destinataire' : 'Numéro du destinataire'}
-            hint={channel === 'Email' ? undefined : 'Format international, par exemple +22997000000.'}>
+            hint={channel === 'Email' ? undefined : 'Format international, par exemple +2290197000000.'}>
             <Input type={channel === 'Email' ? 'email' : 'tel'} value={address} autoComplete={channel === 'Email' ? 'email' : 'tel'}
               placeholder={channel === 'Email' ? 'vous@exemple.com' : '+229…'} onChange={event => setAddress(event.target.value)} />
           </Field>

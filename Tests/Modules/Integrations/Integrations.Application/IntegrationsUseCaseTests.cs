@@ -274,6 +274,27 @@ public sealed class IntegrationsUseCaseTests
     }
 
     [Fact]
+    public async Task A_key_only_receives_scopes_its_author_holds()
+    {
+        _fixture.DeniedPermissions.Add("orders.manage");
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("POS", ["orders.view", "orders.manage"], null)));
+        var issued = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("POS", ["orders.view"], null));
+
+        // Une clé qui émet une clé ne transmet que ses propres scopes.
+        _fixture.Actor = ChangeActor.ForApiCredential(CredentialId.From(issued.CredentialId));
+        _fixture.DeniedPermissions.Clear();
+        var widened = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("Sub", ["catalog.view"], null)));
+        await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("Sub", ["orders.view"], null));
+
+        Assert.Equal(IntegrationsApplicationErrors.ScopeNotHeld, refused.Error);
+        Assert.Equal(IntegrationsApplicationErrors.ScopeNotHeld, widened.Error);
+        Assert.Equal(2, _fixture.Credentials.Count);
+    }
+
+    [Fact]
     public async Task A_revoked_expired_rotated_or_malformed_key_no_longer_authenticates()
     {
         var revoked = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("A", ["orders.view"], null));

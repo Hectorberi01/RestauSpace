@@ -27,7 +27,7 @@ const countries: {label: string; dial?: string}[] = [
 
 const errors: Record<string, string> = {
   'common.email.invalid': 'L’adresse email n’est pas valide.',
-  'common.phone.invalid': 'Le numéro de téléphone n’est pas valide : indiquez-le avec l’indicatif du pays, par exemple +229 97 00 00 00.',
+  'common.phone.invalid': 'Le numéro de téléphone n’est pas valide : indiquez-le avec l’indicatif du pays, par exemple +229 01 97 00 00 00.',
   'tenants.demo_request.contact_missing': 'Indiquez au moins un email ou un téléphone pour que nous puissions vous répondre.',
   'tenants.demo_request.contact_name_invalid': 'Indiquez votre nom (2 à 100 caractères).',
   'tenants.demo_request.restaurant_name_invalid': 'Indiquez le nom de votre restaurant (2 à 100 caractères).',

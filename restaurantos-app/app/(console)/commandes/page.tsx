@@ -3,7 +3,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {ClipboardList, Coins, MessageCircle, Plus, Receipt, ShoppingBag, Store, Timer, Truck} from 'lucide-react';
-import {all, api, ApiError, type Page} from '@/lib/api';
+import {all, api, ApiError, describe, type Page} from '@/lib/api';
 import {dateTime, elapsed, money, number, orderStatusLabel, orderStatusTone, orderTypeColor, orderTypeLabel, orderTypeTone, time} from '@/lib/format';
 import {ordersSince, startOfDay, summarize} from '@/lib/dashboard';
 import {useNow, useResource} from '@/lib/hooks';
@@ -271,7 +271,7 @@ function useNumberSearch(locationId: string | undefined, onSeveral: (number: str
       }
     }).catch(error => {
       if (!active) return;
-      toast('error', error instanceof ApiError ? error.message : `Aucune commande n° ${wanted}.`);
+      toast('error', error instanceof ApiError ? describe(error) : `Aucune commande n° ${wanted}.`);
       router.replace('/commandes');
     });
     return () => {

@@ -62,6 +62,18 @@ public interface IPromotionTenants
     Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Un établissement du tenant donné existe-t-il ? Fourni par l'hôte depuis Locations.</summary>
+public interface IPromotionLocations
+{
+    Task<bool> ExistsAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Un produit du tenant donné existe-t-il au catalogue ? Fourni par l'hôte depuis Catalog.</summary>
+public interface IPromotionProducts
+{
+    Task<bool> ExistsAsync(TenantId tenantId, ProductId productId, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Une ligne de commande : son produit et son total (prix × quantité, options comprises, dans le mode de prix de la commande).</summary>
 public sealed record PromotionOrderLine(ProductId ProductId, decimal LineTotal);
 

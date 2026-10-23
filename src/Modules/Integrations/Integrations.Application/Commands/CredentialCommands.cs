@@ -37,19 +37,53 @@ public sealed record IssuedApiKey(Guid CredentialId, string Key);
 /// <summary>Émet une clé d'API pour le restaurant du contexte, avec des scopes du catalogue de la plateforme.</summary>
 public sealed record IssueApiCredentialCommand(string? Name, IReadOnlyList<string>? Scopes, DateTimeOffset? ExpiresAtUtc) : ICommand<IssuedApiKey>;
 
-public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, IClock clock) : ICommandHandler<IssueApiCredentialCommand, IssuedApiKey>
+public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, IPermissionChecker permissions, IClock clock)
+    : ICommandHandler<IssueApiCredentialCommand, IssuedApiKey>
 {
     public async Task<IssuedApiKey> HandleAsync(IssueApiCredentialCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var scopes = (command.Scopes ?? Array.Empty<string>()).Select(ApiScope.Create).ToList();
+        await RequireHeldAsync(scopes, cancellationToken);
         var key = ApiKeys.NewKey();
         var credential = ApiCredential.Issue(
             workspace.CurrentTenant, command.Name, ApiKeys.Hash(key), scopes, workspace.Settings.ScopeCatalog(), command.ExpiresAtUtc, clock, workspace.Actor);
         workspace.Credentials.Add(credential);
         await workspace.SaveAsync(cancellationToken);
         return new IssuedApiKey(credential.Id.Value, key);
+    }
+
+    /// <summary>
+    /// Chaque scope doit être détenu par l'auteur : par son rôle (utilisateur), ou par la clé qui fait la demande. Sans
+    /// auteur identifié, refus.
+    /// </summary>
+    private async Task RequireHeldAsync(IReadOnlyList<ApiScope> scopes, CancellationToken cancellationToken)
+    {
+        var actor = workspace.Actor;
+        if (actor?.Kind == ChangeActorKind.ApiCredential && actor.Id is { } credentialId)
+        {
+            var author = await workspace.LoadCredentialAsync(credentialId, cancellationToken);
+            if (scopes.Any(scope => !author.HasScope(scope, clock.UtcNow)))
+            {
+                throw new ForbiddenException(IntegrationsApplicationErrors.ScopeNotHeld);
+            }
+
+            return;
+        }
+
+        if (actor?.Kind != ChangeActorKind.User || actor.Id is not { } userId)
+        {
+            throw new ForbiddenException(IntegrationsApplicationErrors.ScopeNotHeld);
+        }
+
+        foreach (var scope in scopes)
+        {
+            if (!await permissions.HasTenantPermissionAsync(UserId.From(userId), workspace.CurrentTenant, scope.Value, cancellationToken))
+            {
+                throw new ForbiddenException(IntegrationsApplicationErrors.ScopeNotHeld);
+            }
+        }
     }
 }
 

@@ -51,7 +51,7 @@ function CreateDialog({open, requirement, onClose}: {open: boolean; requirement:
         <Field label="Nom"><Input required maxLength={150} autoComplete="off" value={form.name} onChange={set('name')} placeholder="Awa Houngbédji" /></Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Email"><Input type="email" autoComplete="off" value={form.email} onChange={set('email')} placeholder="client@exemple.com" /></Field>
-          <Field label="Téléphone" hint="Format international."><Input type="tel" autoComplete="off" value={form.phone} onChange={set('phone')} placeholder="+229 97 00 00 00" /></Field>
+          <Field label="Téléphone" hint="Format international."><Input type="tel" autoComplete="off" value={form.phone} onChange={set('phone')} placeholder="+229 01 97 00 00 00" /></Field>
         </div>
         {requirement && requirement !== 'None' && <p className={cx('text-xs', missing ? 'text-amber-700' : 'text-ink-500')}>Exigé par votre réglage : {requirementLabel[requirement].toLowerCase()}.</p>}
         <Field label="Tags (facultatif)" hint="Séparés par des virgules : VIP, Allergie arachide, Entreprise…">

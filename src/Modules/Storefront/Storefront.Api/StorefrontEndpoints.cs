@@ -141,6 +141,28 @@ public static class StorefrontEndpoints
         return (MapConsole(routes), MapClient(routes), MapAdmin(routes));
     }
 
+    // Routes dont le segment suivant est le jeton d'un client invité (commande, reçu, réservation, liste d'attente).
+    private static readonly string[] GuestTokenPrefixes =
+        ["/v1/storefront/orders/", "/v1/storefront/receipts/", "/v1/storefront/reservations/", "/v1/storefront/waitlist/"];
+
+    /// <summary>Le chemin d'une route à jeton client, jeton remplacé (pour les traces) ; null pour toute autre requête.</summary>
+    public static string? MaskGuestTokenPath(PathString path)
+    {
+        var value = path.Value ?? string.Empty;
+        foreach (var prefix in GuestTokenPrefixes)
+        {
+            var start = value.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+            if (start >= 0)
+            {
+                var tokenStart = start + prefix.Length;
+                var tokenEnd = value.IndexOf('/', tokenStart);
+                return value[..tokenStart] + "{token}" + (tokenEnd < 0 ? string.Empty : value[tokenEnd..]);
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// <c>/admin/online-sales</c> : la vente en ligne de tous les restaurants, pour le back-office de la plateforme
     /// (politique d'administration chaînée par l'hôte). Lecture seule : des comptages, sans clé, jeton ni donnée client.

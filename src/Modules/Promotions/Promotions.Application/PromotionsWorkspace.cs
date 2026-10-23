@@ -14,7 +14,9 @@ public sealed class PromotionsWorkspace(
     IPromotionRepository promotions,
     ICouponRepository coupons,
     IPromotionUsageLedger ledger,
-    IPromotionsUnitOfWork unitOfWork)
+    IPromotionsUnitOfWork unitOfWork,
+    IPromotionLocations locations,
+    IPromotionProducts products)
 {
     public const int MaxTake = 100;
 
@@ -52,6 +54,27 @@ public sealed class PromotionsWorkspace(
         await RequireWritableTenantAsync(cancellationToken);
         change(await LoadPromotionAsync(id, cancellationToken));
         await SaveAsync(cancellationToken);
+    }
+
+    /// <summary>Les établissements et produits ciblés par les règles appartiennent au tenant courant (404 sinon).</summary>
+    public async Task RequireOwnTargetsAsync(PromotionRules rules, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        foreach (var locationId in rules.Conditions.LocationIds)
+        {
+            if (!await locations.ExistsAsync(CurrentTenant, locationId, cancellationToken))
+            {
+                throw new NotFoundException(PromotionsApplicationErrors.LocationNotFound);
+            }
+        }
+
+        foreach (var productId in rules.Conditions.ProductIds)
+        {
+            if (!await products.ExistsAsync(CurrentTenant, productId, cancellationToken))
+            {
+                throw new NotFoundException(PromotionsApplicationErrors.ProductNotFound);
+            }
+        }
     }
 
     public Task SaveAsync(CancellationToken cancellationToken) => unitOfWork.SaveChangesAsync(cancellationToken);

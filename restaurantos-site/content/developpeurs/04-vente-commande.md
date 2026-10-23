@@ -111,7 +111,7 @@ est connecté.
   "mode": "Delivery",
   "lines": [{"productId": "0199…", "quantity": 2, "variantId": null, "modifierIds": ["0199…"], "note": null}],
   "payment": "Online",
-  "customer": {"name": "Afi", "email": null, "phone": "+22997000000", "marketingConsent": false, "language": "fr"},
+  "customer": {"name": "Afi", "email": null, "phone": "+2290197000000", "marketingConsent": false, "language": "fr"},
   "scheduledForUtc": null,
   "expectedTotal": 8740,
   "couponCode": "BIENVENUE",
@@ -183,7 +183,7 @@ curl -s -X POST {{API_URL}}/v1/storefront/orders \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{"locationId":"'$LOCATION'","mode":"Takeaway","payment":"Counter","expectedTotal":8000,
        "lines":[{"productId":"'$PRODUCT'","quantity":2}],
-       "customer":{"name":"Afi","phone":"+22997000000","language":"fr"}}'
+       "customer":{"name":"Afi","phone":"+2290197000000","language":"fr"}}'
 ```
 
 ```ts
@@ -200,7 +200,7 @@ export async function placeOrder(cart: CartLine[], locationId: string, expectedT
     },
     body: JSON.stringify({
       locationId, mode: 'Takeaway', payment: 'Counter', lines: cart, expectedTotal,
-      customer: {name: 'Afi', phone: '+22997000000', email: null, marketingConsent: false, language: 'fr'},
+      customer: {name: 'Afi', phone: '+2290197000000', email: null, marketingConsent: false, language: 'fr'},
     }),
   });
   if (!response.ok) {
@@ -225,7 +225,7 @@ Future<Map<String, dynamic>> placeOrder(List<Map<String, dynamic>> lines, String
     },
     body: jsonEncode({
       'locationId': locationId, 'mode': 'Takeaway', 'payment': 'Counter', 'lines': lines, 'expectedTotal': expectedTotal,
-      'customer': {'name': 'Afi', 'phone': '+22997000000', 'email': null, 'marketingConsent': false, 'language': 'fr'},
+      'customer': {'name': 'Afi', 'phone': '+2290197000000', 'email': null, 'marketingConsent': false, 'language': 'fr'},
     }),
   );
   final body = response.body.isEmpty ? null : jsonDecode(utf8.decode(response.bodyBytes));
@@ -247,7 +247,7 @@ func placeOrder(lines: [[String: Any]], locationId: String, expectedTotal: Decim
     request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key") // UUID().uuidString, gardé pour les nouveaux essais
     request.httpBody = try JSONSerialization.data(withJSONObject: [
         "locationId": locationId, "mode": "Takeaway", "payment": "Counter", "lines": lines, "expectedTotal": expectedTotal,
-        "customer": ["name": "Afi", "phone": "+22997000000", "marketingConsent": false, "language": "fr"],
+        "customer": ["name": "Afi", "phone": "+2290197000000", "marketingConsent": false, "language": "fr"],
     ])
     let (data, response) = try await URLSession.shared.data(for: request)
     guard (response as? HTTPURLResponse)?.statusCode == 201 else {
@@ -265,7 +265,7 @@ fun placeOrder(lines: JSONArray, locationId: String, expectedTotal: BigDecimal, 
     val body = JSONObject()
         .put("locationId", locationId).put("mode", "Takeaway").put("payment", "Counter")
         .put("lines", lines).put("expectedTotal", expectedTotal)
-        .put("customer", JSONObject().put("name", "Afi").put("phone", "+22997000000").put("marketingConsent", false).put("language", "fr"))
+        .put("customer", JSONObject().put("name", "Afi").put("phone", "+2290197000000").put("marketingConsent", false).put("language", "fr"))
     val request = Request.Builder()
         .url("{{API_URL}}/v1/storefront/orders")
         .header("X-Storefront-Key", BuildConfig.STOREFRONT_KEY)

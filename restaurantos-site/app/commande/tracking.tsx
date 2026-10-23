@@ -48,6 +48,7 @@ export function Tracking() {
   const pushedToPhone = params.has('telephone');
   const [order, setOrder] = useState<GuestOrder | null>(null);
   const [accent, setAccent] = useState('#5b3df5');
+  const [locations, setLocations] = useState<Storefront['locations']>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -66,7 +67,11 @@ export function Tracking() {
     if (!token) return;
     const controller = new AbortController();
     void load(controller.signal);
-    storefront<Storefront>('/', {signal: controller.signal}).then(front => front && setAccent(accentOf(front.restaurant.primaryColor))).catch(() => {});
+    storefront<Storefront>('/', {signal: controller.signal}).then(front => {
+      if (!front) return;
+      setAccent(accentOf(front.restaurant.primaryColor));
+      setLocations(front.locations);
+    }).catch(() => {});
     return () => controller.abort();
   }, [token, load]);
 
@@ -128,6 +133,8 @@ export function Tracking() {
 
   const cancelled = order.status === 'Cancelled';
   const reached = steps.findIndex(step => step.status === order.status);
+  // Heures dans le fuseau de l'établissement (navigateur tant que la vitrine n'est pas chargée).
+  const zone = locations.find(item => item.id === order.locationId)?.timeZoneId;
   const waitingPayment = order.paymentState === 'AwaitingPayment' || order.paymentState === 'Processing';
 
   return (
@@ -141,8 +148,8 @@ export function Tracking() {
           {order.estimatedReadyAtUtc && !cancelled && (
             <p className="mt-3 flex items-center gap-2 text-sm text-ink-600"><Clock className="size-4" aria-hidden="true" />
               {order.delivery
-                ? `${order.scheduledForUtc ? tr('Livraison prévue') : tr('Livraison estimée')} vers ${clock(order.estimatedReadyAtUtc)}`
-                : order.scheduledForUtc ? tr('Prévue pour {p0}', {p0: clock(order.scheduledForUtc)}) : tr('Prête vers {p0}', {p0: clock(order.estimatedReadyAtUtc)})}
+                ? `${order.scheduledForUtc ? tr('Livraison prévue') : tr('Livraison estimée')} vers ${clock(order.estimatedReadyAtUtc, zone)}`
+                : order.scheduledForUtc ? tr('Prévue pour {p0}', {p0: clock(order.scheduledForUtc, zone)}) : tr('Prête vers {p0}', {p0: clock(order.estimatedReadyAtUtc, zone)})}
             </p>
           )}
           {order.delivery && !cancelled && (
@@ -168,7 +175,7 @@ export function Tracking() {
 
         <div className="mt-4 space-y-3">
           {order.status === 'Received' && order.acceptBeforeUtc && !waitingPayment && (
-            <Notice>{tr('Le restaurant confirme votre commande d’ici')} {clock(order.acceptBeforeUtc)}.</Notice>
+            <Notice>{tr('Le restaurant confirme votre commande d’ici')} {clock(order.acceptBeforeUtc, zone)}.</Notice>
           )}
           {order.paymentState === 'Processing' && (
             <Notice>{pushedToPhone ? <span className="flex items-center gap-2"><Smartphone className="size-4" />{tr('Confirmez le paiement sur votre téléphone.')}</span> : tr('Paiement en cours de confirmation…')}</Notice>
@@ -182,7 +189,7 @@ export function Tracking() {
           {order.canPay && (
             <div className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="font-semibold">{tr('Payer')} {money(order.total, order.currencyCode)}</h2>
-              {order.payBeforeUtc && <p className="mt-1 text-sm text-ink-500">{tr('Sans paiement avant')} {clock(order.payBeforeUtc)}{tr(', la commande est annulée.')}</p>}
+              {order.payBeforeUtc && <p className="mt-1 text-sm text-ink-500">{tr('Sans paiement avant')} {clock(order.payBeforeUtc, zone)}{tr(', la commande est annulée.')}</p>}
               <div className="mt-3 space-y-2">
                 {order.paymentOptions.flatMap(option => option.methods.map(method => (
                   <AccentButton key={`${option.provider}-${method}`} className="w-full" busy={busy === `${option.provider}-${method}`} disabled={!!busy}

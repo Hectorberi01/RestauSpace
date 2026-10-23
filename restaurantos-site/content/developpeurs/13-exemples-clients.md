@@ -368,7 +368,7 @@ let quote: CartQuote = try await storefront.call("/cart/quote", method: "POST", 
 let placed: PlacedOrder = try await storefront.call(
     "/orders", method: "POST",
     body: PlaceOrder(locationId: locationId, mode: "Takeaway", lines: cart, payment: "Counter", expectedTotal: quote.total,
-                     customer: Customer(name: "Afi", phone: "+22997000000", email: nil)),
+                     customer: Customer(name: "Afi", phone: "+2290197000000", email: nil)),
     idempotencyKey: orderAttemptKey) // UUID().uuidString, créé au clic sur « Commander »
 ```
 
@@ -464,7 +464,7 @@ val placed = storefront.placeOrder(
     JSONObject()
         .put("locationId", location.getString("id")).put("mode", "Takeaway").put("lines", cart)
         .put("payment", "Counter").put("expectedTotal", quote.get("total"))
-        .put("customer", JSONObject().put("name", "Afi").put("phone", "+22997000000").put("language", "fr")),
+        .put("customer", JSONObject().put("name", "Afi").put("phone", "+2290197000000").put("language", "fr")),
     orderAttemptKey, // UUID.randomUUID().toString(), créé au clic sur « Commander »
 )
 securePrefs.edit().putString("order:${placed.getString("orderId")}", placed.getString("trackingToken")).apply()

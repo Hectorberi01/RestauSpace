@@ -13,6 +13,8 @@ public static class PromotionsApplicationErrors
     public static readonly DomainError PromotionNotFound = new("promotions.promotion.not_found", "The promotion does not exist.");
     public static readonly DomainError CouponNotFound = new("promotions.coupon.not_found", "The coupon does not exist.");
     public static readonly DomainError OrderNotFound = new("promotions.order.not_found", "The order does not exist.");
+    public static readonly DomainError LocationNotFound = new("promotions.location.not_found", "The location does not exist.");
+    public static readonly DomainError ProductNotFound = new("promotions.product.not_found", "The product does not exist.");
 
     public static readonly DomainError OrderNotEditable = new("promotions.order.not_editable", "The order no longer accepts a discount.");
     public static readonly DomainError TargetRequired =

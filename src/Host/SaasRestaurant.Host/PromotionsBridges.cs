@@ -1,3 +1,5 @@
+using Catalog.Application.Queries;
+using Locations.Application.Queries;
 using Orders.Application.Commands;
 using Orders.Application.Queries;
 using Orders.Domain;
@@ -16,6 +18,52 @@ internal sealed class PromotionTenantsFromTenants(CachedTenants tenants) : IProm
 {
     public Task<bool> AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         tenants.AcceptsBusinessWritesAsync(tenantId, cancellationToken);
+}
+
+/// <summary>Promotions -> Locations : un établissement ciblé par une promotion est-il du tenant du contexte ?</summary>
+internal sealed class PromotionLocationsFromLocations(
+    ITenantContext tenantContext, IQueryHandler<GetLocationByIdQuery, LocationDto> locations) : IPromotionLocations
+{
+    public async Task<bool> ExistsAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default)
+    {
+        if (tenantContext.CurrentTenantId != tenantId)
+        {
+            return false;
+        }
+
+        try
+        {
+            await locations.HandleAsync(new GetLocationByIdQuery(locationId.Value), cancellationToken);
+            return true;
+        }
+        catch (NotFoundException)
+        {
+            return false;
+        }
+    }
+}
+
+/// <summary>Promotions -> Catalog : un produit ciblé par une promotion est-il du tenant du contexte ?</summary>
+internal sealed class PromotionProductsFromCatalog(
+    ITenantContext tenantContext, IQueryHandler<GetProductByIdQuery, ProductDto> products) : IPromotionProducts
+{
+    public async Task<bool> ExistsAsync(TenantId tenantId, ProductId productId, CancellationToken cancellationToken = default)
+    {
+        if (tenantContext.CurrentTenantId != tenantId)
+        {
+            return false;
+        }
+
+        try
+        {
+            await products.HandleAsync(new GetProductByIdQuery(productId.Value), cancellationToken);
+            return true;
+        }
+        catch (NotFoundException)
+        {
+            return false;
+        }
+    }
 }
 
 /// <summary>
