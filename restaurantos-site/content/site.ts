@@ -33,7 +33,7 @@ export const site = {
     registration: 'RCCM Cotonou RB/ABC/26 A 142835',
     address: 'Godomey (Yénandjro), Abomey-Calavi, Atlantique, Bénin',
     publisher: 'Hector Adjakpa',
-    host: '',
+    host: 'OVH SAS, 2 rue Kellermann, 59100 Roubaix, France. Photos : Cloudflare, Inc. (R2), 101 Townsend Street, San Francisco, CA 94107, États-Unis',
   },
 };
 
