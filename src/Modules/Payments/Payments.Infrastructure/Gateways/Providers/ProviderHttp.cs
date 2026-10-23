@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using Payments.Application.Abstractions;
 using Payments.Domain;
 
@@ -14,10 +15,10 @@ namespace Payments.Infrastructure.Gateways.Providers;
 /// de corps envoyé : seulement le prestataire, l'opération et le statut HTTP (ou le code d'erreur renvoyé). 4xx : refus
 /// définitif (sauf 408, 409 et 429) ; 5xx, délai dépassé ou réseau : passager.
 /// </summary>
-internal sealed class ProviderHttp(HttpClient client)
+internal sealed class ProviderHttp(HttpClient client, ILogger? logger = null)
 {
-    public static ProviderHttp Create() =>
-        new(new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) }) { Timeout = TimeSpan.FromSeconds(30) });
+    public static ProviderHttp Create(ILogger? logger = null) =>
+        new(new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) }) { Timeout = TimeSpan.FromSeconds(30) }, logger);
 
     /// <summary>Envoie la requête et renvoie le corps JSON (vide : objet vide).</summary>
     public async Task<JsonNode> SendAsync(string provider, string operation, HttpRequestMessage request, CancellationToken cancellationToken)
@@ -30,10 +31,12 @@ internal sealed class ProviderHttp(HttpClient client)
         }
         catch (HttpRequestException)
         {
+            logger?.LogWarning("{Provider} {Operation}: provider unreachable.", provider, operation);
             throw new PaymentGatewayException($"{provider} {operation}: provider unreachable.");
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            logger?.LogWarning("{Provider} {Operation}: provider timed out.", provider, operation);
             throw new PaymentGatewayException($"{provider} {operation}: provider timed out.");
         }
 
@@ -45,6 +48,8 @@ internal sealed class ProviderHttp(HttpClient client)
             {
                 var permanent = status is >= 400 and < 500 and not (408 or 409 or 429);
                 var code = ErrorCode(text);
+                // Statut et code d'erreur seulement : jamais le corps ni les identifiants.
+                logger?.LogWarning("{Provider} {Operation}: HTTP {Status} {ErrorCode}.", provider, operation, status, code ?? "-");
                 throw new PaymentGatewayException(
                     $"{provider} {operation}: HTTP {status.ToString(CultureInfo.InvariantCulture)}{(code is null ? string.Empty : $" ({code})")}.", permanent)
                 {

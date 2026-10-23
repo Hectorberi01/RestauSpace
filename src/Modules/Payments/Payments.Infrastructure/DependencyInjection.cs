@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Payments.Application;
 using Payments.Application.Abstractions;
 using Payments.Domain;
@@ -56,7 +57,7 @@ public static class DependencyInjection
 
         // Intégrations des prestataires en ligne présentes dans le code : une par prestataire.
         services.AddSingleton<IPaymentIntegrations, PaymentIntegrations>();
-        services.TryAddSingleton(_ => ProviderHttp.Create());
+        services.TryAddSingleton(provider => ProviderHttp.Create(provider.GetService<ILoggerFactory>()?.CreateLogger("Payments.Providers")));
         services.AddSingleton<IPaymentIntegration, FedaPayIntegration>();
         services.AddSingleton<IPaymentIntegration, KkiaPayIntegration>();
         services.AddSingleton<IPaymentIntegration, CinetPayIntegration>();
