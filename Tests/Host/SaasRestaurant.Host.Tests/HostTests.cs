@@ -187,6 +187,20 @@ public sealed class HostTests(HostFixture host) : IClassFixture<HostFixture>
     }
 
     [Fact]
+    public async Task By_default_the_back_office_requires_two_factor_authentication()
+    {
+        using var strict = host.WithWebHostBuilder(
+            builder => builder.UseSetting("Authorization:PlatformAdminRequireTwoFactor", "true"));
+        var admin = await host.SignedInAsync(HostFixture.AdminEmail);
+        var client = strict.CreateClient();
+        client.DefaultRequestHeaders.Authorization = admin.DefaultRequestHeaders.Authorization;
+
+        // Administrateur déclaré, mais sans validation en deux étapes : refusé.
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/v1/admin/tenants/{Guid.CreateVersion7()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/v1/me")).StatusCode);
+    }
+
+    [Fact]
     public async Task A_disabled_admin_loses_the_back_office_at_once()
     {
         var admin = await host.SignedInAsync(HostFixture.AdminEmail);

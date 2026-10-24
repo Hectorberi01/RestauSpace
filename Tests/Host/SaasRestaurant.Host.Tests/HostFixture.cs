@@ -44,6 +44,8 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Identity:RateLimiting:Auth:PermitLimit", "1000000");
         builder.UseSetting("Authorization:PlatformAdminEmails:0", AdminEmail.ToUpperInvariant());
         builder.UseSetting("Authorization:PlatformAdminEmails:1", UnclaimedAdminEmail);
+        // Ces tests ne passent pas par la validation en deux étapes ; son exigence a son propre test.
+        builder.UseSetting("Authorization:PlatformAdminRequireTwoFactor", "false");
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IIdentityNotifier>(this);

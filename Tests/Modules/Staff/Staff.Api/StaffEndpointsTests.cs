@@ -78,14 +78,15 @@ public sealed class StaffEndpointsTests(StaffApi api) : IClassFixture<StaffApi>
     }
 
     [Fact]
-    public async Task The_last_owner_cannot_leave()
+    public async Task An_owner_cannot_remove_themselves()
     {
         var (_, owner, ownerMemberId) = await GivenOnboardedTenantAsync();
 
+        // Personne ne change son propre statut ; la règle du dernier propriétaire est testée côté Application.
         await AssertProblemAsync(
             await owner.DeleteAsync($"/staff/members/{ownerMemberId}"),
-            HttpStatusCode.UnprocessableEntity,
-            "staff.staff_member.last_owner");
+            HttpStatusCode.Forbidden,
+            "staff.staff_member.cannot_change_own_role");
     }
 
     [Fact]
