@@ -50,7 +50,9 @@ public sealed class BillingApi : IAsyncLifetime, IBillingTenants, IPermissionChe
         builder.Services.AddRequestTenantContext();
         builder.Services.AddSingleton<IClock>(Clock);
         builder.Services.AddSingleton<IBillingTenants>(this);
-        builder.Services.AddBillingModule(_container.GetConnectionString(), options => options.RunWorkers = false);
+        // Essai de 14 jours : les scénarios avancent l'horloge sur cette base.
+        builder.Services.AddBillingModule(
+            _container.GetConnectionString(), options => options.RunWorkers = false, settings => settings.TrialLength = TimeSpan.FromDays(14));
         builder.Services.AddAuthentication(TestToken.NameScheme)
             .AddScheme<AuthenticationSchemeOptions, TestToken>(TestToken.NameScheme, _ => { });
         builder.Services.AddAuthorizationBuilder()

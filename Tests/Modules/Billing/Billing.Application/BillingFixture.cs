@@ -47,7 +47,8 @@ public sealed class BillingFixture
 
     public List<TenantAddOn> AddOns { get; } = [];
 
-    public BillingSettings Settings { get; } = new();
+    // Essai de 14 jours : les scénarios avancent l'horloge sur cette base (le défaut de production est d'un mois).
+    public BillingSettings Settings { get; } = new() { TrialLength = TimeSpan.FromDays(14) };
 
     public FakeClock Clock { get; } = new();
 
