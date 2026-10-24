@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IUserEmailUniquenessChecker, UserEmailUniquenessChecker>();
         services.AddScoped<IUserTokens, UserTokens>();
         services.AddScoped<IPasswordAttempts, PasswordAttempts>();
+        services.AddScoped<ITwoFactorAttempts, TwoFactorAttempts>();
         services.AddScoped<ISessionStatus, SessionStatus>();
         services.AddScoped<PasswordVerifier>();
         services.AddScoped<TwoFactorVerifier>();

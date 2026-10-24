@@ -416,9 +416,10 @@ internal sealed class StorefrontOrdersFromOrders(
 }
 
 /// <summary>
-/// Storefront -> Customers : la fiche du client invité, retrouvée par e-mail puis par téléphone (valeurs normalisées par
-/// Customers), sinon créée selon la règle de contact du restaurant. Le consentement marketing, s'il est donné, est
-/// enregistré pour chaque moyen de contact fourni (source « online-ordering »). Fail-closed sur le tenant.
+/// Storefront -> Customers : la fiche du client du site, choisie par <see cref="Storefront.Application.Customers.CustomerContactMatch"/>
+/// (jamais une fiche qui porte un contact non donné), sinon créée selon la règle de contact du restaurant. Une fiche
+/// existante n'est jamais modifiée ; le consentement marketing n'est enregistré que sur une fiche créée ici, pour chaque
+/// moyen de contact fourni (source « online-ordering »). Fail-closed sur le tenant.
 /// </summary>
 internal sealed class StorefrontCustomersFromCustomers(
     ITenantContext tenantContext,
@@ -439,11 +440,14 @@ internal sealed class StorefrontCustomersFromCustomers(
 
         var email = string.IsNullOrWhiteSpace(customer.Email) ? null : customer.Email;
         var phone = string.IsNullOrWhiteSpace(customer.Phone) ? null : customer.Phone;
-        var existing = (email is null ? null : (await search.HandleAsync(new SearchCustomersQuery(Email: email, Take: 1), cancellationToken)).FirstOrDefault())
-            ?? (phone is null ? null : (await search.HandleAsync(new SearchCustomersQuery(Phone: phone, Take: 1), cancellationToken)).FirstOrDefault());
+        if (await MatchAsync(email, phone, cancellationToken) is { } existing)
+        {
+            return existing;
+        }
+
         // Langue du site retenue pour une nouvelle fiche seulement, et seulement si elle est l'une des langues du produit.
         var language = customer.Language?.Trim().ToLowerInvariant() is { } asked && Customers.Domain.CustomerPreference.SupportedLanguages.Contains(asked) ? asked : null;
-        var id = existing?.Id ?? await create.HandleAsync(
+        var id = await create.HandleAsync(
             new CreateCustomerCommand(customer.Name, email, phone, Preferences: language is null ? null : new PreferencesInput(language)), cancellationToken);
 
         if (customer.MarketingConsent)
@@ -471,10 +475,22 @@ internal sealed class StorefrontCustomersFromCustomers(
             return null;
         }
 
-        var found = (string.IsNullOrWhiteSpace(email) ? null : (await search.HandleAsync(new SearchCustomersQuery(Email: email, Take: 1), cancellationToken)).FirstOrDefault())
-            ?? (string.IsNullOrWhiteSpace(phone) ? null : (await search.HandleAsync(new SearchCustomersQuery(Phone: phone, Take: 1), cancellationToken)).FirstOrDefault());
-        return found is { IsAnonymized: false } ? CustomerId.From(found.Id) : null;
+        var found = await MatchAsync(
+            string.IsNullOrWhiteSpace(email) ? null : email, string.IsNullOrWhiteSpace(phone) ? null : phone, cancellationToken);
+        return found is { } id ? CustomerId.From(id) : null;
     }
+
+    private async Task<Guid?> MatchAsync(string? email, string? phone, CancellationToken cancellationToken) =>
+        Storefront.Application.Customers.CustomerContactMatch.Pick(
+            email is null ? [] : await CandidatesAsync(new SearchCustomersQuery(Email: email, Take: SearchCustomersHandler.MaxTake), cancellationToken),
+            phone is null ? [] : await CandidatesAsync(new SearchCustomersQuery(Phone: phone, Take: SearchCustomersHandler.MaxTake), cancellationToken));
+
+    private async Task<IReadOnlyList<Storefront.Application.Customers.CustomerContactCandidate>> CandidatesAsync(
+        SearchCustomersQuery query, CancellationToken cancellationToken) =>
+        (await search.HandleAsync(query, cancellationToken))
+            .Where(found => !found.IsAnonymized)
+            .Select(found => new Storefront.Application.Customers.CustomerContactCandidate(found.Id, found.Email is not null, found.Phone is not null))
+            .ToList();
 
     public async Task<CustomerProfile?> ProfileAsync(TenantId tenantId, CustomerId customerId, CancellationToken cancellationToken = default)
     {

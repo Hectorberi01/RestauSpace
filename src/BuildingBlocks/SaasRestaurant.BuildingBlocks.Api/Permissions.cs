@@ -118,33 +118,13 @@ internal sealed class PermissionAuthorizationHandler(IServiceProvider services) 
             return;
         }
 
-        var http = context.Resource as HttpContext;
-        var aborted = http?.RequestAborted ?? CancellationToken.None;
-        var allowed = LocationOf(http) is { } locationId
-            ? await checker.HasLocationPermissionAsync(
-                UserId.From(userId), TenantId.From(tenantId), LocationId.From(locationId), requirement.Permission, aborted)
-            : await checker.HasTenantPermissionAsync(UserId.From(userId), TenantId.From(tenantId), requirement.Permission, aborted);
-        if (allowed)
+        // Rôle de restaurant seul : un locationId fourni par la requête ne doit jamais choisir le rôle évalué.
+        var aborted = (context.Resource as HttpContext)?.RequestAborted ?? CancellationToken.None;
+        if (await checker.HasTenantPermissionAsync(UserId.From(userId), TenantId.From(tenantId), requirement.Permission, aborted))
         {
             context.Succeed(requirement);
         }
     }
-
-    /// <summary>L'établissement visé par la requête : <c>locationId</c> de la route, sinon de la query.</summary>
-    internal static Guid? LocationOf(HttpContext? http)
-    {
-        if (http is null)
-        {
-            return null;
-        }
-
-        var raw = http.Request.RouteValues.TryGetValue(LocationKey, out var routeValue) && routeValue is not null
-            ? routeValue.ToString()
-            : http.Request.Query[LocationKey].FirstOrDefault();
-        return Guid.TryParse(raw, out var id) && id != Guid.Empty ? id : null;
-    }
-
-    private const string LocationKey = "locationId";
 }
 
 /// <summary>Métadonnée de <see cref="ApiKeyClaims.AllowApiKeyRead{TBuilder}"/> : les scopes qui ouvrent la lecture d'une route.</summary>

@@ -291,14 +291,18 @@ public sealed record GuestCustomer(string? Name, string? Email, string? Phone, b
 }
 
 /// <summary>
-/// Les clients, fournis par l'hôte depuis Customers : la fiche retrouvée par e-mail ou téléphone dans le restaurant, ou
-/// créée selon sa règle de contact ; le consentement marketing est enregistré s'il est donné. Fail-closed sur le tenant.
+/// Les clients, fournis par l'hôte depuis Customers. Fiche choisie selon <see cref="Customers.CustomerContactMatch"/> :
+/// jamais une fiche qui porte un contact non donné. Fail-closed sur le tenant.
 /// </summary>
 public interface IStorefrontCustomers
 {
+    /// <summary>
+    /// Une fiche existante dont tous les contacts sont parmi ceux donnés (inchangée, sans consentement), sinon une fiche
+    /// créée avec les contacts donnés ; le consentement marketing n'est enregistré que sur une fiche créée ici.
+    /// </summary>
     Task<Guid> FindOrCreateAsync(TenantId tenantId, GuestCustomer customer, CancellationToken cancellationToken = default);
 
-    /// <summary>La fiche active qui porte cet e-mail ou ce téléphone (normalisés par Customers) ; null sinon.</summary>
+    /// <summary>La fiche active dont le SEUL contact est cet e-mail ou ce téléphone (normalisés par Customers) ; null sinon.</summary>
     Task<CustomerId?> FindByContactAsync(TenantId tenantId, string? email, string? phone, CancellationToken cancellationToken = default);
 
     /// <summary>Nom et coordonnées d'une fiche active ; null si elle n'existe pas ou est anonymisée.</summary>

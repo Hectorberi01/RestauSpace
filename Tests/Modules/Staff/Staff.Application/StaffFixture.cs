@@ -11,7 +11,7 @@ namespace Staff.Application;
 /// </summary>
 public sealed class StaffFixture :
     IStaffMemberRepository, IRoleRepository, IStaffUnitOfWork, IStaffTenants, ILocationDirectory, IUserAccounts, IStaffPlanLimits,
-    IStaffMemberUniquenessChecker, IRoleNameUniquenessChecker, ITenantContext
+    IStaffMemberUniquenessChecker, IRoleNameUniquenessChecker, ITenantContext, IStaffActor
 {
     public const string LocationsManage = "locations.manage";
 
@@ -42,6 +42,11 @@ public sealed class StaffFixture :
 
     public TenantId? CurrentTenantId { get; set; }
 
+    /// <summary>L'appelant de « la requête » ; null : job ou plateforme, sans contrôle d'escalade.</summary>
+    public UserId? ActingUser { get; set; }
+
+    UserId? IStaffActor.UserId => ActingUser;
+
     public FakeClock Clock { get; } = new();
 
     public KnownPermissions Permissions { get; } = KnownPermissions.Of([LocationsManage]);
@@ -51,7 +56,7 @@ public sealed class StaffFixture :
     /// <summary>Lignes « réécrites » pour protéger une décision (le rôle Owner quand un propriétaire est retiré).</summary>
     public List<Role> Guarded { get; } = [];
 
-    public StaffWorkspace Workspace => new(this, this, this, this, this);
+    public StaffWorkspace Workspace => new(this, this, this, this, this, this);
 
     public OnboardTenantOwnerHandler Onboard => new(Workspace, this, this, this, Permissions, Clock);
 
@@ -64,9 +69,15 @@ public sealed class StaffFixture :
 
     public AssignStaffToLocationHandler AssignToLocation => new(Workspace, this, Clock);
 
+    public RemoveStaffFromLocationHandler RemoveFromLocation => new(Workspace, Clock);
+
+    public AssignTenantWideRoleHandler AssignTenantRole => new(Workspace, Clock);
+
     public RemoveTenantWideRoleHandler RemoveTenantRole => new(Workspace, Clock);
 
     public SuspendStaffHandler Suspend => new(Workspace, Clock);
+
+    public ReinstateStaffHandler Reinstate => new(Workspace, Clock);
 
     public RemoveStaffHandler Remove => new(Workspace, Clock);
 
@@ -99,11 +110,12 @@ public sealed class StaffFixture :
 
     public IReadOnlyList<Role> ListRoles(TenantId tenantId) => _roles.Where(role => role.TenantId == tenantId).ToList();
 
-    /// <summary>Tenant A intégré avec <paramref name="email"/> pour propriétaire ; la requête agit ensuite pour A.</summary>
+    /// <summary>Tenant A intégré avec <paramref name="email"/> pour propriétaire ; la requête agit ensuite pour A, en tant que ce propriétaire.</summary>
     public async Task<Guid> GivenOnboardedTenantAsync(string email = "owner@example.com")
     {
         var ownerId = await Onboard.HandleAsync(new OnboardTenantOwnerCommand(TenantA.Value, email));
         CurrentTenantId = TenantA;
+        ActingUser = Member(ownerId).UserId;
         SaveCount = 0;
         return ownerId;
     }

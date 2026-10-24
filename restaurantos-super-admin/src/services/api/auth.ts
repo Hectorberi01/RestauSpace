@@ -4,6 +4,7 @@ export interface Me {
   id: string;
   email: string;
   status: string;
+  twoFactorEnabled?: boolean;
 }
 
 /** Le mot de passe ; renvoie le jeton de seconde étape si le compte a la validation en deux étapes, sinon null. */

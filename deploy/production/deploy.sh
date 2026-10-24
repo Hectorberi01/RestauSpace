@@ -16,8 +16,15 @@ done
 duplicates="$(grep -E '^(Identity__AccessTokens__SigningKey|Identity__TwoFactor__SecretKey|Payments__CredentialsKey|Notifications__CredentialsKey|Notifications__OtpKey|Integrations__SecretsKey|Fiscal__TokenKey|Storefront__TrackingKey|Files__PublicMedia__SigningKey)=' api.env \
   | cut -d= -f2- | sort | uniq -d | wc -l)"
 [ "$duplicates" -eq 0 ] || { echo "api.env : plusieurs clés ont la même valeur, régénérez-les avec ./generate-secrets.sh" >&2; exit 1; }
-docker network inspect "$(grep -E '^TRAEFIK_NETWORK=' .env | cut -d= -f2 || echo proxy)" >/dev/null 2>&1 \
-  || { echo "Réseau Traefik introuvable (TRAEFIK_NETWORK)" >&2; exit 1; }
+# Réseau edge : propre à RestauSpace, avec le sous-réseau déclaré (EDGE_SUBNET : seule source de X-Forwarded-For).
+edge="$(grep -E '^TRAEFIK_NETWORK=' .env | cut -d= -f2- || true)"; edge="${edge:-restauspace-edge}"
+docker network inspect "$edge" >/dev/null 2>&1 \
+  || { echo "Réseau $edge introuvable : voir README, « Réseaux »" >&2; exit 1; }
+subnet="$(docker network inspect "$edge" -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}')"
+[ "$subnet" = "$(grep -E '^EDGE_SUBNET=' .env | cut -d= -f2- || true)" ] \
+  || { echo "EDGE_SUBNET doit valoir le sous-réseau de $edge ($subnet)" >&2; exit 1; }
+others="$(docker network inspect "$edge" -f '{{range .Containers}}{{.Name}} {{end}}' | tr ' ' '\n' | grep -v -e '^$' -e '^restauspace-' -e '^traefik$' || true)"
+[ -z "$others" ] || echo "Attention : conteneurs étrangers sur $edge : $others" >&2
 
 git -C ../.. fetch --tags --quiet
 if [ -n "${1:-}" ]; then

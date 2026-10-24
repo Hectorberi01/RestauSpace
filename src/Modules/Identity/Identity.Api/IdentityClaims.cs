@@ -9,6 +9,9 @@ public static class IdentityClaims
     public const string SessionId = "sid";
     public const string Email = "email";
     public const string EmailVerified = "email_verified";
+
+    /// <summary>« true » si le compte a la validation en deux étapes (chaque connexion a donc demandé le code).</summary>
+    public const string TwoFactor = "tfa";
     public const string TenantId = TenantClaims.TenantId;
 
     public static Guid GetUserId(this ClaimsPrincipal principal) =>

@@ -177,6 +177,12 @@ public sealed record OperatorTokens(
     string RefreshToken,
     DateTimeOffset RefreshTokenExpiresAtUtc);
 
+/// <summary>L'utilisateur qui fait la requête. Null hors requête HTTP (job, seed, maintenance) : aucun contrôle d'escalade.</summary>
+public interface IStaffActor
+{
+    UserId? UserId { get; }
+}
+
 /// <summary>La caisse partagée de la requête, si la requête a été authentifiée par sa clé.</summary>
 public interface ITillClient
 {

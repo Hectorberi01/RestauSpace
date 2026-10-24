@@ -2,7 +2,8 @@
 import {useEffect,useRef,useState,useSyncExternalStore,type FormEvent,type ReactNode} from 'react';
 import {LogIn,UtensilsCrossed} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {API_URL,ApiError,api,describe,getSession,onSessionChange} from '../../services/api/client';
+import {API_URL,ApiError,api,describe,getSession,onSessionChange,renewSession} from '../../services/api/client';
+import {EnableTwoFactorDialog} from '../../admin/profile/dialogs';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from '@/components/ui/dialog';
 import {login,loginWithCode,logout,me as loadMe,type Me} from '../../services/api/auth';
 import {LoadingSkeleton} from '../ui/shared';
@@ -46,18 +47,23 @@ export function AuthGate({children}:{children:(me:Me)=>ReactNode}){
   const session=useSyncExternalStore(subscribe,snapshot,serverSnapshot);
   const [profile,setProfile]=useState<{sessionId:string;me:Me}|null>(null);
   const [refused,setRefused]=useState<string>();
+  // Back-office réservé aux comptes avec la validation en deux étapes : on propose de l'activer au lieu de déconnecter.
+  const [needsTwoFactor,setNeedsTwoFactor]=useState<Me|null>(null);
+  const enabled=useRef(false);
   const sessionId=session?.sessionId;
   useEffect(()=>{
     if(!sessionId)return;
     let active=true;
     (async()=>{
+      let me:Me|undefined;
       try{
-        const me=await loadMe();
+        me=await loadMe();
         // Un compte de restaurant se connecte aussi : on vérifie tout de suite qu'il a accès aux routes d'administration.
         await api('/admin/reporting/tenants',{query:{page:1,pageSize:1}});
         if(active){setRefused(undefined);setProfile({sessionId,me})}
       }catch(err){
         if(!active)return;
+        if(err instanceof ApiError&&err.status===403&&me&&me.twoFactorEnabled===false){setNeedsTwoFactor(me);return}
         setRefused(err instanceof ApiError&&err.status===403?'Ce compte n’est pas administrateur de la plateforme : utilisez la console du restaurant.':describe(err));
         await logout();
       }
@@ -67,6 +73,12 @@ export function AuthGate({children}:{children:(me:Me)=>ReactNode}){
   const expire=useRef(()=>{setRefused(`Vous avez été déconnecté après ${IDLE_MINUTES} minutes d’inactivité.`);void logout()}).current;
   if(session===undefined)return <div className="login-screen"><LoadingSkeleton/></div>;
   if(!session)return <LoginScreen key={refused} message={refused}/>;
+  if(needsTwoFactor)return <div className="login-screen">
+    <p className="notice">Le back-office exige la validation en deux étapes : activez-la pour continuer.</p>
+    <EnableTwoFactorDialog open email={needsTwoFactor.email}
+      onDone={async()=>{enabled.current=true;setNeedsTwoFactor(null);await renewSession()}}
+      onClose={()=>{if(!enabled.current){setNeedsTwoFactor(null);void logout()}}}/>
+  </div>;
   if(!profile||profile.sessionId!==session.sessionId)return <div className="login-screen"><LoadingSkeleton/></div>;
   return <><IdleGuard onExpire={expire}/>{children(profile.me)}</>;
 }

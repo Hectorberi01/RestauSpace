@@ -100,6 +100,8 @@ public sealed class StaffUseCaseTests
     public async Task The_last_active_owner_cannot_be_suspended_removed_or_lose_the_owner_role()
     {
         var ownerId = await _fixture.GivenOnboardedTenantAsync();
+        // Sans appelant : le propriétaire ne peut de toute façon pas changer son propre rôle.
+        _fixture.ActingUser = null;
 
         foreach (var attempt in new Func<Task>[]
         {
@@ -135,6 +137,7 @@ public sealed class StaffUseCaseTests
     {
         var firstId = await _fixture.GivenOnboardedTenantAsync();
         await _fixture.Onboard.HandleAsync(new OnboardTenantOwnerCommand(_fixture.TenantA.Value, "second@example.com"));
+        _fixture.ActingUser = _fixture.Account("second@example.com");
 
         await _fixture.Remove.HandleAsync(new RemoveStaffCommand(firstId));
 
@@ -222,6 +225,7 @@ public sealed class StaffUseCaseTests
         await _fixture.Onboard.HandleAsync(new OnboardTenantOwnerCommand(_fixture.TenantA.Value, "second@example.com"));
         var owner = _fixture.Member(ownerId).UserId;
         Assert.True(await _fixture.Checker.HasTenantPermissionAsync(owner, _fixture.TenantA, StaffPermissions.ManageStaff));
+        _fixture.ActingUser = _fixture.Account("second@example.com");
 
         await _fixture.Suspend.HandleAsync(new SuspendStaffCommand(ownerId));
 

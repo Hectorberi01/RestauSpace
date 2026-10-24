@@ -17,6 +17,7 @@ public sealed class AssignStaffToLocationHandler(StaffWorkspace workspace, ILoca
                 ? null
                 : await locations.FindAsync(tenantId, LocationId.From(command.LocationId), cancellationToken))
             ?? throw new NotFoundException(StaffApplicationErrors.LocationNotFound);
+        await workspace.EnsureCanGiveRoleAsync(tenantId, role, member, cancellationToken);
 
         member.AssignToLocation(location, role.ToReference(), clock);
         workspace.GuardRole(role);
@@ -38,7 +39,11 @@ public sealed class RemoveStaffFromLocationHandler(StaffWorkspace workspace, ICl
             throw new DomainException(StaffMemberErrors.NotAssignedToLocation);
         }
 
-        member.RemoveFromLocation(LocationId.From(command.LocationId), clock);
+        var locationId = LocationId.From(command.LocationId);
+        var current = member.Assignments.FirstOrDefault(assignment => assignment.LocationId == locationId)?.RoleId;
+        await workspace.EnsureCanTakeRoleAsync(tenantId, member, current, cancellationToken);
+
+        member.RemoveFromLocation(locationId, clock);
         await workspace.SaveAsync(cancellationToken);
     }
 }
@@ -52,6 +57,7 @@ public sealed class AssignTenantWideRoleHandler(StaffWorkspace workspace, IClock
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var member = await workspace.LoadMemberAsync(tenantId, command.StaffMemberId, cancellationToken);
         var role = await workspace.LoadRoleAsync(tenantId, command.RoleId, cancellationToken);
+        await workspace.EnsureCanGiveRoleAsync(tenantId, role, member, cancellationToken);
 
         member.AssignTenantWide(role.ToReference(), clock);
         workspace.GuardRole(role);
@@ -67,6 +73,7 @@ public sealed class RemoveTenantWideRoleHandler(StaffWorkspace workspace, IClock
     {
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var member = await workspace.LoadMemberAsync(tenantId, command.StaffMemberId, cancellationToken);
+        await workspace.EnsureCanTakeRoleAsync(tenantId, member, member.TenantWideRoleId, cancellationToken);
         await workspace.EnsureAnotherActiveOwnerAsync(member, cancellationToken);
 
         member.RemoveTenantWide(clock);
@@ -82,6 +89,7 @@ public sealed class SuspendStaffHandler(StaffWorkspace workspace, IClock clock) 
     {
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var member = await workspace.LoadMemberAsync(tenantId, command.StaffMemberId, cancellationToken);
+        await workspace.EnsureCanChangeMemberAsync(tenantId, member, cancellationToken);
         await workspace.EnsureAnotherActiveOwnerAsync(member, cancellationToken);
 
         member.Suspend(clock);
@@ -97,6 +105,7 @@ public sealed class ReinstateStaffHandler(StaffWorkspace workspace, IClock clock
     {
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var member = await workspace.LoadMemberAsync(tenantId, command.StaffMemberId, cancellationToken);
+        await workspace.EnsureCanChangeMemberAsync(tenantId, member, cancellationToken);
 
         member.Reinstate(clock);
         await workspace.SaveAsync(cancellationToken);
@@ -112,6 +121,7 @@ public sealed class RemoveStaffHandler(StaffWorkspace workspace, IClock clock) :
     {
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var member = await workspace.LoadMemberAsync(tenantId, command.StaffMemberId, cancellationToken);
+        await workspace.EnsureCanChangeMemberAsync(tenantId, member, cancellationToken);
         await workspace.EnsureAnotherActiveOwnerAsync(member, cancellationToken);
 
         member.Leave(clock);

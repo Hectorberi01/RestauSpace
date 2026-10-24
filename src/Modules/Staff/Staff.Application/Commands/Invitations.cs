@@ -25,6 +25,10 @@ public sealed class InviteStaffHandler(
         var role = command.TenantWideRoleId is { } roleId
             ? await workspace.LoadRoleAsync(tenantId, roleId, cancellationToken)
             : null;
+        if (role is not null)
+        {
+            await workspace.EnsureCanGiveRoleAsync(tenantId, role, null, cancellationToken);
+        }
 
         var userId = await users.FindOrInviteAsync(command.Email, cancellationToken);
         var isUnique = await uniqueness.IsUserUniqueInTenantAsync(tenantId, userId, cancellationToken);

@@ -88,9 +88,9 @@ public sealed class DisableTwoFactorHandler(
 
 /// <summary>
 /// Vérifie un code de l'application (une seule fois par pas de temps) ou un code de secours (une seule fois). Les
-/// échecs comptent avec ceux du mot de passe du même compte : au-delà, le compte est bloqué un moment.
+/// échecs ont leur propre compteur, qu'un mot de passe juste ne vide pas : au-delà, le compte est bloqué un moment.
 /// </summary>
-public sealed class TwoFactorVerifier(ITwoFactorSecrets secrets, IPasswordAttempts attempts, IdentitySettings settings, IClock clock)
+public sealed class TwoFactorVerifier(ITwoFactorSecrets secrets, ITwoFactorAttempts attempts, IdentitySettings settings, IClock clock)
 {
     public async Task EnsureAsync(User user, string? code, CancellationToken cancellationToken)
     {

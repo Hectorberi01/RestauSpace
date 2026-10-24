@@ -23,6 +23,19 @@ public static class StaffApplicationErrors
     public static readonly DomainError LastOwner =
         new("staff.staff_member.last_owner", "The restaurant must keep at least one active owner.");
 
+    // Escalade de droits : refus 403 (ForbiddenException).
+    public static readonly DomainError RoleNotHeld =
+        new("staff.role.not_held", "You can only give a role whose permissions you all hold yourself.");
+
+    public static readonly DomainError PermissionNotHeld =
+        new("staff.permission.not_held", "You can only grant a permission you hold yourself.");
+
+    public static readonly DomainError OwnerRoleReserved =
+        new("staff.role.owner_only", "Only an owner can give or take away the owner role.");
+
+    public static readonly DomainError CannotChangeOwnRole =
+        new("staff.staff_member.cannot_change_own_role", "You cannot change your own role, location assignments or status.");
+
     public static readonly DomainError InvalidAccessToken =
         new("staff.auth.invalid_access_token", "The access token does not identify a user.");
 

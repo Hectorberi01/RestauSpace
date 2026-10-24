@@ -28,6 +28,11 @@ internal sealed class JwtAccessTokenIssuer(AccessTokenOptions options, IClock cl
             new Claim(JwtRegisteredClaimNames.EmailVerified, user.IsEmailVerified ? "true" : "false", ClaimValueTypes.Boolean),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         ];
+        if (user.IsTwoFactorEnabled)
+        {
+            claims.Add(new Claim("tfa", "true"));
+        }
+
         if (tenantId is { } tenant)
         {
             claims.Add(new Claim(TenantClaims.TenantId, tenant.Value.ToString()));

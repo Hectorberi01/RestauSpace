@@ -243,7 +243,8 @@ public sealed class RequestCustomerCodeHandler(
 }
 
 /// <summary>
-/// Le client donne le code reçu. Le contact prouvé est rattaché à SA fiche (même e-mail ou même téléphone) ; sans fiche,
+/// Le client donne le code reçu. La session s'ouvre sur la fiche dont le SEUL contact est celui prouvé : une fiche qui
+/// porte aussi un autre contact, non prouvé, n'est jamais ouverte (<see cref="CustomerContactMatch"/>). Sans fiche,
 /// une fiche est créée avec le nom donné (sinon <see cref="CustomerSignInStatus.NameRequired"/> et un ticket vérifié à
 /// renvoyer avec le nom). Une session est ouverte pour cette application ; son jeton n'est remis qu'une fois.
 /// </summary>

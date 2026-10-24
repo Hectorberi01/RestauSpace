@@ -47,7 +47,14 @@ public sealed class GrantPermissionHandler(StaffWorkspace workspace, KnownPermis
         var tenantId = await workspace.RequireWritableTenantAsync(cancellationToken);
         var role = await workspace.LoadRoleAsync(tenantId, command.RoleId, cancellationToken);
 
-        role.Grant(PermissionCode.Create(command.Permission), permissions.Catalog, clock);
+        var permission = PermissionCode.Create(command.Permission);
+        // Code inconnu : l'erreur du domaine (PermissionUnknown) reste prioritaire.
+        if (permissions.Catalog.Contains(permission))
+        {
+            await workspace.EnsureHoldsPermissionAsync(tenantId, permission, cancellationToken);
+        }
+
+        role.Grant(permission, permissions.Catalog, clock);
         await workspace.SaveAsync(cancellationToken);
     }
 }

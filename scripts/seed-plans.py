@@ -67,6 +67,10 @@ class Api:
 
     def login(self, email: str, password: str) -> None:
         tokens = self.call("POST", "/auth/login", {"email": email, "password": password})
+        if tokens and tokens.get("twoFactorRequired"):
+            # Validation en deux étapes (obligatoire pour le back-office) : code de l'application ou code de secours.
+            code = input("Code de validation en deux étapes : ").strip()
+            tokens = self.call("POST", "/auth/login/two-factor", {"challenge": tokens["challenge"], "code": code})
         self.token = tokens["accessToken"]
         self.refresh = tokens["refreshToken"]
 

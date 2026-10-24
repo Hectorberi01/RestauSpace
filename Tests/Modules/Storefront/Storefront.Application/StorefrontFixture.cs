@@ -217,8 +217,15 @@ public sealed class StorefrontFixture
     /// <summary>Les commandes créées par Orders : statut et contenu.</summary>
     public Dictionary<OrderId, (TenantId Tenant, OrderToPlace Order, GuestOrderStatus Status, decimal Total, string? CancelReason)> Orders { get; } = [];
 
-    /// <summary>Fiches clients par (tenant, e-mail ou téléphone).</summary>
-    public Dictionary<(TenantId, string), Guid> Customers { get; } = [];
+    /// <summary>Fiches clients (faux Customers) : tenant, id, e-mail et téléphone.</summary>
+    public List<(TenantId Tenant, Guid Id, string? Email, string? Phone)> Customers { get; } = [];
+
+    /// <summary>Les fiches créées dont le consentement marketing a été enregistré à la création.</summary>
+    public List<Guid> ConsentsAtCreation { get; } = [];
+
+    /// <summary>La seule fiche du tenant A qui porte exactement ces contacts.</summary>
+    public Guid CustomerWith(string? email, string? phone) =>
+        Customers.Single(customer => customer.Tenant == TenantA && customer.Email == email && customer.Phone == phone).Id;
 
     public List<GuestCustomer> CustomerRequests { get; } = [];
 
@@ -490,29 +497,43 @@ public sealed class StorefrontFixture
         return Task.CompletedTask;
     }
 
+    // Même règle que l'hôte : CustomerContactMatch sur les fiches qui portent le contact exact.
+    private Guid? Match(TenantId tenantId, string? email, string? phone)
+    {
+        List<global::Storefront.Application.Customers.CustomerContactCandidate> By(Func<(TenantId Tenant, Guid Id, string? Email, string? Phone), bool> filter) =>
+            Customers.Where(customer => customer.Tenant == tenantId && Profiles.ContainsKey(customer.Id) && filter(customer))
+                .Select(customer => new global::Storefront.Application.Customers.CustomerContactCandidate(customer.Id, customer.Email is not null, customer.Phone is not null))
+                .ToList();
+        return global::Storefront.Application.Customers.CustomerContactMatch.Pick(
+            email is null ? [] : By(customer => customer.Email == email), phone is null ? [] : By(customer => customer.Phone == phone));
+    }
+
     Task<Guid> IStorefrontCustomers.FindOrCreateAsync(TenantId tenantId, GuestCustomer customer, CancellationToken cancellationToken)
     {
         CustomerRequests.Add(customer);
-        var key = (tenantId, customer.Email ?? customer.Phone ?? string.Empty);
-        if (!Customers.TryGetValue(key, out var id))
+        var email = string.IsNullOrWhiteSpace(customer.Email) ? null : customer.Email.Trim();
+        var phone = string.IsNullOrWhiteSpace(customer.Phone) ? null : customer.Phone.Trim();
+        if (Match(tenantId, email, phone) is { } existing)
         {
-            id = Guid.NewGuid();
-            Customers[key] = id;
-            Profiles[id] = new CustomerProfile(SaasRestaurant.BuildingBlocks.Domain.CustomerId.From(id), customer.Name ?? string.Empty, customer.Email, customer.Phone);
+            return Task.FromResult(existing);
+        }
+
+        var id = Guid.NewGuid();
+        Customers.Add((tenantId, id, email, phone));
+        Profiles[id] = new CustomerProfile(SaasRestaurant.BuildingBlocks.Domain.CustomerId.From(id), customer.Name ?? string.Empty, email, phone);
+        if (customer.MarketingConsent)
+        {
+            ConsentsAtCreation.Add(id);
         }
 
         return Task.FromResult(id);
     }
 
-    Task<CustomerId?> IStorefrontCustomers.FindByContactAsync(TenantId tenantId, string? email, string? phone, CancellationToken cancellationToken)
-    {
-        var found = (email is not null && Customers.TryGetValue((tenantId, email), out var byEmail) ? byEmail : (Guid?)null)
-            ?? (phone is not null && Customers.TryGetValue((tenantId, phone), out var byPhone) ? byPhone : null);
-        return Task.FromResult(found is { } id && Profiles.ContainsKey(id) ? SaasRestaurant.BuildingBlocks.Domain.CustomerId.From(id) : (CustomerId?)null);
-    }
+    Task<CustomerId?> IStorefrontCustomers.FindByContactAsync(TenantId tenantId, string? email, string? phone, CancellationToken cancellationToken) =>
+        Task.FromResult(Match(tenantId, email?.Trim(), phone?.Trim()) is { } id ? SaasRestaurant.BuildingBlocks.Domain.CustomerId.From(id) : (CustomerId?)null);
 
     Task<CustomerProfile?> IStorefrontCustomers.ProfileAsync(TenantId tenantId, CustomerId customerId, CancellationToken cancellationToken) =>
-        Task.FromResult(Customers.Any(entry => entry.Key.Item1 == tenantId && entry.Value == customerId.Value) ? Profiles.GetValueOrDefault(customerId.Value) : null);
+        Task.FromResult(Customers.Any(entry => entry.Tenant == tenantId && entry.Id == customerId.Value) ? Profiles.GetValueOrDefault(customerId.Value) : null);
 
     Task IStorefrontCustomers.GrantMarketingConsentAsync(TenantId tenantId, CustomerId customerId, CancellationToken cancellationToken)
     {

@@ -11,4 +11,5 @@ done
 echo
 echo "# .env"
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+echo "DATABASE_APP_PASSWORD=$(openssl rand -hex 24)"
 echo "OBSERVABILITY_TOKEN=$(openssl rand -hex 32)"

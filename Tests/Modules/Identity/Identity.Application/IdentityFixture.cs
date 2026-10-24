@@ -11,7 +11,7 @@ namespace Identity.Application;
 /// </summary>
 public sealed class IdentityFixture :
     IUserRepository, IIdentityUnitOfWork, IUserEmailUniquenessChecker, IPasswordHasher, IRefreshTokens,
-    IAccessTokenIssuer, IUserTokens, IIdentityNotifier, IPasswordAttempts, ICompromisedPasswords, IUserTraces, ITwoFactorSecrets, ITwoFactorChallenges,
+    IAccessTokenIssuer, IUserTokens, IIdentityNotifier, IPasswordAttempts, ITwoFactorAttempts, ICompromisedPasswords, IUserTraces, ITwoFactorSecrets, ITwoFactorChallenges,
     ITenantMemberships, IUserAvatars
 {
     public const string Password = "correct horse battery";
@@ -288,6 +288,20 @@ public sealed class IdentityFixture :
     }
 
     public int FailuresOf(string email) => _attempts.TryGetValue(email, out var entry) ? entry.Failures : 0;
+
+    // Compteur 2FA à part : même logique, autre clé.
+    Task<DateTimeOffset?> ITwoFactorAttempts.BlockedUntilAsync(
+        Email account, DateTimeOffset nowUtc, int maxFailures, TimeSpan window, CancellationToken cancellationToken) =>
+        BlockedUntilAsync(TwoFactorKey(account), nowUtc, maxFailures, window, cancellationToken);
+
+    Task ITwoFactorAttempts.RecordFailureAsync(Email account, DateTimeOffset nowUtc, TimeSpan window, CancellationToken cancellationToken) =>
+        RecordFailureAsync(TwoFactorKey(account), nowUtc, window, cancellationToken);
+
+    Task ITwoFactorAttempts.ResetAsync(Email account, CancellationToken cancellationToken) => ResetAsync(TwoFactorKey(account), cancellationToken);
+
+    public int TwoFactorFailuresOf(string email) => FailuresOf("2fa." + email);
+
+    private static Email TwoFactorKey(Email account) => Email.Create("2fa." + account.Value);
 
     public Task SendEmailVerificationAsync(Email email, string token, CancellationToken cancellationToken = default) =>
         Record("verification", email, token);

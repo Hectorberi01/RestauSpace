@@ -98,6 +98,9 @@ async function refresh(): Promise<Session | null> {
   return refreshing;
 }
 
+/** Nouveau jeton tout de suite (ex. après activation de la validation en deux étapes). */
+export const renewSession = () => refresh();
+
 async function validSession(): Promise<Session | null> {
   const session = read();
   if (!session) return null;

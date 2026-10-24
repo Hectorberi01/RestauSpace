@@ -160,7 +160,9 @@ internal static partial class HostComposition
             .AddStorefrontKeys()
             .AddPrinterTokens()
             .AddTillKeys();
-        var platformAdmins = new PlatformAdmins( builder.Configuration.GetSection("Authorization:PlatformAdminEmails").Get<string[]>() ?? []);
+        var platformAdmins = new PlatformAdmins(
+            builder.Configuration.GetSection("Authorization:PlatformAdminEmails").Get<string[]>() ?? [],
+            builder.Configuration.GetValue("Authorization:PlatformAdminRequireTwoFactor", true));
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy(Policies.PlatformAdmin, policy => policy
                 .RequireAuthenticatedUser()

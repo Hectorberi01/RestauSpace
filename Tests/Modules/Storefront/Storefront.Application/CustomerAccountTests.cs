@@ -91,7 +91,7 @@ public sealed class CustomerAccountTests
         var history = await _fixture.CustomerOrders.HandleAsync(new ListCustomerOrdersQuery());
 
         Assert.Equal(CustomerSignInStatus.SignedIn, signedIn.Status);
-        Assert.Equal(_fixture.Customers[(_fixture.TenantA, Phone)], _fixture.CustomerId!.Value.Value);
+        Assert.Equal(_fixture.CustomerWith(null, Phone), _fixture.CustomerId!.Value.Value);
         Assert.Equal(_fixture.CustomerId.Value.Value, Assert.Single(_fixture.ConsentsGranted));
         var order = Assert.Single(history);
         Assert.Equal((guestOrder.OrderId, "Cotonou"), (order.OrderId, order.LocationName));
@@ -211,5 +211,98 @@ public sealed class CustomerAccountTests
 
         Assert.Equal(CustomerSessionErrors.KioskNotAllowed, refused.Error);
         Assert.Empty(_fixture.SentCodes);
+    }
+    private Task<GuestOrderPlacedDto> GuestOrderAsync(string? email, string? phone, bool consent = false) =>
+        _fixture.Place.HandleAsync(new PlaceGuestOrderCommand(
+            _fixture.Cotonou.Value, ServiceMode.Takeaway, Cart(), PaymentMode.Counter, new GuestContactInput("Client", email, phone, consent)));
+
+    /// <summary>Connexion par code sur un canal ; le nom n'est utilisé que si une fiche est créée.</summary>
+    private async Task<CustomerSignInDto> SignInWithAsync(CustomerSignInChannel channel, string address, string name = "Client")
+    {
+        await _fixture.SignInAsync(_website.Key);
+        var sent = await _fixture.RequestCode.HandleAsync(new RequestCustomerCodeCommand(channel, address));
+        var result = await _fixture.VerifyCode.HandleAsync(new VerifyCustomerCodeCommand(sent.Ticket, StorefrontFixture.GoodCode));
+        if (result.Status == CustomerSignInStatus.NameRequired)
+        {
+            result = await _fixture.VerifyCode.HandleAsync(new VerifyCustomerCodeCommand(result.Ticket, null, name));
+        }
+
+        await _fixture.SignInAsync(_website.Key, customerToken: result.Token);
+        return result;
+    }
+
+    [Fact]
+    public async Task A_guest_order_with_someone_elses_phone_never_opens_that_persons_account()
+    {
+        _website = await WebsiteAsync();
+        // L'attaquant commande avec SON e-mail et le téléphone de la victime.
+        var bait = await GuestOrderAsync("pirate@example.com", Phone);
+        var mixed = _fixture.CustomerWith("pirate@example.com", Phone);
+
+        // La victime se connecte par SMS : pas la fiche mixte, une fiche à son seul téléphone.
+        var victim = await SignInWithAsync(CustomerSignInChannel.Sms, Phone, "Awa");
+        var victimId = _fixture.CustomerId!.Value.Value;
+        var victimOrder = await _fixture.Place.HandleAsync(new PlaceGuestOrderCommand(_fixture.Cotonou.Value, ServiceMode.Takeaway, Cart(), PaymentMode.Counter));
+        var victimHistory = await _fixture.CustomerOrders.HandleAsync(new ListCustomerOrdersQuery());
+
+        // L'attaquant se connecte par e-mail : ni la fiche mixte, ni celle de la victime.
+        await SignInWithAsync(CustomerSignInChannel.Email, "pirate@example.com", "Pirate");
+        var attackerId = _fixture.CustomerId!.Value.Value;
+        var attackerHistory = await _fixture.CustomerOrders.HandleAsync(new ListCustomerOrdersQuery());
+
+        Assert.Equal(CustomerSignInStatus.SignedIn, victim.Status);
+        Assert.Equal(mixed, _fixture.Orders[OrderId.From(bait.OrderId)].Order.CustomerId);
+        Assert.Equal(_fixture.CustomerWith(null, Phone), victimId);
+        Assert.Equal(_fixture.CustomerWith("pirate@example.com", null), attackerId);
+        Assert.Equal(3, new[] { mixed, victimId, attackerId }.Distinct().Count());
+        Assert.Equal(victimOrder.OrderId, Assert.Single(victimHistory).OrderId);
+        Assert.Empty(attackerHistory);
+    }
+
+    [Fact]
+    public async Task A_later_guest_order_of_the_victim_never_joins_the_record_that_mixes_contacts()
+    {
+        _website = await WebsiteAsync();
+        await GuestOrderAsync("pirate@example.com", Phone);
+        var mixed = _fixture.CustomerWith("pirate@example.com", Phone);
+
+        var withBoth = await GuestOrderAsync("awa@example.com", Phone);
+        var phoneOnly = await GuestOrderAsync(null, Phone);
+
+        Assert.NotEqual(mixed, _fixture.Orders[OrderId.From(withBoth.OrderId)].Order.CustomerId);
+        Assert.Equal(_fixture.CustomerWith("awa@example.com", Phone), _fixture.Orders[OrderId.From(withBoth.OrderId)].Order.CustomerId);
+        Assert.Equal(_fixture.CustomerWith(null, Phone), _fixture.Orders[OrderId.From(phoneOnly.OrderId)].Order.CustomerId);
+    }
+
+    [Fact]
+    public async Task A_loyal_guest_with_one_contact_finds_all_their_orders_after_signing_in()
+    {
+        _website = await WebsiteAsync();
+        var first = await GuestOrderAsync("awa@example.com", null);
+        // Même e-mail, téléphone en plus : rattachée à la fiche e-mail seul, qui n'est pas modifiée.
+        var second = await GuestOrderAsync("awa@example.com", Phone);
+
+        await SignInWithAsync(CustomerSignInChannel.Email, "awa@example.com");
+        var history = await _fixture.CustomerOrders.HandleAsync(new ListCustomerOrdersQuery());
+
+        Assert.Equal(_fixture.CustomerWith("awa@example.com", null), _fixture.CustomerId!.Value.Value);
+        Assert.Equal(new[] { first.OrderId, second.OrderId }.Order(), history.Select(order => order.OrderId).Order());
+        Assert.Single(_fixture.Customers);
+    }
+
+    [Fact]
+    public async Task Marketing_consent_from_a_guest_order_is_only_recorded_on_a_record_it_creates()
+    {
+        _website = await WebsiteAsync();
+        await GuestOrderAsync("awa@example.com", null);
+        var existing = _fixture.CustomerWith("awa@example.com", null);
+
+        await GuestOrderAsync("awa@example.com", Phone, consent: true);
+        await GuestOrderAsync("pirate@example.com", null, consent: true);
+        var created = _fixture.CustomerWith("pirate@example.com", null);
+
+        Assert.Equal(created, Assert.Single(_fixture.ConsentsAtCreation));
+        Assert.DoesNotContain(existing, _fixture.ConsentsAtCreation);
+        Assert.Empty(_fixture.ConsentsGranted);
     }
 }

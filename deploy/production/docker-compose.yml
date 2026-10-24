@@ -1,11 +1,13 @@
-# Production, serveur applicatif : API + console + site + back-office, derrière le Traefik du serveur (réseau « proxy »).
+# Production, serveur applicatif : API + console + site + back-office, derrière le Traefik du serveur.
+# Réseaux : « edge » (TRAEFIK_NETWORK), propre à RestauSpace, où seul Traefik est ajouté ; « internal » pour l'appel
+# site -> API ; « default » pour la sortie des migrations. Jamais le réseau d'un autre projet.
 # PostgreSQL est sur le serveur de base (DATABASE_HOST). L'observabilité est sur un autre serveur : l'API lui envoie
 # traces, logs et métriques en OTLP/HTTP avec un jeton.
 #
 # Images : depuis le registre (IMAGE_REGISTRY, construites par Jenkins) ou construites ici (docker-compose.build.yml).
 #
 #   cp .env.example .env && cp api.env.example api.env     # puis renseigner les deux (chmod 600)
-#   ./deploy.sh [commit]                                    # images, migrations, démarrage
+#   ./deploy.sh [commit]                                    # images, migrations, droits, démarrage
 name: restauspace
 
 x-restart: &restart
@@ -18,41 +20,66 @@ x-logging: &logging
 
 x-traefik: &traefik
   traefik.enable: "true"
-  traefik.docker.network: ${TRAEFIK_NETWORK:-proxy}
+  traefik.docker.network: ${TRAEFIK_NETWORK:-restauspace-edge}
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  Database__MigrateOnStartup: "false"
+  ReverseProxy__Enabled: "true"
+  # X-Forwarded-For accepté seulement depuis le réseau edge (Traefik), jamais depuis un autre réseau Docker.
+  ReverseProxy__KnownNetworks__0: ${EDGE_SUBNET:?EDGE_SUBNET manquant dans .env}
+  Observability__ServiceName: restauspace-api
+  Observability__OtlpEndpoint: ${OBSERVABILITY_OTLP_URL:-}
+  Observability__OtlpProtocol: http/protobuf
+  OTEL_EXPORTER_OTLP_HEADERS: Authorization=Bearer ${OBSERVABILITY_TOKEN:-}
 
 services:
-  # Migrations de tous les modules, puis arrêt ; l'API ne démarre qu'après leur réussite.
+  # Migrations de tous les modules, avec le propriétaire du schéma, puis arrêt.
   migrations:
     <<: *logging
     image: ${IMAGE_REGISTRY:-}restauspace-api:${RELEASE:-latest}
     command: ["--migrate-only"]
     env_file: api.env
-    environment: &api-environment
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST:?DATABASE_HOST manquant dans .env};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB:?POSTGRES_DB manquant dans .env};Username=${POSTGRES_USER:?POSTGRES_USER manquant dans .env};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=${DATABASE_POOL_SIZE:-50};Keepalive=30
-      Database__MigrateOnStartup: "false"
-      ReverseProxy__Enabled: "true"
-      Observability__ServiceName: restauspace-api
-      Observability__OtlpEndpoint: ${OBSERVABILITY_OTLP_URL:-}
-      Observability__OtlpProtocol: http/protobuf
-      OTEL_EXPORTER_OTLP_HEADERS: Authorization=Bearer ${OBSERVABILITY_TOKEN:-}
+    environment:
+      <<: *api-environment
+      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST:?DATABASE_HOST manquant dans .env};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB:?POSTGRES_DB manquant dans .env};Username=${POSTGRES_USER:?POSTGRES_USER manquant dans .env};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=5;Keepalive=30
     restart: "no"
-    networks: [proxy]
+    networks: [default]
+
+  # Droits du compte de l'API sur les tables (db-grants.sql), après chaque migration. Sans DATABASE_APP_USER : rien.
+  db-grants:
+    <<: *logging
+    image: postgres:16-alpine
+    entrypoint: ["psql", "-v", "ON_ERROR_STOP=1", "-v", "app=${DATABASE_APP_USER:-}", "-f", "/db-grants.sql"]
+    environment:
+      PGHOST: ${DATABASE_HOST}
+      PGPORT: ${DATABASE_PORT:-5432}
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGSSLMODE: ${DATABASE_PGSSLMODE:-require}
+    volumes:
+      - ./db-grants.sql:/db-grants.sql:ro
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    restart: "no"
+    networks: [default]
 
   api:
     <<: [*restart, *logging]
     image: ${IMAGE_REGISTRY:-}restauspace-api:${RELEASE:-latest}
     env_file: api.env
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      # Compte limité aux données (DATABASE_APP_USER) ; à défaut, le propriétaire.
+      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB};Username=${DATABASE_APP_USER:-${POSTGRES_USER}};Password=${DATABASE_APP_PASSWORD:-${POSTGRES_PASSWORD}};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=${DATABASE_POOL_SIZE:-50};Keepalive=30
     volumes:
       - api-keys:/home/app/.aspnet/DataProtection-Keys
     depends_on:
-      migrations:
+      db-grants:
         condition: service_completed_successfully
-    networks:
-      proxy:
-        # Nom unique sur le réseau partagé (« api » peut exister dans un autre projet).
-        aliases: [restauspace-api]
+    networks: [edge, internal]
     labels:
       <<: *traefik
       traefik.http.routers.rs-api.rule: Host(`api.${DOMAIN}`)
@@ -61,11 +88,18 @@ services:
       traefik.http.services.rs-api.loadbalancer.server.port: "8080"
       traefik.http.services.rs-api.loadbalancer.healthcheck.path: /health
       traefik.http.services.rs-api.loadbalancer.healthcheck.interval: 15s
+      # Routes d'administration de l'API : même liste d'adresses que le back-office.
+      traefik.http.routers.rs-api-admin.rule: Host(`api.${DOMAIN}`) && PathPrefix(`/v1/admin`)
+      traefik.http.routers.rs-api-admin.priority: "100"
+      traefik.http.routers.rs-api-admin.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-api-admin.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.rs-api-admin.middlewares: rs-admin-allowlist
+      traefik.http.routers.rs-api-admin.service: rs-api
 
   console:
     <<: [*restart, *logging]
     image: ${IMAGE_REGISTRY:-}restauspace-console:${RELEASE:-latest}
-    networks: [proxy]
+    networks: [edge]
     labels:
       <<: *traefik
       traefik.http.routers.rs-console.rule: Host(`app.${DOMAIN}`)
@@ -78,8 +112,8 @@ services:
     image: ${IMAGE_REGISTRY:-}restauspace-site:${RELEASE:-latest}
     environment:
       # Pages rendues côté serveur : l'API par le réseau Docker, sans repasser par Internet.
-      API_INTERNAL_URL: http://restauspace-api:8080
-    networks: [proxy]
+      API_INTERNAL_URL: http://api:8080
+    networks: [edge, internal]
     labels:
       <<: *traefik
       traefik.http.routers.rs-site.rule: Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)
@@ -94,7 +128,7 @@ services:
   admin:
     <<: [*restart, *logging]
     image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}
-    networks: [proxy]
+    networks: [edge]
     labels:
       <<: *traefik
       traefik.http.routers.rs-admin.rule: Host(`admin.${DOMAIN}`)
@@ -109,6 +143,11 @@ volumes:
   api-keys:
 
 networks:
-  proxy:
-    name: ${TRAEFIK_NETWORK:-proxy}
+  # Créé une fois, Traefik y est ajouté (README, « Réseaux »).
+  edge:
+    name: ${TRAEFIK_NETWORK:-restauspace-edge}
     external: true
+  # Site -> API : propre à ce projet, sans sortie vers Internet.
+  internal:
+    internal: true
+  default:

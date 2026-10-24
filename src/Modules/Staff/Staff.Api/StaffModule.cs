@@ -26,6 +26,7 @@ public static class StaffModule
 
         services.AddHttpContextAccessor();
         services.TryAddScoped<Staff.Application.Abstractions.ITillClient, HttpTillClient>();
+        services.TryAddScoped<Staff.Application.Abstractions.IStaffActor, HttpStaffActor>();
         services.TryAddScoped<Staff.Application.Abstractions.IOperatorSessions, NoOperatorSessions>();
         services.AddStaffInfrastructure(connectionString);
         services.AddScoped<TillDesk>();

@@ -75,7 +75,7 @@ public sealed class GuestCheckoutTests
         var (tenant, order, status, total, _) = _fixture.Orders[OrderId.From(placed.OrderId)];
         Assert.Equal(_fixture.TenantA, tenant);
         Assert.Equal((SalesAppKind.Web, app.Id, ServiceMode.Takeaway), (order.Channel, order.AppId.Value, order.Mode));
-        Assert.Equal(_fixture.Customers[(_fixture.TenantA, "+22990000001")], order.CustomerId);
+        Assert.Equal(_fixture.CustomerWith(null, "+22990000001"), order.CustomerId);
         Assert.True(Assert.Single(_fixture.CustomerRequests).MarketingConsent);
         Assert.Equal((GuestOrderStatus.Accepted, 5000m), (status, total));
         Assert.Equal((GuestOrderStatus.Accepted, PaymentMode.Counter, (DateTimeOffset?)null, (DateTimeOffset?)null), (placed.Status, placed.Payment, placed.AcceptBeforeUtc, placed.PayBeforeUtc));

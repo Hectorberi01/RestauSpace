@@ -1,7 +1,7 @@
 # Mise en production (restauspace.com)
 
 Trois serveurs. Ce dossier ne concerne que le serveur applicatif : l'API et les trois sites web, derrière le Traefik
-déjà installé (réseau Docker `proxy`, entrypoint `websecure`, certresolver `letsencrypt`).
+déjà installé (entrypoint `websecure`, certresolver `letsencrypt`), sur un réseau propre à RestauSpace (« Réseaux »).
 
 | Serveur | Dossier | Conteneurs |
 |---|---|---|
@@ -32,16 +32,46 @@ Si PostgreSQL n'y est pas encore installé :
 
 ```bash
 cd deploy/database
-cp .env.example .env && chmod 600 .env    # POSTGRES_*, BIND_ADDRESS=10.10.0.2
+cp .env.example .env && chmod 600 .env    # POSTGRES_*, APP_*, BIND_ADDRESS=10.10.0.2
 ./make-cert.sh                             # certificat TLS auto-signé
 docker compose up -d                       # postgres + sauvegarde quotidienne dans backups/
 ```
 
-Sinon, reprendre seulement : TLS (`ssl = on`), `pg_hba.conf` limité à l'IP du serveur applicatif, la base et le compte
-de l'application.
+Sinon, reprendre seulement : TLS (`ssl = on`), `pg_hba.conf` (la base de l'application, ses deux comptes, l'IP du
+serveur applicatif), et les comptes ci-dessous.
+
+### Comptes PostgreSQL
+
+Trois comptes, jamais le superutilisateur pour l'application :
+
+| Compte | Rôle | Dans `deploy/production/.env` |
+|---|---|---|
+| `postgres` | superutilisateur : local et sauvegarde seulement (`pg_hba.conf` refuse le reste) | non |
+| `es_restaurant_user` | propriétaire du schéma : migrations | `POSTGRES_USER` |
+| `es_restaurant_app` | API : lecture et écriture des données seulement | `DATABASE_APP_USER` |
+
+Nouvelle installation : `roles.sh` les crée (variables `APP_*` du `.env`). Base déjà installée, en superutilisateur :
+
+```bash
+psql -U postgres -d es_restaurant -v owner=es_restaurant_user -v app=es_restaurant_app -v app_pw='<mdp>' -f app-roles.sql
+```
+
+Le script retire au propriétaire tout droit d'administration et crée le compte de l'API. S'il répond que le propriétaire
+est le superutilisateur d'installation (base créée avec `POSTGRES_USER=es_restaurant_user`), API arrêtée :
+
+```sql
+CREATE ROLE es_restaurant_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD '<mdp>';
+REASSIGN OWNED BY es_restaurant_user TO es_restaurant_owner;   -- dans la base es_restaurant
+ALTER DATABASE es_restaurant OWNER TO es_restaurant_owner;
+```
+
+puis `POSTGRES_USER=es_restaurant_owner` côté serveur applicatif, le même nom dans `pg_hba.conf`, et relancer
+`app-roles.sql` avec `owner=es_restaurant_owner`. Les droits du compte de l'API sont posés à chaque déploiement
+(`db-grants.sql`, service `db-grants`).
 
 Réseau privé entre les deux serveurs : la base écoute seulement sur `10.10.0.2` (`BIND_ADDRESS`), jamais sur l'IP
-publique, et `pg_hba.conf` n'accepte que `10.10.0.0/24` en TLS. Docker publie ses ports avant UFW : ne pas mettre
+publique, et `pg_hba.conf` n'accepte que `10.10.0.0/24` en TLS, pour la base `es_restaurant` et ses deux comptes
+(mieux : l'IP du serveur applicatif en `/32`). Docker publie ses ports avant UFW : ne pas mettre
 `BIND_ADDRESS=0.0.0.0`.
 
 Vérifier depuis le serveur applicatif :
@@ -55,6 +85,20 @@ docker run --rm postgres:16-alpine psql \
 installé sans TLS (et `host` au lieu de `hostssl` dans son `pg_hba.conf`).
 
 ## 3. Serveur applicatif
+
+### Réseaux (une seule fois)
+
+Traefik est partagé avec un autre projet : les conteneurs RestauSpace ne vont jamais sur son réseau (`proxy`). Un réseau
+propre, auquel on ajoute Traefik :
+
+```bash
+docker network create --subnet 172.30.250.0/28 restauspace-edge     # = EDGE_SUBNET du .env
+docker network connect restauspace-edge traefik
+```
+
+Ajouter aussi `restauspace-edge` (externe) aux réseaux du service Traefik dans SON compose, sinon il le perd à sa
+prochaine recréation. `deploy.sh` vérifie le sous-réseau et signale tout conteneur étranger sur ce réseau. L'API n'accepte
+`X-Forwarded-For` que depuis `EDGE_SUBNET`. Le site appelle l'API par le réseau `internal`, propre au projet.
 
 ```bash
 cd deploy/production
@@ -108,7 +152,8 @@ La console envoie et lit les photos directement sur R2. Deux réglages, sinon l'
 ### Premier démarrage
 
 1. Créer le compte administrateur (email déclaré dans `Authorization__PlatformAdminEmails__0`), valider le lien reçu,
-   se connecter sur `https://admin.restauspace.com` et activer la validation en deux étapes :
+   se connecter sur `https://admin.restauspace.com` : la validation en deux étapes est demandée tout de suite
+   (`Authorization__PlatformAdminRequireTwoFactor=true`), le back-office reste fermé sans elle :
    ```bash
    curl -X POST https://api.restauspace.com/v1/auth/register -H 'Content-Type: application/json' \
         -d '{"email":"<admin>","password":"<mot de passe solide>"}'
@@ -123,7 +168,10 @@ La console envoie et lit les photos directement sur R2. Deux réglages, sinon l'
 
 - Seul Traefik est exposé ; les conteneurs n'ouvrent aucun port.
 - L'API lit l'adresse du client dans `X-Forwarded-For`, accepté seulement des réseaux privés (`ReverseProxy__Enabled`).
-- Back-office : restreindre `ADMIN_ALLOWED_IPS` dès que possible.
+- Back-office et routes `/v1/admin` de l'API : restreindre `ADMIN_ALLOWED_IPS` dès que possible ; validation en deux
+  étapes obligatoire pour les administrateurs.
+- PostgreSQL : l'API n'a que la lecture et l'écriture des données (`DATABASE_APP_USER`) ; le superutilisateur n'est
+  jamais joignable à distance.
 - `.env` et `api.env` ne sont jamais versionnés (`.gitignore`).
 
 ## 5. Sauvegardes
