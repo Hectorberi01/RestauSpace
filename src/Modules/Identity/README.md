@@ -58,8 +58,9 @@ Identité, credentials et sessions. Aucune permission métier du restaurant ici 
   l'email, `password_not_set`). Les transitions répétées (`Lock` d'un compte verrouillé, `VerifyEmail` déjà vérifié,
   révocation d'une session révoquée...) restent rejetées.
 - **Durée de session** : paramètre explicite `SessionLifetime` de `StartSession`/`RotateSession` (défaut
-  `SessionLifetime.Default` = 30 j). Glissante : chaque rotation émet une nouvelle durée. Un plafond absolu serait
-  une policy d'Application.
+  `SessionLifetime.Default` = 30 j), glissante. Plafond absolu d'une **famille** (connexion puis rotations) :
+  `IdentitySettings.SessionFamilyLifetime` (90 j, `Identity:Sessions:FamilyMaxDays`) ; une rotation ne dépasse jamais
+  la fin de la famille (`identity.session.family_expired` si la session la dépasse déjà).
 - **Rotation** : `RotateSession(tokenPrésenté, nouveauHash, lifetime, clock)` révoque la session présentée, renseigne
   `ReplacedBy`, crée la suivante, lève `RefreshTokenRotated` (pas de `SessionRevoked` : la rotation n'est pas une
   déconnexion).
@@ -70,12 +71,16 @@ Identité, credentials et sessions. Aucune permission métier du restaurant ici 
   doit **persister** cette révocation avant de répondre 401 (une exception ferait annuler la transaction).
 - Présenter un token révoqué **sans** rotation (logout, changement de mot de passe, lock) est simplement rejeté
   (`identity.session.revoked`) sans toucher aux autres sessions : ce n'est pas un signal de vol.
-- **Collection de sessions bornée** : à chaque rotation, les sessions tournées dont la remplaçante a elle-même été
-  tournée sont retirées (sans event). Il reste donc **une seule génération tournée par chaîne** (appareil) : la
-  session vivante + celle qu'elle a remplacée, soit 2 sessions par chaîne quel que soit le nombre de rafraîchissements
-  (avant : 2 881 sessions après 30 jours de refresh toutes les 15 min). Cela suffit à détecter le rejeu du **dernier**
-  token tourné. Conséquence assumée : un token plus ancien que cette génération n'est plus connu et est rejeté par
-  `identity.session.not_found` **sans** révocation globale (il est de toute façon inutilisable).
+- **Familles et collection bornée** : un jeton renouvelé porte le premier jeton de sa famille
+  (`{premier jeton}.{secret}`, `RefreshTokenFamily`). La session du premier jeton (l'**ancre**) est gardée, révoquée,
+  jusqu'à la fin de la famille ; à chaque rotation, la génération intermédiaire est retirée. Il reste au plus 3
+  sessions par famille (ancre, session remplacée, session vivante). Présenter N'IMPORTE QUEL ancien jeton : soit sa
+  session existe encore (rejeu, ci-dessus), soit l'ancre le reconnaît (`RevokeAfterFamilyTokenReuse`) : dans les deux
+  cas toutes les sessions de l'utilisateur sont révoquées. Aucune colonne ajoutée : l'ancre est une session ordinaire.
+- **Session de caisse** (`StartOperatorSession`, PIN vérifié par Staff) : access token marqué `till`/`till_loc`,
+  valable `IdentitySettings.TillSessionLifetime` (12 h, `Identity:Sessions:TillSessionHours`), SANS refresh token.
+  Les routes `/me` lui sont fermées sauf `GET /me`, `GET /me/avatar` et la fin de sa propre session ; ses permissions
+  sont limitées par l'hôte (liste blanche `HostComposition.TillPermissions`).
 - `Sessions` contient les sessions conservées (vivantes, révoquées, dernière tournée de chaque chaîne).
   `ActiveSessionsAt(instant)` donne les sessions utilisables. `PurgeExpiredSessions` retire les sessions expirées,
   **sauf** une session tournée dont la remplaçante est encore utilisable (ni révoquée ni expirée) : la détection de

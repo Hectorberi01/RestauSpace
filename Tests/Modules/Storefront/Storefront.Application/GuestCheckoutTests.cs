@@ -311,13 +311,14 @@ public sealed class GuestOnlinePaymentTests
         await _fixture.RecordPayment.HandleAsync(new RecordOnlinePaymentCommand(placed.OrderId));
         var paid = await _fixture.Track.HandleAsync(new GetGuestOrderQuery(placed.TrackingToken));
 
-        Assert.Equal((GuestOrderStatus.Received, FakeClock.DefaultNow.AddMinutes(15)), (placed.Status, placed.PayBeforeUtc!.Value));
+        // 15 minutes réglées, plafonnées à 10 (CheckoutLimits.PaymentHoldMinutes).
+        Assert.Equal((GuestOrderStatus.Received, FakeClock.DefaultNow.AddMinutes(10)), (placed.Status, placed.PayBeforeUtc!.Value));
         Assert.Equal((GuestPaymentState.AwaitingPayment, true, 0m), (before.PaymentState, before.CanPay, before.AmountDueAtCounter));
         Assert.Equal("fedapay", Assert.Single(before.PaymentOptions).Provider);
         Assert.NotNull(started.CheckoutUrl);
         Assert.Equal(new Uri($"https://chezawa.bj/merci?commande={placed.TrackingToken}"), _fixture.Payments[0].ReturnUrl);
         Assert.Equal(GuestPaymentState.Processing, processing.PaymentState);
-        Assert.Equal((OnlineOrderState.AwaitingPayment, FakeClock.DefaultNow.AddMinutes(15)), (waiting[0].State, waiting[0].Deadline));
+        Assert.Equal((OnlineOrderState.AwaitingPayment, FakeClock.DefaultNow.AddMinutes(10)), (waiting[0].State, waiting[0].Deadline));
         Assert.Equal((GuestPaymentState.Paid, 4000m, false), (paid.PaymentState, paid.AmountPaid, paid.CanPay));
         Assert.Equal(GuestOrderStatus.Accepted, _fixture.Orders[OrderOf(placed)].Status);
         Assert.Empty(await _fixture.Waiting.HandleAsync(new ListWaitingOnlineOrdersQuery(_fixture.Cotonou.Value)));
@@ -387,5 +388,69 @@ public sealed class GuestOnlinePaymentTests
         Assert.Equal(CheckoutErrors.PaymentNotExpected, cancelled.Error);
         Assert.Equal(CancelGuestOrderHandler.Reason, _fixture.Orders[OrderOf(placed)].CancelReason);
         Assert.Empty(_fixture.Payments);
+    }
+
+    private Task<GuestOrderPlacedDto> PlaceAgainAsync(GuestContactInput contact, PaymentMode payment = PaymentMode.Online, DateTimeOffset? at = null) =>
+        _fixture.Place.HandleAsync(new PlaceGuestOrderCommand(_fixture.Cotonou.Value, ServiceMode.Takeaway, [new CartLine(_burger, 1)], payment, contact, at));
+
+    private async Task SignedInAsync(bool counter, int unpaidMinutes = 15, int? capacity = null)
+    {
+        _fixture.CurrentTenantId = _fixture.TenantA;
+        await _fixture.SaveSettings.HandleAsync(new SaveOnlineOrderingSettingsCommand(
+            _fixture.Cotonou.Value, false, [ServiceMode.Takeaway], 20, null, 10, unpaidMinutes,
+            [new ChannelPolicyInput(SalesAppKind.Web, true, counter, null, OrderAcceptance.Automatic)], capacity));
+        var app = await _fixture.CreateApp.HandleAsync(new CreateSalesAppCommand("Site", SalesAppKind.Web));
+        await _fixture.SignInAsync(app.Key);
+    }
+
+    [Fact]
+    public async Task Unpaid_online_orders_are_limited_per_address_and_per_customer()
+    {
+        await SignedInAsync(counter: true);
+        var awa = new GuestContactInput("Awa", "awa@exemple.bj");
+        await PlaceAgainAsync(awa);
+        await PlaceAgainAsync(awa);
+        await PlaceAgainAsync(awa);
+
+        var sameContact = await Assert.ThrowsAsync<DomainException>(() => PlaceAgainAsync(awa));
+        var sameAddress = await Assert.ThrowsAsync<DomainException>(() => PlaceAgainAsync(new GuestContactInput("Bio", "bio@exemple.bj")));
+        _fixture.ClientKey = "ip-2";
+        var otherAddress = await Assert.ThrowsAsync<DomainException>(() => PlaceAgainAsync(awa));
+        var other = await PlaceAgainAsync(new GuestContactInput("Bio", "bio@exemple.bj"));
+        var counter = await PlaceAgainAsync(awa, PaymentMode.Counter);
+        _fixture.ClientKey = "ip-1";
+        await _fixture.Cancel.HandleAsync(new CancelGuestOrderCommand(other.TrackingToken));
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(11));
+        var afterExpiry = await PlaceAgainAsync(awa);
+
+        Assert.Equal(CheckoutErrors.TooManyPendingPayments, sameContact.Error);
+        Assert.Equal(CheckoutErrors.TooManyPendingPayments, sameAddress.Error);
+        Assert.Equal(CheckoutErrors.TooManyPendingPayments, otherAddress.Error);
+        Assert.Equal(PaymentMode.Counter, counter.Payment);
+        Assert.NotNull(afterExpiry.PayBeforeUtc);
+        Assert.All(_fixture.OnlineOrders.Where(order => !order.IsAwaitingPayment), order => Assert.Null(order.ClientKey));
+    }
+
+    [Fact]
+    public async Task An_unpaid_order_frees_its_slot_after_the_short_hold()
+    {
+        await SignedInAsync(counter: false, unpaidMinutes: 120, capacity: 1);
+        var awa = new GuestContactInput("Awa", "awa@exemple.bj");
+        var at = FakeClock.DefaultNow.AddHours(2);
+
+        var first = await PlaceAgainAsync(awa, at: at);
+        var full = await Assert.ThrowsAsync<DomainException>(() => PlaceAgainAsync(new GuestContactInput("Bio", "bio@exemple.bj"), at: at));
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(10));
+        _fixture.CurrentTenantId = _fixture.TenantA;
+        await _fixture.Resolve.HandleAsync(new ResolveOverdueOnlineOrderCommand(_fixture.OnlineOrders[0].Id.Value));
+        var late = await Assert.ThrowsAsync<DomainException>(() => _fixture.StartPayment.HandleAsync(new StartGuestPaymentCommand(first.TrackingToken, "fedapay")));
+        var second = await PlaceAgainAsync(new GuestContactInput("Bio", "bio@exemple.bj"), at: at);
+
+        // 120 minutes réglées : le créneau (et le coupon, rendu à l'annulation) n'est tenu que 10 minutes.
+        Assert.Equal(FakeClock.DefaultNow.AddMinutes(10), first.PayBeforeUtc);
+        Assert.Equal(DeliveryCheckoutErrors.SlotFull, full.Error);
+        Assert.Equal((OnlineOrderState.Expired, GuestOrderStatus.Cancelled), (_fixture.OnlineOrders[0].State, _fixture.Orders[OrderOf(first)].Status));
+        Assert.Equal(CheckoutErrors.PaymentNotExpected, late.Error);
+        Assert.NotEqual(first.OrderId, second.OrderId);
     }
 }

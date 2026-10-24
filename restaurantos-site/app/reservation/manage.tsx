@@ -9,6 +9,7 @@ import {
 } from '@/lib/storefront';
 import {AccentButton, Notice, Spinner} from '@/components/order-ui';
 import {tr, translated, useLang} from '@/lib/i18n';
+import {safeCheckoutUrl} from '@/lib/checkout';
 
 const statusLabel: Record<BookingStatus, string> = translated({
   Pending: 'En attente de confirmation',
@@ -70,7 +71,8 @@ export function ManageBooking() {
     setActionError(null);
     try {
       const started = await payDeposit(token, provider, method, `${window.location.origin}/reservation?jeton=${encodeURIComponent(token)}`);
-      if (started?.checkoutUrl) window.location.assign(started.checkoutUrl);
+      const checkout = safeCheckoutUrl(started?.checkoutUrl);
+      if (checkout) window.location.assign(checkout);
       else await load();
     } catch (reason) {
       setActionError(errorMessage(reason));

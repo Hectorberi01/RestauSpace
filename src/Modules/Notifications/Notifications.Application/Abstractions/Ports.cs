@@ -110,7 +110,15 @@ public interface INotificationRepository
 
     /// <param name="idempotencyKey">Une seule notification par clé et par propriétaire (index unique en dernier recours).</param>
     void Add(Notification notification, string? idempotencyKey = null);
+
+    /// <summary>Notifications du tenant créées après <paramref name="since"/> sur ces canaux et de ces types.</summary>
+    Task<NotificationWindowCount> CountCreatedSinceAsync(
+        TenantId tenantId, IReadOnlyCollection<NotificationChannel> channels, IReadOnlyCollection<TemplateKey> types, DateTimeOffset since,
+        CancellationToken cancellationToken = default);
 }
+
+/// <param name="OldestAtUtc">Création de la plus ancienne comptée ; null si aucune.</param>
+public sealed record NotificationWindowCount(int Count, DateTimeOffset? OldestAtUtc);
 
 /// <summary>Une notification vue d'un traitement de la PLATEFORME (worker, webhook) : son id et son propriétaire.</summary>
 public sealed record NotificationLocator(NotificationId Id, TenantId? TenantId);
@@ -132,8 +140,9 @@ public interface INotificationDirectory
     /// <summary>Terminées depuis avant <paramref name="before"/> et pas encore expurgées.</summary>
     Task<IReadOnlyList<NotificationLocator>> ListToRedactAsync(DateTimeOffset before, int take, CancellationToken cancellationToken = default);
 
+    /// <param name="signedBy">Tenant dont le compte a signé le rapport : seules ses notifications ; null = compte de la plateforme.</param>
     Task<NotificationLocator?> FindByProviderMessageAsync(
-        NotificationProviderCode provider, ProviderMessageId messageId, CancellationToken cancellationToken = default);
+        NotificationProviderCode provider, ProviderMessageId messageId, TenantId? signedBy, CancellationToken cancellationToken = default);
 
     /// <summary>« Dead letter » : en échec et jamais plus envoyées, les plus récentes d'abord.</summary>
     Task<IReadOnlyList<Notification>> ListAbandonedAsync(int skip, int take, CancellationToken cancellationToken = default);
@@ -212,6 +221,9 @@ public interface INotificationTenants
 public interface INotificationLocations
 {
     Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default);
+
+    /// <summary>Pays des établissements du tenant ; vide s'il n'en a aucun ou si c'est un autre tenant que celui du contexte.</summary>
+    Task<IReadOnlyList<CountryCode>> CountriesAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Les coordonnées minimales d'un client, fournies par l'hôte depuis Customers.</summary>

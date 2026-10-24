@@ -111,9 +111,11 @@ public sealed class DeliveryCouponTests
 
         Assert.Equal((6500m, 1500m), (quote.Total, quote.DiscountTotal));
         Assert.Equal(new CartCouponDto("BIENVENUE", true, null, "Promo BIENVENUE", 1500m), quote.Coupon);
-        Assert.Equal((8000m, "promotions.coupon.exhausted", false), (refusedQuote.Total, refusedQuote.Coupon!.RefusalCode, refusedQuote.Coupon.IsValid));
-        Assert.Equal("promotions.coupon.not_found", unknownQuote.Coupon!.RefusalCode);
-        Assert.Equal("promotions.coupon.exhausted", refused.Code);
+        // Refus uniforme : épuisé et inconnu donnent exactement la même réponse.
+        Assert.Equal(new CartCouponDto("EPUISE", false, DeliveryCheckoutErrors.CouponInvalid.Code, null, 0m), refusedQuote.Coupon);
+        Assert.Equal(new CartCouponDto("INCONNU", false, DeliveryCheckoutErrors.CouponInvalid.Code, null, 0m), unknownQuote.Coupon);
+        Assert.Equal(8000m, refusedQuote.Total);
+        Assert.Equal((DeliveryCheckoutErrors.CouponInvalid.Code, DeliveryCheckoutErrors.CouponInvalid.Message), (refused.Code, refused.Message));
         Assert.Equal(6500m, placed.Total);
         Assert.Equal(("BIENVENUE", OrderId.From(placed.OrderId)), Assert.Single(_fixture.RedeemedCoupons));
         Assert.Equal(1500m, tracked.DiscountTotal);

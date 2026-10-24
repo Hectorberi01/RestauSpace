@@ -20,6 +20,9 @@ public sealed class StorefrontOptions
     /// <summary>Contrôle anti-robot (section <c>Storefront:Turnstile</c>) ; sans les deux clés, il ne peut pas être exigé.</summary>
     public TurnstileOptions Turnstile { get; set; } = new();
 
+    /// <summary>Limites des commandes impayées (section <c>Storefront:CheckoutLimits</c>).</summary>
+    public Storefront.Application.Checkout.CheckoutLimits CheckoutLimits { get; set; } = new();
+
     /// <summary>Lève si la clé manque ou est trop courte (sans jamais citer sa valeur).</summary>
     public byte[] TrackingKeyBytes()
     {

@@ -2,7 +2,8 @@ import {API_URL, ApiError, api, del, post, put, setSession, type Session} from '
 
 /**
  * Caisse partagée : l'appareil garde la clé remise à son enregistrement ; le personnel s'y identifie par son PIN et
- * reçoit une session à lui. La clé n'est jamais affichée ni envoyée ailleurs qu'à l'API (en-tête X-Till-Key).
+ * reçoit une session de caisse à lui (12 h, sans refresh token, droits d'exploitation seulement). La clé n'est jamais
+ * affichée ni envoyée ailleurs qu'à l'API (en-tête X-Till-Key).
  */
 const KEY = 'restaurantos.till';
 
@@ -57,8 +58,6 @@ interface TillSession {
   sessionId: string;
   accessToken: string;
   accessTokenExpiresAtUtc: string;
-  refreshToken: string;
-  refreshTokenExpiresAtUtc: string;
 }
 
 export interface ClockResult {
@@ -98,8 +97,6 @@ export async function unlockTill(device: TillDevice, staffMemberId: string, pin:
     sessionId: opened.sessionId,
     accessToken: opened.accessToken,
     accessTokenExpiresAtUtc: opened.accessTokenExpiresAtUtc,
-    refreshToken: opened.refreshToken,
-    refreshTokenExpiresAtUtc: opened.refreshTokenExpiresAtUtc,
     tenantId: opened.tenantId,
     operator: {staffMemberId: opened.staffMemberId, name: opened.name, tillId: device.tillId, locationId: opened.locationId},
   };

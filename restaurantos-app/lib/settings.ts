@@ -168,6 +168,7 @@ export type NotificationTestOutcome = 'sent' | 'delivered' | 'failed' | 'credent
 export interface NotificationTest {
   outcome: NotificationTestOutcome;
   succeeded: boolean;
+  /** Toujours null : le serveur ne détaille pas un échec de test. */
   failureCode: string | null;
   isPermanent: boolean;
   testedAtUtc: string;
@@ -178,19 +179,6 @@ export const testableChannels = new Set<Channel>(['Email', 'Sms', 'WhatsApp']);
 
 export const testNotification = (id: string, address: string) =>
   post<NotificationTest>(`/notification-configurations/${id}/test`, {address});
-
-const failureMessages: Record<string, string> = {
-  PROVIDER_AUTH_FAILED: 'Le prestataire a refusé les identifiants : vérifiez la clé, le mot de passe ou le jeton.',
-  SENDER_REJECTED: 'L’adresse d’expédition est refusée : validez-la chez votre fournisseur (expéditeurs et domaines).',
-  TEMPLATE_INVALID: 'Le modèle WhatsApp est introuvable ou pas encore approuvé par Meta : vérifiez son nom et sa langue.',
-  INVALID_EMAIL: 'Le destinataire est refusé : vérifiez l’adresse.',
-  INVALID_PHONE_NUMBER: 'Le numéro est refusé : vérifiez-le (format international).',
-  INVALID_RECIPIENT: 'Le destinataire est refusé par le prestataire.',
-  PROVIDER_UNAVAILABLE: 'Prestataire injoignable : vérifiez le serveur et le port, puis réessayez.',
-  TIMEOUT: 'Le prestataire n’a pas répondu à temps : réessayez.',
-  RATE_LIMITED: 'Le prestataire limite les envois : réessayez dans quelques minutes.',
-  REJECTED: 'Le prestataire a refusé le message.',
-};
 
 /** Ce qu'on dit au restaurateur après un message de test. */
 export function notificationTestSummary(result: NotificationTest, channel: Channel, address: string): {tone: 'green' | 'amber' | 'red'; title: string; detail?: string} {
@@ -206,12 +194,19 @@ export function notificationTestSummary(result: NotificationTest, channel: Chann
     case 'credentials_missing':
       return {tone: 'amber', title: 'Aucun identifiant enregistré.', detail: 'Saisissez d’abord les identifiants du compte.'};
     case 'credentials_invalid':
-      return {tone: 'red', title: 'Identifiants enregistrés incomplets ou invalides.', detail: 'Saisissez-les à nouveau.'};
-    default: {
-      const code = result.failureCode ?? '';
-      const detail = failureMessages[code]
-        ?? (code.startsWith('MJ_') ? `Mailjet a refusé le message (code ${code.slice(3).toLowerCase().replace(/_/g, '-')}).` : code ? `Code d’erreur : ${code}.` : undefined);
-      return {tone: 'red', title: 'L’envoi a échoué.', detail};
-    }
+      return {
+        tone: 'red',
+        title: 'Identifiants enregistrés incomplets ou invalides.',
+        detail: channel === 'Email' ? 'Saisissez-les à nouveau (serveur SMTP : port 25, 465, 587 ou 2525).' : 'Saisissez-les à nouveau.',
+      };
+    default:
+      // Résultat binaire côté serveur : aucun code d'échec n'est renvoyé.
+      return {
+        tone: 'red',
+        title: 'L’envoi a échoué.',
+        detail: channel === 'Email'
+          ? 'Vérifiez les identifiants et l’adresse d’expédition ; pour un serveur SMTP, une adresse publique et le port 25, 465, 587 ou 2525.'
+          : 'Vérifiez les identifiants du compte et l’expéditeur, puis réessayez.',
+      };
   }
 }

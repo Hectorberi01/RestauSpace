@@ -70,7 +70,8 @@ public enum WebhookEventKind
 
 /// <summary>
 /// Webhook d'un prestataire (<c>provider_webhook_events</c>), signature vérifiée, conservé avec sa lecture normalisée et
-/// appliqué en arrière-plan. Unique par (prestataire, id d'événement) : un webhook renvoyé n'est enregistré qu'une fois.
+/// appliqué en arrière-plan. Unique par (prestataire, id d'événement qualifié par le compte signataire) : un webhook
+/// renvoyé n'est enregistré qu'une fois.
 /// Le corps brut n'est PAS gardé (il peut contenir l'adresse et le contenu du message) : seulement ce qui sert.
 /// </summary>
 internal sealed class NotificationWebhookEvent
@@ -82,6 +83,7 @@ internal sealed class NotificationWebhookEvent
 
     public string Provider { get; set; } = null!;
 
+    /// <summary>« p:{id} » (compte de la plateforme) ou « t:{tenant}:{id} » (compte du restaurant), voir <c>WebhookEventScope</c>.</summary>
     public string EventId { get; set; } = null!;
 
     public WebhookEventKind Kind { get; set; }

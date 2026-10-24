@@ -202,7 +202,10 @@ public sealed class ConfigurePaymentConfigurationHandler(PaymentsWorkspace works
     }
 }
 
-/// <summary>Restaurant : passe du compte de la plateforme au sien, ou l'inverse (si le prestataire autorise le mode plateforme).</summary>
+/// <summary>
+/// Restaurant : passe du compte de la plateforme au sien, ou l'inverse (si le prestataire autorise le mode plateforme).
+/// Refusé (409) tant qu'un paiement en ligne de ce prestataire n'est pas terminé.
+/// </summary>
 public sealed record ChangePaymentModeCommand(Guid ConfigurationId, PaymentMode Mode) : ICommand;
 
 public sealed class ChangePaymentModeHandler(PaymentsWorkspace workspace, IClock clock) : ICommandHandler<ChangePaymentModeCommand>
@@ -212,7 +215,9 @@ public sealed class ChangePaymentModeHandler(PaymentsWorkspace workspace, IClock
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var configuration = await workspace.LoadConfigurationAsync(workspace.CurrentTenant, command.ConfigurationId, cancellationToken);
         var provider = await ProviderCatalog.LoadAsync(workspace.Providers, configuration.PaymentProviderId.Value, cancellationToken);
-        configuration.ChangeMode(command.Mode, provider, clock);
+        var inProgress = configuration.ProviderType == PaymentProviderType.Online
+            && await workspace.Payments.HasPaymentsInProgressAsync(configuration.TenantId, configuration.Provider, cancellationToken);
+        configuration.ChangeMode(command.Mode, provider, inProgress, clock);
         await workspace.SaveAsync(cancellationToken);
     }
 }

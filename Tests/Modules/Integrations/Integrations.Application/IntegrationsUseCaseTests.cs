@@ -295,6 +295,40 @@ public sealed class IntegrationsUseCaseTests
     }
 
     [Fact]
+    public async Task Rotating_a_key_requires_holding_all_its_scopes()
+    {
+        var issued = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("POS", ["orders.view", "orders.manage"], null));
+
+        // Un utilisateur qui n'a plus orders.manage ne peut pas obtenir une nouvelle clé qui l'a.
+        _fixture.DeniedPermissions.Add("orders.manage");
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _fixture.RotateKey.HandleAsync(new RotateApiCredentialCommand(issued.CredentialId)));
+
+        // Une clé plus étroite ne peut pas renouveler une clé plus large.
+        var narrow = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("Lecture", ["orders.view"], null));
+        _fixture.DeniedPermissions.Clear();
+        _fixture.Actor = ChangeActor.ForApiCredential(CredentialId.From(narrow.CredentialId));
+        var widened = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _fixture.RotateKey.HandleAsync(new RotateApiCredentialCommand(issued.CredentialId)));
+
+        Assert.Equal(IntegrationsApplicationErrors.ScopeNotHeld, refused.Error);
+        Assert.Equal(IntegrationsApplicationErrors.ScopeNotHeld, widened.Error);
+        Assert.NotNull(await _fixture.Authenticate.HandleAsync(new AuthenticateApiKeyQuery(issued.Key)));
+    }
+
+    [Fact]
+    public async Task Rotating_a_key_requires_the_api_option()
+    {
+        var issued = await _fixture.Issue.HandleAsync(new IssueApiCredentialCommand("POS", ["orders.view"], null));
+        _fixture.WithoutApiOption.Add(_fixture.TenantA);
+
+        var refused = await Assert.ThrowsAsync<DomainException>(() =>
+            _fixture.RotateKey.HandleAsync(new RotateApiCredentialCommand(issued.CredentialId)));
+
+        Assert.Equal(IntegrationsApplicationErrors.ApiOptionRequired, refused.Error);
+    }
+
+    [Fact]
     public async Task Issuing_a_key_requires_the_api_option()
     {
         _fixture.WithoutApiOption.Add(_fixture.TenantA);

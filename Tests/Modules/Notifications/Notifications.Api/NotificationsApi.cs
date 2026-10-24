@@ -124,6 +124,9 @@ public sealed class NotificationsApi
     public Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) =>
         Task.FromResult<LocationReference?>(null);
 
+    public Task<IReadOnlyList<CountryCode>> CountriesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<CountryCode>>([CountryCode.Create("BJ")]);
+
     public Task<CustomerContact?> FindCustomerAsync(TenantId tenantId, CustomerId customerId, CancellationToken cancellationToken = default) =>
         Task.FromResult<CustomerContact?>(Customers.TryGetValue((tenantId, customerId), out var contact) ? contact : null);
 

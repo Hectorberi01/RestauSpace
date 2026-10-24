@@ -81,6 +81,7 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
         var mine = await JsonAsync(await client.GetAsync("/billing/subscription"));
         await AssertStatusAsync(await client.DeleteAsync("/billing/subscription/cancellation"), HttpStatusCode.NoContent);
         var again = await client.PostAsJsonAsync("/billing/subscription", new { planId = plan });
+        var noChange = await client.DeleteAsync("/billing/subscription/scheduled-plan");
 
         var subscription = mine.GetProperty("subscription");
         Assert.Equal((id, "Trialing", true), (subscription.GetProperty("id").GetGuid(), subscription.GetProperty("status").GetString(), subscription.GetProperty("cancelAtPeriodEnd").GetBoolean()));
@@ -88,6 +89,9 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
         var sms = Assert.Single(mine.GetProperty("usage").EnumerateArray());
         Assert.Equal((100L, 0L), (sms.GetProperty("limit").GetInt64(), sms.GetProperty("used").GetInt64()));
         await AssertProblemAsync(again, HttpStatusCode.Conflict, "billing.subscription.already_subscribed");
+        // Essai : aucun changement programmé (il est immédiat).
+        Assert.Equal(JsonValueKind.Null, mine.GetProperty("scheduledPlan").ValueKind);
+        await AssertProblemAsync(noChange, HttpStatusCode.UnprocessableEntity, "billing.subscription.plan_change_not_scheduled");
     }
 
     [Fact]

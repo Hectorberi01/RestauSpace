@@ -33,6 +33,8 @@ public enum OnlineOrderState
 /// </summary>
 public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
 {
+    public const int MaxClientKeyLength = 64;
+
     private OnlineOrder(
         OnlineOrderId id,
         TenantId tenantId,
@@ -45,9 +47,12 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
         int acceptanceMinutes,
         DateTimeOffset placedAtUtc,
         DateTimeOffset? payBeforeUtc,
-        DateTimeOffset? slotStartUtc) : base(id)
+        DateTimeOffset? slotStartUtc,
+        CustomerId? customerId,
+        string? clientKey) : base(id)
     {
         SlotStartUtc = slotStartUtc;
+        CustomerId = customerId;
         TenantId = tenantId;
         OrderId = orderId;
         AppId = appId;
@@ -62,6 +67,7 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
             State = OnlineOrderState.AwaitingPayment;
             PayBeforeUtc = payBeforeUtc;
             NextDeadlineUtc = payBeforeUtc;
+            ClientKey = clientKey;
         }
         else
         {
@@ -112,6 +118,12 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
     public DateTimeOffset? SlotStartUtc { get; private set; }
 
     /// <summary>La commande occupe-t-elle encore son créneau ? Non si elle a été refusée faute d'acceptation ou annulée par le client.</summary>
+    /// <summary>Le client de la commande (fiche Customers) ; null pour une borne ou une table sans coordonnées.</summary>
+    public CustomerId? CustomerId { get; private set; }
+
+    /// <summary>Empreinte de l'adresse IP du client, gardée seulement tant que le paiement en ligne est attendu.</summary>
+    public string? ClientKey { get; private set; }
+
     public bool HoldsSlot => State is not (OnlineOrderState.Expired or OnlineOrderState.CancelledByCustomer);
 
     public bool IsAwaitingAcceptance => State == OnlineOrderState.AwaitingAcceptance;
@@ -124,6 +136,8 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
     /// <param name="acceptanceDelay">Délai de validation manuelle ; ignoré en acceptation automatique.</param>
     /// <param name="unpaidDelay">Paiement en ligne : délai pour payer ; ignoré au comptoir.</param>
     /// <param name="readyAtUtc">L'heure où la commande doit être prête : elle donne son créneau.</param>
+    /// <param name="customerId">Le client, pour limiter ses commandes en attente de paiement.</param>
+    /// <param name="clientKey">Empreinte de l'adresse IP, même usage ; gardée seulement pour un paiement en ligne.</param>
     public static OnlineOrder Record(
         TenantId tenantId,
         OrderId orderId,
@@ -134,7 +148,9 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
         TimeSpan acceptanceDelay,
         TimeSpan unpaidDelay,
         IClock clock,
-        DateTimeOffset? readyAtUtc = null)
+        DateTimeOffset? readyAtUtc = null,
+        CustomerId? customerId = null,
+        string? clientKey = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(clock);
@@ -144,13 +160,16 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
         DomainException.ThrowIf(!Enum.IsDefined(acceptance), OnlineOrderingErrors.AcceptanceInvalid);
         DomainException.ThrowIf(acceptance == OrderAcceptance.Manual && acceptanceDelay <= TimeSpan.Zero, OnlineOrderingErrors.AcceptanceDelayInvalid);
         DomainException.ThrowIf(paymentMode == PaymentMode.Online && unpaidDelay <= TimeSpan.Zero, OnlineOrderingErrors.ExpiryInvalid);
+        DomainException.ThrowIf(clientKey is { Length: > MaxClientKeyLength }, OnlineOrderErrors.ClientKeyInvalid);
 
         var now = clock.UtcNow;
         return new OnlineOrder(
             OnlineOrderId.New(), tenantId, orderId, app.Id, app.Kind, locationId, paymentMode, acceptance,
             acceptance == OrderAcceptance.Manual ? (int)acceptanceDelay.TotalMinutes : 0, now,
             paymentMode == PaymentMode.Online ? now + unpaidDelay : null,
-            readyAtUtc is { } ready ? OrderSlots.StartOf(ready) : null);
+            readyAtUtc is { } ready ? OrderSlots.StartOf(ready) : null,
+            customerId,
+            string.IsNullOrEmpty(clientKey) ? null : clientKey);
     }
 
     /// <summary>L'échéance en cours (paiement ou acceptation) est-elle passée ?</summary>
@@ -171,6 +190,7 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
 
         PaidAtUtc = clock.UtcNow;
         PayBeforeUtc = null;
+        ClientKey = null;
         StartAcceptance(clock.UtcNow);
         return State == OnlineOrderState.Handled;
     }
@@ -223,6 +243,7 @@ public sealed class OnlineOrder : AggregateRoot<OnlineOrderId>, ITenantOwned
         State = state;
         ResolvedAtUtc = clock.UtcNow;
         NextDeadlineUtc = null;
+        ClientKey = null;
     }
 }
 
@@ -231,6 +252,7 @@ public static class OnlineOrderErrors
     public static readonly DomainError PaymentModeInvalid = new("storefront.order.payment_mode_invalid", "The payment mode is not recognized.");
     public static readonly DomainError NotAwaitingAcceptance =
         new("storefront.order.not_awaiting_acceptance", "The order is no longer waiting to be accepted.", DomainErrorKind.Conflict);
+    public static readonly DomainError ClientKeyInvalid = new("storefront.order.client_key_invalid", "The client fingerprint is too long.");
     public static readonly DomainError NotOverdue = new("storefront.order.not_overdue", "The acceptance deadline has not passed yet.");
     public static readonly DomainError NotCancellable =
         new("storefront.order.not_cancellable", "The order has already been accepted by the restaurant: contact it to cancel.", DomainErrorKind.Conflict);

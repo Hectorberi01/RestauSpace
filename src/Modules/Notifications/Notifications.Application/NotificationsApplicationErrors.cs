@@ -43,6 +43,10 @@ public static class NotificationsApplicationErrors
     public static readonly DomainError OtpExhausted = new("notifications.otp.too_many_attempts", "Too many wrong codes; ask for a new one.");
     public static readonly DomainError OtpTooManyRequests = new("notifications.otp.too_many_requests", "Too many codes were asked for; wait before asking again.");
     public static readonly DomainError OtpNotSent = new("notifications.otp.not_sent", "The code could not be sent; try again or use another channel.");
+    public static readonly DomainError OtpPhoneCountryNotAllowed = new(
+        "notifications.otp.phone_country_not_allowed", "Codes are only sent by SMS or WhatsApp to phone numbers of the restaurant's country.");
+    public static readonly DomainError OtpPhoneLimitReached = new(
+        "notifications.otp.phone_limit_reached", "Too many SMS or WhatsApp messages were sent for this restaurant; try again later or use an e-mail address.");
 }
 
 /// <summary>Codes de permission déclarés par le module Notifications (accordés via les rôles Staff).</summary>
@@ -95,4 +99,7 @@ public sealed class NotificationsSettings
 
     /// <summary>Clients traités par lot d'envoi d'une campagne (un lot = une transaction).</summary>
     public int CampaignBatchSize { get; set; } = 100;
+
+    /// <summary>SMS + WhatsApp au plus par restaurant sur une heure glissante pour les envois déclenchés par un visiteur ; 0 = sans plafond.</summary>
+    public int AnonymousSmsPerTenantPerHour { get; set; } = 100;
 }

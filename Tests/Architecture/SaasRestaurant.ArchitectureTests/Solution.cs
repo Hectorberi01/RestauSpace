@@ -6,7 +6,7 @@ namespace SaasRestaurant.ArchitectureTests;
 public static class Solution
 {
     /// <summary>Tous les modules métier. Tout nouveau module doit figurer ici pour être couvert par les règles.</summary>
-    public static readonly string[] Modules = ["Identity", "Tenants", "Locations", "Staff", "Catalog", "Floor", "Reservations", "Orders", "Kitchen", "Payments", "Inventory", "Customers", "Notifications", "Promotions", "Loyalty", "Billing", "Reporting", "Files", "Integrations", "Reviews", "Audit", "Delivery", "Storefront", "Printing"];
+    public static readonly string[] Modules = ["Identity", "Tenants", "Locations", "Staff", "Catalog", "Floor", "Reservations", "Orders", "Kitchen", "Payments", "Inventory", "Customers", "Notifications", "Promotions", "Loyalty", "Billing", "Reporting", "Files", "Integrations", "Reviews", "Audit", "Delivery", "Storefront", "Printing", "Backups"];
 
     public static readonly string[] Layers = ["Domain", "Application", "Infrastructure", "Api"];
 

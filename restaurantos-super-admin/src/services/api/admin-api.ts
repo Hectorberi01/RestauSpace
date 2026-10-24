@@ -112,6 +112,9 @@ export interface SubscriptionDto {
   isComplimentary?: boolean;
   /** Fin de l'offre ; null quand elle est sans limite. */
   complimentaryUntilUtc?: string | null;
+  /** Plan programmé par le restaurant pour la fin de la période payée. */
+  scheduledPlanId?: string | null;
+  scheduledPlanEffectiveAtUtc?: string | null;
 }
 
 export interface AuditEntryDto {
@@ -618,4 +621,72 @@ export const onlineSales = {
   overview: (from: string, to: string) => api<OnlineSalesOverview>('/admin/online-sales/overview', {query: {from, to}}),
   tenants: (from: string, to: string) => all<OnlineSalesTenantRow>('/admin/online-sales/tenants', {from, to}),
   tenant: (tenantId: string, from: string, to: string) => api<OnlineSalesTenantDetail>(`/admin/online-sales/tenants/${tenantId}`, {query: {from, to}}),
+};
+
+export type BackupTrigger = 'Manual' | 'Scheduled';
+export type BackupStatus = 'Pending' | 'Running' | 'Uploading' | 'Completed' | 'Failed' | 'Deleting' | 'Deleted';
+export type BackupFailureCode = 'dump_failed' | 'verify_failed' | 'encrypt_failed' | 'upload_failed' | 'timeout' | 'agent_restarted';
+export type RestoreStatus = 'Pending' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
+export type RestoreFailureCode =
+  | 'disabled' | 'download_failed' | 'checksum_mismatch' | 'invalid_key' | 'key_missing' | 'decrypt_failed' | 'restore_failed' | 'swap_failed' | 'timeout';
+
+export interface BackupDto {
+  id: string;
+  databaseName: string;
+  trigger: BackupTrigger;
+  status: BackupStatus;
+  sizeBytes: number | null;
+  checksumSha256: string | null;
+  requestedBy: string | null;
+  failureCode: BackupFailureCode | null;
+  createdAtUtc: string;
+  startedAtUtc: string | null;
+  completedAtUtc: string | null;
+  expiresAtUtc: string | null;
+}
+
+export interface RestoreDto {
+  id: string;
+  backupId: string;
+  databaseName: string;
+  status: RestoreStatus;
+  requestedBy: string;
+  failureCode: RestoreFailureCode | null;
+  createdAtUtc: string;
+  notBeforeUtc: string;
+  startedAtUtc: string | null;
+  completedAtUtc: string | null;
+  previousDatabaseName: string | null;
+}
+
+/** Agent du serveur de base ; champs null s'il ne s'est jamais signalé. */
+export interface BackupAgentDto {
+  host: string | null;
+  version: string | null;
+  lastSeenAtUtc: string | null;
+  restoreEnabled: boolean | null;
+  online: boolean;
+}
+
+export interface BackupSettingsDto {
+  databaseName: string;
+  retentionDays: number;
+  keepMin: number;
+  dailyAtUtc: string;
+  restoreDelayMinutes: number;
+  storageConfigured: boolean;
+}
+
+export const backups = {
+  list: (page: number, pageSize: number) => api<Page<BackupDto>>('/admin/backups', {query: {page, pageSize}}),
+  get: (id: string) => api<BackupDto>(`/admin/backups/${id}`),
+  create: () => post<BackupDto>('/admin/backups'),
+  remove: (id: string) => api<void>(`/admin/backups/${id}`, {method: 'DELETE'}),
+  /** URL pré-signée de courte durée : à ouvrir tout de suite, jamais à garder. */
+  downloadLink: (id: string, code: string) => post<{url: string; expiresAtUtc: string}>(`/admin/backups/${id}/download-link`, {code}),
+  restore: (id: string, code: string, confirmDatabaseName: string) => post<RestoreDto>(`/admin/backups/${id}/restore`, {code, confirmDatabaseName}),
+  restores: (page: number, pageSize: number) => api<Page<RestoreDto>>('/admin/backups/restores', {query: {page, pageSize}}),
+  cancelRestore: (id: string) => post(`/admin/backups/restores/${id}/cancel`),
+  agent: () => api<BackupAgentDto>('/admin/backups/agent'),
+  settings: () => api<BackupSettingsDto>('/admin/backups/settings'),
 };

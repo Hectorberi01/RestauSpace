@@ -210,12 +210,20 @@ internal sealed class OnlineOrderConfiguration : IEntityTypeConfiguration<Online
         builder.Property(order => order.NextDeadlineUtc).HasColumnName("next_deadline_utc");
         builder.Property(order => order.ResolvedAtUtc).HasColumnName("resolved_at_utc");
         builder.Property(order => order.SlotStartUtc).HasColumnName("slot_start_utc");
+        builder.Property(order => order.CustomerId)
+            .HasColumnName("customer_id")
+            .HasConversion(new ValueConverter<CustomerId, Guid>(id => id.Value, value => CustomerId.From(value)));
+        builder.Property(order => order.ClientKey).HasColumnName("client_key").HasMaxLength(OnlineOrder.MaxClientKeyLength);
         builder.Ignore(order => order.HoldsSlot);
         builder.Ignore(order => order.IsAwaitingAcceptance);
         builder.Ignore(order => order.IsAwaitingPayment);
         builder.Ignore(order => order.IsPaidOnline);
 
         builder.HasIndex(order => new { order.TenantId, order.OrderId }).IsUnique().HasDatabaseName(OrderIndex);
+        // Limite des commandes impayées : seulement les commandes en attente de paiement (state 5).
+        builder.HasIndex(order => new { order.TenantId, order.AppId, order.State })
+            .HasFilter("state = 5")
+            .HasDatabaseName("ix_online_orders_awaiting_payment");
         builder.HasIndex(order => new { order.TenantId, order.LocationId, order.SlotStartUtc })
             .HasFilter("slot_start_utc IS NOT NULL")
             .HasDatabaseName("ix_online_orders_tenant_id_location_id_slot_start_utc");

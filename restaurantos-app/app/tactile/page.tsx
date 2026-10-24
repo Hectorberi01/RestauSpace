@@ -1,6 +1,6 @@
 'use client';
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {getSession, logout} from '@/lib/api';
+import {useCallback, useEffect, useRef, useState, useSyncExternalStore} from 'react';
+import {getSession, logout, onSessionChange} from '@/lib/api';
 import {readTill, type TillDevice} from '@/lib/till';
 import {ConsoleProvider} from '@/components/console';
 import {TouchRegister} from '@/components/pos';
@@ -30,6 +30,9 @@ export default function TouchTillPage() {
 function SharedTill({device}: {device: TillDevice}) {
   const [unlocked, setUnlocked] = useState<{autoLockMinutes: number} | null | undefined>(undefined);
   const lastActivity = useRef(Date.now());
+  // Session de caisse expirée (12 h) ou révoquée : retour à l'écran verrouillé, jamais à la page de connexion.
+  const session = useSyncExternalStore(onSessionChange, getSession, () => null);
+  const open = session?.operator?.tillId === device.tillId;
 
   useEffect(() => {
     // Une session déjà ouverte sur cette caisse (rechargement de la page) reste ouverte.
@@ -57,8 +60,12 @@ function SharedTill({device}: {device: TillDevice}) {
     };
   }, [unlocked, lock]);
 
+  useEffect(() => {
+    if (unlocked && !open) setUnlocked(null);
+  }, [unlocked, open]);
+
   if (unlocked === undefined) return <Spinner label="Ouverture de la caisse…" />;
-  if (!unlocked) return <TillLockScreen device={device} onUnlocked={state => setUnlocked({autoLockMinutes: state.autoLockMinutes})} />;
+  if (!unlocked || !open) return <TillLockScreen device={device} onUnlocked={state => setUnlocked({autoLockMinutes: state.autoLockMinutes})} />;
   return (
     <ConsoleProvider>
       <TouchRegister onLock={lock} />

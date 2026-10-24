@@ -19,6 +19,8 @@ internal static partial class HostComposition
             options.TrackingKey = storefront["TrackingKey"] ?? string.Empty;
             options.RunWorkers = storefront.GetValue("RunWorkers", true);
             storefront.GetSection("Turnstile").Bind(options.Turnstile);
+            // Commandes impayées : MaxPendingPayments (3) par application, IP et client ; PaymentHoldMinutes (10) au plus pour payer.
+            storefront.GetSection("CheckoutLimits").Bind(options.CheckoutLimits);
         });
         builder.Services.AddScoped<IStorefrontTenants, StorefrontTenantsFromTenants>();
         builder.Services.AddScoped<IStorefrontLocations, StorefrontLocationsFromLocations>();

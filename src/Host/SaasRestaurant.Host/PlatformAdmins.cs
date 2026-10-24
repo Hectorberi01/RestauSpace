@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Identity.Api;
+using SaasRestaurant.BuildingBlocks.Application;
 
 namespace SaasRestaurant.Host;
 
@@ -19,5 +20,6 @@ internal sealed class PlatformAdmins(IEnumerable<string> emails, bool requireTwo
         && user.FindFirstValue(IdentityClaims.Email) is { } email
         && _emails.Contains(email)
         && user.FindFirstValue(IdentityClaims.TenantId) is null
+        && user.FindFirstValue(TillClaims.TillId) is null
         && (!requireTwoFactor || string.Equals(user.FindFirstValue(IdentityClaims.TwoFactor), "true", StringComparison.OrdinalIgnoreCase));
 }

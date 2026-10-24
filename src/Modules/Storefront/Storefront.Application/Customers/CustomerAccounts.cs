@@ -38,6 +38,10 @@ public static class CustomerAccountErrors
     public static readonly DomainError NameRequired =
         new("storefront.customer.name_required", "Give your name to finish creating your account.");
     public static readonly DomainError CodeRequired = new("storefront.customer.code_required", "Enter the code you received.");
+    public static readonly DomainError PhoneCountryNotAllowed = new(
+        "storefront.customer.phone_country_not_allowed", "Codes are only sent by SMS or WhatsApp to phone numbers of the restaurant's country: use your e-mail address.");
+    public static readonly DomainError PhoneLimitReached = new(
+        "storefront.customer.phone_limit_reached", "Too many codes were sent by SMS or WhatsApp for this restaurant: try again later or use your e-mail address.");
     public static readonly DomainError RewardUnavailable =
         new("storefront.checkout.reward_unavailable", "This reward is not available.");
     public static readonly DomainError RewardNotAffordable =

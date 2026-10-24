@@ -197,6 +197,25 @@ internal sealed class NotificationRepository(NotificationsDbContext context) : I
         var entry = context.Notifications.Add(notification);
         entry.Property<string?>(NotificationConfiguration.IdempotencyKeyProperty).CurrentValue = idempotencyKey;
     }
+
+    public async Task<NotificationWindowCount> CountCreatedSinceAsync(
+        TenantId tenantId, IReadOnlyCollection<NotificationChannel> channels, IReadOnlyCollection<TemplateKey> types, DateTimeOffset since,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(channels);
+        ArgumentNullException.ThrowIfNull(types);
+        var wanted = channels.ToArray();
+        // Un groupe par type (quelques lignes), filtré ensuite : lu en base, donc juste sur plusieurs instances.
+        var groups = await context.Notifications.IgnoreQueryFilters().AsNoTracking()
+            .Where(notification => notification.TenantId == tenantId
+                && notification.CreatedAtUtc > since
+                && wanted.Contains(notification.Recipient.Channel))
+            .GroupBy(notification => notification.TemplateKey)
+            .Select(group => new { group.Key, Count = group.Count(), Oldest = group.Min(notification => notification.CreatedAtUtc) })
+            .ToListAsync(cancellationToken);
+        var counted = groups.Where(group => types.Contains(group.Key)).ToList();
+        return new NotificationWindowCount(counted.Sum(group => group.Count), counted.Count == 0 ? null : counted.Min(group => group.Oldest));
+    }
 }
 
 internal static class NotificationsApplicationErrorsBridge
@@ -262,13 +281,18 @@ internal sealed class NotificationDirectory(NotificationsDbContext context) : IN
         .ToList();
 
     public async Task<NotificationLocator?> FindByProviderMessageAsync(
-        NotificationProviderCode provider, ProviderMessageId messageId, CancellationToken cancellationToken = default)
+        NotificationProviderCode provider, ProviderMessageId messageId, TenantId? signedBy, CancellationToken cancellationToken = default)
     {
-        var row = await All.AsNoTracking()
-            .Where(notification => notification.Deliveries.Any(delivery => delivery.ProviderCode == provider && delivery.ProviderMessageId == messageId))
-            .Select(notification => new { notification.Id, notification.TenantId })
-            .SingleOrDefaultAsync(cancellationToken);
-        return row is null ? null : new NotificationLocator(row.Id, row.TenantId);
+        var query = All.AsNoTracking()
+            .Where(notification => notification.Deliveries.Any(delivery => delivery.ProviderCode == provider && delivery.ProviderMessageId == messageId));
+        if (signedBy is { } tenant)
+        {
+            query = query.Where(notification => notification.TenantId == tenant);
+        }
+
+        // Plusieurs notifications pour le même id : rapport ambigu, jamais appliqué.
+        var rows = await query.Select(notification => new { notification.Id, notification.TenantId }).Take(2).ToListAsync(cancellationToken);
+        return rows.Count == 1 ? new NotificationLocator(rows[0].Id, rows[0].TenantId) : null;
     }
 
     public async Task<IReadOnlyList<Notification>> ListRecentAsync(

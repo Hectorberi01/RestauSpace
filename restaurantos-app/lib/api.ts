@@ -7,8 +7,9 @@ export interface Session {
   sessionId: string;
   accessToken: string;
   accessTokenExpiresAtUtc: string;
-  refreshToken: string;
-  refreshTokenExpiresAtUtc: string;
+  /** Absent pour une session de caisse : elle ne se renouvelle pas. */
+  refreshToken?: string;
+  refreshTokenExpiresAtUtc?: string;
   tenantId?: string;
   /** Session ouverte par PIN sur une caisse partagée : qui tient la caisse. */
   operator?: {staffMemberId: string; name: string; tillId: string; locationId: string};
@@ -90,6 +91,11 @@ async function expiredToken(response: Response): Promise<boolean> {
 async function refresh(): Promise<Session | null> {
   const session = read();
   if (!session) return null;
+  // Session de caisse expirée ou révoquée : pas de renouvellement, la caisse se reverrouille.
+  if (!session.refreshToken) {
+    setSession(null);
+    return null;
+  }
   refreshing ??= (async () => {
     try {
       const response = await fetch(`${API_URL}/v1/auth/refresh`, {
@@ -278,7 +284,12 @@ export async function logout(): Promise<void> {
   setSession(null);
   if (!session) return;
   try {
-    await api<void>('/auth/logout', {method: 'POST', body: {refreshToken: session.refreshToken}, anonymous: true});
+    if (session.refreshToken) {
+      await api<void>('/auth/logout', {method: 'POST', body: {refreshToken: session.refreshToken}, anonymous: true});
+    } else {
+      // Session de caisse : elle se ferme avec son propre access token.
+      await fetch(url(`/me/sessions/${session.sessionId}`), {method: 'DELETE', headers: {Authorization: `Bearer ${session.accessToken}`}});
+    }
   } catch {}
 }
 
@@ -575,6 +586,9 @@ const messages: Record<string, string> = {
   'billing.online_payment.provider_not_ready': 'Ce prestataire ne peut pas encore encaisser dans cette devise.',
   'billing.subscription.plan_archived': 'Ce plan n’est plus proposé.',
   'billing.subscription.plan_change_not_allowed': 'Le plan ne peut changer que pendant l’essai, un abonnement actif ou après la fin de l’essai.',
+  'billing.subscription.plan_change_scheduled': 'Un changement de plan est programmé : annulez-le avant de résilier.',
+  'billing.subscription.plan_change_not_scheduled': 'Aucun changement de plan n’est programmé.',
+  'billing.subscription.cancellation_scheduled': 'Une résiliation est programmée : annulez-la d’abord (par exemple avant de changer de plan).',
   'billing.subscription.free_plan_unavailable': 'Le plan gratuit n’est possible qu’une fois, pendant le premier mois : choisissez un plan payant.',
   'billing.subscription.cancelled': 'Abonnement résilié : souscrivez un nouveau plan.',
   'billing.subscription.cancellation_already_scheduled': 'La résiliation est déjà programmée.',
@@ -740,6 +754,7 @@ const messages: Record<string, string> = {
   'payments.configuration.already_enabled': 'Ce moyen de paiement est déjà accepté.',
   'payments.configuration.already_disabled': 'Ce moyen de paiement n’est déjà plus accepté.',
   'payments.configuration.already_exists': 'Ce moyen de paiement est déjà configuré.',
+  'payments.configuration.payments_in_progress': 'Des paiements en ligne ou des remboursements de ce prestataire sont encore en cours : attendez qu’ils se terminent (ou annulez-les) avant de changer de compte d’encaissement.',
   'payments.configuration.test_not_applicable': 'Seul un compte de paiement en ligne peut être testé.',
   'payments.configuration.credentials_missing': 'Saisissez les identifiants du compte marchand avant d’activer ce moyen.',
   'payments.configuration.credential_fields_invalid': 'Tous les champs d’identifiants sont obligatoires.',

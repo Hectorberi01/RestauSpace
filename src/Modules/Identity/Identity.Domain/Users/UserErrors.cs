@@ -20,6 +20,7 @@ public static class UserErrors
     public static readonly DomainError SessionRevoked = new("identity.session.revoked", "The session has been revoked and cannot be used.");
     public static readonly DomainError SessionAlreadyRevoked = new("identity.session.already_revoked", "The session is already revoked.");
     public static readonly DomainError SessionExpired = new("identity.session.expired", "The session has expired.");
+    public static readonly DomainError SessionFamilyExpired = new("identity.session.family_expired", "The session reached its maximum lifetime; sign in again.");
     public static readonly DomainError TokenHashAlreadyUsed = new("identity.session.token_hash_already_used", "This token hash already identifies another session of the user.");
     public static readonly DomainError NameTooLong = new("identity.user.name_too_long", "First and last names are limited to 60 characters.");
     public static readonly DomainError CityTooLong = new("identity.user.city_too_long", "The city is limited to 80 characters.");

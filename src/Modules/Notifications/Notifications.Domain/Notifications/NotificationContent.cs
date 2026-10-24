@@ -13,11 +13,12 @@ public sealed class NotificationContent : ValueObject
     /// <summary>Un rendu peut dépasser un peu le template (valeurs des variables).</summary>
     public const int MaxBodyLength = 40_000;
 
-    private NotificationContent(NotificationChannel channel, string? subject, string body)
+    private NotificationContent(NotificationChannel channel, string? subject, string body, bool isHtml)
     {
         Channel = channel;
         Subject = subject;
         Body = body;
+        IsHtml = isHtml;
     }
 
     /// <summary>Le canal pour lequel ce contenu a été validé : il doit être celui du destinataire.</summary>
@@ -27,13 +28,16 @@ public sealed class NotificationContent : ValueObject
 
     public string Body { get; }
 
+    /// <summary>Corps HTML (Email seulement), décidé d'après le MODÈLE, jamais d'après le contenu rendu.</summary>
+    public bool IsHtml { get; }
+
     /// <summary>Vrai une fois effacé. Un tel contenu ne se construit pas hors du domaine (un corps est obligatoire).</summary>
     public bool IsRedacted => Body.Length == 0;
 
     /// <summary>Jamais le contenu lui-même : il peut citer un OTP ou des données personnelles.</summary>
     public override string ToString() => IsRedacted ? $"{Channel}:[redacted]" : $"{Channel}:[{Body.Length} chars]";
 
-    public static NotificationContent Create(NotificationChannel channel, string? subject, string? body)
+    public static NotificationContent Create(NotificationChannel channel, string? subject, string? body, bool isHtml = false)
     {
         NotificationChannels.Require(channel);
         string? validSubject = null;
@@ -58,16 +62,17 @@ public sealed class NotificationContent : ValueObject
             IsUnrendered(validSubject) || IsUnrendered(body),
             NotificationErrors.ContentNotRendered);
 
-        return new NotificationContent(channel, validSubject, body);
+        return new NotificationContent(channel, validSubject, body, isHtml && channel == NotificationChannel.Email);
     }
 
-    internal static NotificationContent Redacted(NotificationChannel channel) => new(channel, null, string.Empty);
+    internal static NotificationContent Redacted(NotificationChannel channel) => new(channel, null, string.Empty, false);
 
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Channel;
         yield return Subject;
         yield return Body;
+        yield return IsHtml;
     }
 
     private static bool IsUnrendered(string? text) =>

@@ -43,7 +43,7 @@ internal sealed class ResendSenderFactory(HttpClient http) : INotificationSender
             ["subject"] = request.Content.Subject ?? string.Empty,
             ["tags"] = new JsonArray(new JsonObject { ["name"] = "delivery", ["value"] = request.DeliveryId.Value.ToString("N") }),
         };
-        payload[ProviderSupport.LooksLikeHtml(request.Content.Body) ? "html" : "text"] = request.Content.Body;
+        payload[request.Content.IsHtml ? "html" : "text"] = request.Content.Body;
         return payload;
     }
 

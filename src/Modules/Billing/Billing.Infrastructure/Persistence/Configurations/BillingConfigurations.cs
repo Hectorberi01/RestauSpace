@@ -94,6 +94,10 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<SaasS
         builder.Property(subscription => subscription.CancelledAtUtc).HasColumnName("cancelled_at_utc");
         builder.Property(subscription => subscription.IsComplimentary).HasColumnName("is_complimentary").HasDefaultValue(false);
         builder.Property(subscription => subscription.EndingNoticeSentForUtc).HasColumnName("ending_notice_sent_for_utc");
+        // Changement de plan programmé pour la fin de la période (date d'effet = fin de période, non stockée).
+        builder.Property(subscription => subscription.ScheduledPlanId).HasColumnName("scheduled_plan_id").HasConversion(BillingConverters.PlanKey);
+        builder.Ignore(subscription => subscription.ScheduledPlanEffectiveAtUtc);
+        builder.Ignore(subscription => subscription.NextPeriodPlanId);
         builder.Ignore(subscription => subscription.IsComplimentaryUnlimited);
 
         // Garde finale derrière ILiveSubscriptionChecker : un seul abonnement non résilié par tenant.
@@ -108,6 +112,8 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<SaasS
         // Un abonnement désigne un plan existant ; un plan n'est jamais supprimé (il est archivé).
         builder.HasOne<Plan>().WithMany().HasForeignKey(subscription => subscription.PlanId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(subscription => subscription.PlanId).HasDatabaseName("ix_subscriptions_plan_id");
+        builder.HasOne<Plan>().WithMany().HasForeignKey(subscription => subscription.ScheduledPlanId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(subscription => subscription.ScheduledPlanId).HasDatabaseName("ix_subscriptions_scheduled_plan_id");
 
         // Concurrence optimiste sur xmin : un paiement enregistré pendant que le job marque l'impayé.
         builder.Property<uint>("Version").IsRowVersion();

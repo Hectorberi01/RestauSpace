@@ -1,0 +1,19 @@
+/* Sauvegardes */
+.backups-page{display:flex;flex-direction:column;gap:22px}
+.backups-page .notice{margin-bottom:0}
+.backups-page .panel-heading h2{display:flex;align-items:center;gap:8px}
+.backups-page .pagination{padding:15px 0 0;margin-top:12px}
+.backups-page .table-scroll td small{font-size:12px}
+.backup-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0}
+.backup-facts.settings{grid-template-columns:repeat(5,minmax(0,1fr));margin-top:18px;padding-top:18px;border-top:1px solid #F1F5F9}
+.backup-facts dt{font-size:12px;color:#94A3B8}
+.backup-facts dd{margin:2px 0 0;font-size:14px;font-weight:550;color:#0F172A;overflow-wrap:anywhere}
+.backup-facts dd small{font-weight:400;color:#64748B}
+.backup-effects{margin:16px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:13px;color:#475569}
+.backup-effects strong{color:#0F172A}
+.backup-dialog .field-error{margin:0 0 12px;font-size:13px}
+@media(max-width:1240px){.backup-facts.settings{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.backup-facts,.backup-facts.settings{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:641px){.backups-page .row-actions{flex-wrap:nowrap}}
+.backup-effects{list-style:disc}
+.backups-page .table-scroll td.backup-failure{white-space:normal;min-width:150px}

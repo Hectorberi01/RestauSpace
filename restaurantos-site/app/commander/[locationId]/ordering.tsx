@@ -45,6 +45,7 @@ import {
 } from '@/lib/storefront';
 import {AccentButton, cx, LanguageSwitch, Notice, Sheet, Spinner} from '@/components/order-ui';
 import {currentLang, intlLocale, tr, useLang} from '@/lib/i18n';
+import {safeCheckoutUrl} from '@/lib/checkout';
 
 interface Loaded {
   storefront: Storefront;
@@ -751,8 +752,9 @@ function Checkout({front, location, catalog, table, cart, onCart, onClose}: {
               idempotencyKey: newIdempotencyKey(),
               body: {provider: choice.provider, method: choice.method, payerPhone: customer.phone.trim() || null, returnUrl: `${window.location.origin}/commande?jeton=${encodeURIComponent(placed.trackingToken)}`},
             });
-          if (started?.checkoutUrl) {
-            window.location.assign(started.checkoutUrl);
+          const checkout = safeCheckoutUrl(started?.checkoutUrl);
+          if (checkout) {
+            window.location.assign(checkout);
             return;
           }
 

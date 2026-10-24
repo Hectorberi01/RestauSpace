@@ -22,6 +22,7 @@ import {
 } from '@/lib/storefront';
 import {AccentButton, cx, Notice, Spinner} from '@/components/order-ui';
 import {tr, translated, useLang} from '@/lib/i18n';
+import {safeCheckoutUrl} from '@/lib/checkout';
 
 const steps: {status: GuestOrderStatus; label: string}[] = [
   {status: 'Received', label: 'Reçue'},
@@ -104,7 +105,8 @@ export function Tracking() {
         idempotencyKey: newIdempotencyKey(),
         body: {provider, method, returnUrl: `${window.location.origin}/commande?jeton=${encodeURIComponent(token)}`},
       });
-      if (started?.checkoutUrl) window.location.assign(started.checkoutUrl);
+      const checkout = safeCheckoutUrl(started?.checkoutUrl);
+      if (checkout) window.location.assign(checkout);
       else await load();
     } catch (reason) {
       setActionError(errorMessage(reason));

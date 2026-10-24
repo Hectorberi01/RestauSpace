@@ -66,10 +66,22 @@ export interface MySubscription {
     isComplimentary?: boolean;
     /** Fin de l'offre ; null quand elle est sans limite. */
     complimentaryUntilUtc?: string | null;
+    /** Plan programmé pour la fin de la période payée. */
+    scheduledPlanId?: string | null;
+    scheduledPlanEffectiveAtUtc?: string | null;
   };
   plan: Plan;
   usage: (Entitlement & {used: number})[];
+  /** Au plan programmé s'il y en a un. */
   nextCharge: Charge | null;
+  /** Changement de plan programmé : il s'applique à l'échéance. */
+  scheduledPlan?: ScheduledPlan | null;
+}
+
+export interface ScheduledPlan {
+  planId: string;
+  planName: string;
+  effectiveAtUtc: string;
 }
 
 export interface SubscriptionPayment {
@@ -195,6 +207,8 @@ export const listPayments = (page: number, signal?: AbortSignal) =>
 export const subscribe = (planId: string) => post<{id: string}>('/billing/subscription', {planId});
 
 export const changePlan = (planId: string) => put('/billing/subscription/plan', {planId});
+
+export const unschedulePlanChange = () => del('/billing/subscription/scheduled-plan');
 
 export const scheduleCancellation = () => post('/billing/subscription/cancellation');
 

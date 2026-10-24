@@ -132,12 +132,12 @@ public class PaymentConfigurationTests
         var configuration = Create(tenant, provider, PaymentMode.PlatformManaged);
         configuration.Enable(providerIsAvailable: true, Clock);
 
-        configuration.ChangeMode(PaymentMode.TenantManaged, provider, Clock);
+        configuration.ChangeMode(PaymentMode.TenantManaged, provider, paymentsInProgress: false, Clock);
         var afterSwitch = (configuration.Status, configuration.IsEnabled);
         configuration.Configure(PaymentCredentialReference.ForTenant(tenant, provider.Code), Clock);
         configuration.Enable(providerIsAvailable: true, Clock);
-        configuration.ChangeMode(PaymentMode.PlatformManaged, provider, Clock);
-        configuration.ChangeMode(PaymentMode.TenantManaged, provider, Clock);
+        configuration.ChangeMode(PaymentMode.PlatformManaged, provider, paymentsInProgress: false, Clock);
+        configuration.ChangeMode(PaymentMode.TenantManaged, provider, paymentsInProgress: false, Clock);
 
         Assert.Equal((PaymentConfigurationStatus.AwaitingCredentials, false), afterSwitch);
         // Les identifiants déjà rangés servent de nouveau : toujours prête, toujours active.
@@ -146,9 +146,26 @@ public class PaymentConfigurationTests
         DomainAssert.Raised<PaymentConfigurationDisabled>(configuration);
         var cash = Cash();
         DomainAssert.Throws(PaymentConfigurationErrors.ModeNotApplicable, () =>
-            Create(tenant, cash).ChangeMode(PaymentMode.PlatformManaged, cash, Clock));
+            Create(tenant, cash).ChangeMode(PaymentMode.PlatformManaged, cash, paymentsInProgress: false, Clock));
         DomainAssert.Throws(PaymentConfigurationErrors.ProviderMismatch, () =>
-            configuration.ChangeMode(PaymentMode.PlatformManaged, Online(platformMode: true), Clock));
+            configuration.ChangeMode(PaymentMode.PlatformManaged, Online(platformMode: true), paymentsInProgress: false, Clock));
+    }
+
+    [Fact]
+    public void The_mode_does_not_change_while_payments_are_in_progress()
+    {
+        var tenant = TenantId.New();
+        var provider = Online(platformMode: true);
+        var configuration = Create(tenant, provider, PaymentMode.PlatformManaged);
+        configuration.Enable(providerIsAvailable: true, Clock);
+
+        DomainAssert.Throws(PaymentConfigurationErrors.PaymentsInProgress, () =>
+            configuration.ChangeMode(PaymentMode.TenantManaged, provider, paymentsInProgress: true, Clock));
+        // Même mode : rien ne change, donc rien à refuser.
+        configuration.ChangeMode(PaymentMode.PlatformManaged, provider, paymentsInProgress: true, Clock);
+
+        Assert.Equal((PaymentMode.PlatformManaged, PaymentConfigurationStatus.Configured, true), (configuration.Mode, configuration.Status, configuration.IsEnabled));
+        Assert.Empty(configuration.DomainEvents.OfType<PaymentConfigurationModeChanged>());
     }
 
     [Fact]

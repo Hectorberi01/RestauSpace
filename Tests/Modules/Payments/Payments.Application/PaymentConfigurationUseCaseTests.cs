@@ -146,6 +146,60 @@ public sealed class PaymentConfigurationUseCaseTests
     }
 
     [Fact]
+    public async Task The_mode_does_not_change_while_an_online_payment_is_pending()
+    {
+        var id = _fixture.Configuration(_fixture.TenantA, "fakepay").Id.Value;
+        var started = await _fixture.StartOnline.HandleAsync(
+            new StartOnlinePaymentCommand(_fixture.GivenOrder(), "fakepay", PaymentMethod: PaymentMethodType.Card));
+        var saves = _fixture.SaveCount;
+
+        var refused = await Assert.ThrowsAsync<DomainException>(() =>
+            _fixture.ChangeMode.HandleAsync(new ChangePaymentModeCommand(id, PaymentMode.PlatformManaged)));
+
+        Assert.Equal(PaymentConfigurationErrors.PaymentsInProgress, refused.Error);
+        Assert.Equal(DomainErrorKind.Conflict, refused.Error.Kind);
+        Assert.Equal(PaymentMode.TenantManaged, _fixture.Configuration(_fixture.TenantA, "fakepay").Mode);
+        Assert.Equal(saves, _fixture.SaveCount);
+
+        // Paiement terminé : le changement passe.
+        await _fixture.Cancel.HandleAsync(new CancelPaymentCommand(started.PaymentId, "Client parti"));
+        await _fixture.ChangeMode.HandleAsync(new ChangePaymentModeCommand(id, PaymentMode.PlatformManaged));
+        Assert.Equal(PaymentMode.PlatformManaged, _fixture.Configuration(_fixture.TenantA, "fakepay").Mode);
+    }
+
+    [Fact]
+    public async Task The_mode_does_not_change_while_a_refund_is_in_progress()
+    {
+        var id = _fixture.Configuration(_fixture.TenantA, "fakepay").Id.Value;
+        var started = await _fixture.StartOnline.HandleAsync(
+            new StartOnlinePaymentCommand(_fixture.GivenOrder(), "fakepay", PaymentMethod: PaymentMethodType.Card));
+        await _fixture.Apply.HandleAsync(new ApplyProviderResultCommand("fakepay", ProviderResultKind.Captured, started.ProviderReference, 7000m, "XOF"));
+        var refundId = await _fixture.Refund.HandleAsync(new RequestRefundCommand(started.PaymentId, "Erreur", 1000m));
+
+        var refused = await Assert.ThrowsAsync<DomainException>(() =>
+            _fixture.ChangeMode.HandleAsync(new ChangePaymentModeCommand(id, PaymentMode.PlatformManaged)));
+        await _fixture.Apply.HandleAsync(new ApplyProviderResultCommand(
+            "fakepay", ProviderResultKind.RefundSucceeded, started.ProviderReference, RefundId: refundId));
+        await _fixture.ChangeMode.HandleAsync(new ChangePaymentModeCommand(id, PaymentMode.PlatformManaged));
+
+        Assert.Equal(PaymentConfigurationErrors.PaymentsInProgress, refused.Error);
+        Assert.Equal(PaymentMode.PlatformManaged, _fixture.Configuration(_fixture.TenantA, "fakepay").Mode);
+    }
+
+    [Fact]
+    public async Task Payments_of_another_restaurant_or_provider_do_not_block_the_mode_change()
+    {
+        await _fixture.StartOnline.HandleAsync(
+            new StartOnlinePaymentCommand(_fixture.GivenOrder(), "fakepay", PaymentMethod: PaymentMethodType.Card));
+        _fixture.CurrentTenantId = _fixture.TenantB;
+        var id = await _fixture.CreateConfiguration.HandleAsync(new CreatePaymentConfigurationCommand("fakepay", PaymentMode.PlatformManaged));
+
+        await _fixture.ChangeMode.HandleAsync(new ChangePaymentModeCommand(id, PaymentMode.TenantManaged));
+
+        Assert.Equal(PaymentMode.TenantManaged, _fixture.Configuration(_fixture.TenantB, "fakepay").Mode);
+    }
+
+    [Fact]
     public async Task Unreadable_credentials_stop_the_payment_without_revealing_anything()
     {
         _fixture.UnreadableSecrets.Add(PaymentCredentialReference.ForTenant(_fixture.TenantA, PaymentsFixture.FakePay).Value);

@@ -122,7 +122,11 @@ public sealed class RestaurantPaymentConfiguration : AggregateRoot<RestaurantPay
     /// Passe du compte de la plateforme à celui du restaurant, ou l'inverse (en ligne seulement). Vers le mode restaurant
     /// sans identifiants déjà rangés : la configuration attend ses identifiants et se désactive.
     /// </summary>
-    public void ChangeMode(PaymentMode mode, PaymentProvider provider, IClock clock)
+    /// <param name="paymentsInProgress">
+    /// Réponse de l'Application : un paiement en ligne de ce prestataire n'est pas terminé (en attente, autorisé, ou
+    /// remboursement en cours). Refusé alors : ses webhooks seraient vérifiés avec le secret de l'autre compte.
+    /// </param>
+    public void ChangeMode(PaymentMode mode, PaymentProvider provider, bool paymentsInProgress, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(clock);
@@ -133,6 +137,8 @@ public sealed class RestaurantPaymentConfiguration : AggregateRoot<RestaurantPay
         {
             return;
         }
+
+        DomainException.ThrowIf(paymentsInProgress, PaymentConfigurationErrors.PaymentsInProgress);
 
         var now = clock.UtcNow;
         Mode = mode;

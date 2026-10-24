@@ -123,6 +123,9 @@ public interface IStorefrontClient
 
     /// <summary>Le client de cette session.</summary>
     CustomerId? CustomerId { get; }
+
+    /// <summary>Empreinte de l'adresse IP de la requête (<see cref="Checkout.ClientAddressKeys"/>) ; null si inconnue.</summary>
+    string? ClientKey => null;
 }
 
 /// <summary>
@@ -326,6 +329,13 @@ public interface IOnlineOrderRepository
     /// <summary>Le nombre de commandes par créneau occupé, de <paramref name="fromUtc"/> (inclus) à <paramref name="toUtc"/> (exclu).</summary>
     Task<IReadOnlyDictionary<DateTimeOffset, int>> CountBySlotAsync(
         TenantId tenantId, LocationId locationId, DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Les commandes de l'application qui attendent encore leur paiement en ligne (échéance non passée), venues de cette
+    /// adresse OU de ce client. 0 si les deux sont null.
+    /// </summary>
+    Task<int> CountAwaitingPaymentAsync(
+        TenantId tenantId, SalesAppId appId, string? clientKey, CustomerId? customerId, DateTimeOffset nowUtc, CancellationToken cancellationToken = default);
 
     Task<OnlineOrder?> FindAsync(TenantId tenantId, OnlineOrderId id, CancellationToken cancellationToken = default);
 

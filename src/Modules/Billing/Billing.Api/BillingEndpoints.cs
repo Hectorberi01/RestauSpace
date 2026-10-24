@@ -17,7 +17,8 @@ public sealed record BillingRouteGroups(RouteGroupBuilder Restaurant, RouteGroup
 /// Abonnement SaaS.
 /// <list type="bullet">
 /// <item><c>/billing</c> : le restaurant sélectionné dans l'access token (jamais un tenant de requête) voit le catalogue
-/// et son abonnement (<see cref="BillingPermissions.View"/>), choisit son plan, en change et programme sa résiliation
+/// et son abonnement (<see cref="BillingPermissions.View"/>), choisit son plan, en change (programmé à l'échéance pendant
+/// une période payée) et programme sa résiliation
 /// (<see cref="BillingPermissions.Manage"/>) ;</item>
 /// <item><c>/admin/billing</c> : la plateforme gère le catalogue des plans et les abonnements de tous les restaurants
 /// (enregistrement des paiements, impayé, suspension, résiliation). L'hôte y met la policy d'administration.</item>
@@ -73,6 +74,11 @@ public static class BillingEndpoints
 
         billing.MapPut("/subscription/plan", (ChoosePlanRequest request, ICommandHandler<ChangeSubscriptionPlanCommand> handler, CancellationToken ct) =>
             Run(handler.HandleAsync(new ChangeSubscriptionPlanCommand(request.PlanId), ct)))
+            .RequirePermission(Manage);
+
+        // Période payée : le changement de plan est programmé pour l'échéance ; cette route l'annule.
+        billing.MapDelete("/subscription/scheduled-plan", (ICommandHandler<UnscheduleSubscriptionPlanChangeCommand> handler, CancellationToken ct) =>
+            Run(handler.HandleAsync(new UnscheduleSubscriptionPlanChangeCommand(), ct)))
             .RequirePermission(Manage);
 
         billing.MapPost("/subscription/cancellation", (ICommandHandler<ScheduleSubscriptionCancellationCommand> handler, CancellationToken ct) =>

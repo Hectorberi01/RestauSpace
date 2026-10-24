@@ -1,12 +1,17 @@
-// CI/CD RestauSpace (job Multibranch Pipeline, Jenkins sur le Mac).
-// Toutes les branches : tests .NET + vérification des 3 fronts.
-// main : images poussées sur GHCR, validation manuelle, puis déploiement sur le VPS par SSH.
+// CI/CD RestauSpace (Jenkins sur le Mac). Deux jobs sur ce même fichier :
+//   restauspace-ci       Multibranch, toutes les branches : tests .NET + vérification des 3 fronts. AUCUN identifiant.
+//   restauspace-release  Pipeline (pas Multibranch), branche main seulement : mêmes vérifications, puis images
+//                        poussées sur GHCR, validation manuelle et déploiement sur le VPS par SSH.
+// Les identifiants sont rangés dans le dossier du seul job de livraison : une branche ou une demande de fusion qui
+// modifierait ce fichier ne peut pas les lire (README de deploy/production, « Jenkins »).
 //
-// Identifiants Jenkins attendus :
+// Identifiants (dossier du job de livraison) :
 //   ghcr                  Username/password : compte GitHub + jeton (write:packages)
 //   restauspace-build-env Secret file : deploy/production/build.env (voir build.env.example)
-//   restauspace-vps-ssh   SSH Username with private key : compte de déploiement du VPS (Credentials Binding)
-// Variable globale (Administrer Jenkins > Système) : RESTAUSPACE_DEPLOY_HOST=deploy@<ip du VPS>
+//   restauspace-vps-ssh   SSH Username with private key : compte de déploiement du VPS (clé limitée à deploy-ssh.sh)
+// Variables globales (Administrer Jenkins > Système) :
+//   RESTAUSPACE_DEPLOY_HOST=deploy@<ip du VPS>
+//   RESTAUSPACE_DEPLOY_KNOWN_HOSTS=<ligne de ssh-keyscan vérifiée> : clé du VPS épinglée (sinon acceptée au 1er accès)
 pipeline {
   agent any
 
@@ -77,7 +82,7 @@ pipeline {
     
 
     stage('Front') {
-      // Typecheck partout. Build Next.js hors main : sur main il est fait par les images.
+      // Typecheck partout. Build Next.js hors livraison : en livraison il est fait par les images.
       parallel {
         stage('Console') {
           steps { dir('restaurantos-app') { script { front() } } }
@@ -92,7 +97,7 @@ pipeline {
     }
 
     stage('Images') {
-      when { branch 'main' }
+      when { expression { isRelease() } }
       steps {
         withCredentials([
           usernamePassword(credentialsId: 'ghcr', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN'),
@@ -117,7 +122,7 @@ pipeline {
     }
 
     stage('Validation') {
-      when { branch 'main' }
+      when { expression { isRelease() } }
       steps {
         timeout(time: 1, unit: 'DAYS') {
           input message: "Déployer ${env.RELEASE} en production ?", ok: 'Déployer'
@@ -126,14 +131,24 @@ pipeline {
     }
 
     stage('Déploiement') {
-      when { branch 'main' }
+      when { expression { isRelease() } }
       steps {
         // Clé SSH du VPS via Credentials Binding (pas besoin du plugin SSH Agent).
         withCredentials([sshUserPrivateKey(credentialsId: 'restauspace-vps-ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
           sh '''
             [ -n "$RESTAUSPACE_DEPLOY_HOST" ] || { echo "RESTAUSPACE_DEPLOY_HOST manquant (Administrer Jenkins > Système)" >&2; exit 1; }
             case "$RESTAUSPACE_DEPLOY_HOST" in *@*) target="$RESTAUSPACE_DEPLOY_HOST" ;; *) target="$SSH_USER@$RESTAUSPACE_DEPLOY_HOST" ;; esac
-            ssh -i "$SSH_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "$target" "cd ${RESTAUSPACE_DEPLOY_DIR:-restauspace/deploy/production} && ./deploy.sh $RELEASE"
+            # Clé du VPS épinglée si fournie ; sinon acceptée à la première connexion seulement.
+            if [ -n "${RESTAUSPACE_DEPLOY_KNOWN_HOSTS:-}" ]; then
+              hosts="$(mktemp)"; trap 'rm -f "$hosts"' EXIT
+              printf '%s\\n' "$RESTAUSPACE_DEPLOY_KNOWN_HOSTS" > "$hosts"
+              check="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
+            else
+              echo "RESTAUSPACE_DEPLOY_KNOWN_HOSTS absent : clé du VPS non épinglée" >&2
+              check="-o StrictHostKeyChecking=accept-new"
+            fi
+            # Côté VPS, la clé n'exécute que deploy-ssh.sh, qui ne lit que le commit.
+            ssh -i "$SSH_KEY" -o IdentitiesOnly=yes $check "$target" "cd ${RESTAUSPACE_DEPLOY_DIR:-restauspace/deploy/production} && ./deploy.sh $RELEASE"
           '''
         }
       }
@@ -146,12 +161,17 @@ pipeline {
   }
 }
 
-// Installation, typecheck et (hors main) build d'une application Next.js.
+// Job de livraison : Pipeline simple (pas de BRANCH_NAME) construit depuis main.
+def isRelease() {
+  return !env.BRANCH_NAME && (env.GIT_BRANCH ?: '') ==~ /(origin\/)?main/
+}
+
+// Installation, typecheck et (hors livraison) build d'une application Next.js.
 def front() {
   withEnv(["PATH+NODE=${env.JENKINS_HOME}/tools/node-v${env.NODE_VERSION}/bin"]) {
     sh 'pnpm install --frozen-lockfile'
     sh 'pnpm typecheck'
-    if (env.BRANCH_NAME != 'main') {
+    if (!isRelease()) {
       sh 'pnpm build'
     }
   }

@@ -28,10 +28,26 @@ public static partial class StaffEndpoints
     {
         var staff = routes.MapGroup("/staff").WithTags("Staff");
 
-        // Tout membre du restaurant : qu'ai-je le droit de faire ici ?
+        // Tout membre du restaurant : qu'ai-je le droit de faire ici ? Session de caisse : liste blanche seulement.
         staff.MapGet("/me/permissions", async (
-            ClaimsPrincipal caller, IQueryHandler<GetMyPermissionsQuery, MyPermissionsDto> handler, CancellationToken ct) =>
-            TypedResults.Ok(await handler.HandleAsync(new GetMyPermissionsQuery(UserOf(caller)), ct)));
+            ClaimsPrincipal caller, HttpContext http, IQueryHandler<GetMyPermissionsQuery, MyPermissionsDto> handler, CancellationToken ct) =>
+        {
+            var mine = await handler.HandleAsync(new GetMyPermissionsQuery(UserOf(caller)), ct);
+            if (!TillSessions.IsTillSession(caller))
+            {
+                return TypedResults.Ok(mine);
+            }
+
+            var allowed = http.RequestServices.GetService(typeof(TillSessionPermissions)) as TillSessionPermissions
+                ?? new TillSessionPermissions([]);
+            var location = TillSessions.LocationOf(caller);
+            var here = mine.Locations?.FirstOrDefault(entry => entry.LocationId == location);
+            return TypedResults.Ok(mine with
+            {
+                Permissions = allowed.Filter(here?.Permissions ?? mine.Permissions),
+                Locations = here is null ? [] : [here with { Permissions = allowed.Filter(here.Permissions) }],
+            });
+        });
 
         // PIN de caisse du membre connecté.
         staff.MapPut("/me/pin", (

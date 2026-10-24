@@ -59,7 +59,7 @@ internal sealed partial class AmazonSesSenderFactory(HttpClient http, IClock clo
                 ["Simple"] = new JsonObject
                 {
                     ["Subject"] = new JsonObject { ["Data"] = request.Content.Subject ?? string.Empty, ["Charset"] = "UTF-8" },
-                    ["Body"] = new JsonObject { [ProviderSupport.LooksLikeHtml(request.Content.Body) ? "Html" : "Text"] = body },
+                    ["Body"] = new JsonObject { [request.Content.IsHtml ? "Html" : "Text"] = body },
                 },
             },
             ["EmailTags"] = new JsonArray(new JsonObject { ["Name"] = "delivery", ["Value"] = request.DeliveryId.Value.ToString("N") }),

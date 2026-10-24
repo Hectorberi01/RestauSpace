@@ -6,6 +6,12 @@ public sealed record IdentitySettings
 {
     public SessionLifetime SessionLifetime { get; init; } = SessionLifetime.Default;
 
+    /// <summary>Durée maximale d'une famille de sessions depuis la connexion, renouvellements compris.</summary>
+    public SessionLifetime SessionFamilyLifetime { get; init; } = SessionLifetime.Create(TimeSpan.FromDays(90));
+
+    /// <summary>Durée d'une session de caisse partagée (PIN) : un seul access token, sans refresh.</summary>
+    public TimeSpan TillSessionLifetime { get; init; } = TimeSpan.FromHours(12);
+
     /// <summary>Temps laissé pour saisir le code de l'application après le mot de passe.</summary>
     public TimeSpan TwoFactorChallengeLifetime { get; init; } = TimeSpan.FromMinutes(5);
 

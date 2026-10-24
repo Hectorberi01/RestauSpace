@@ -312,18 +312,98 @@ public class SaasSubscriptionTests
     }
 
     [Fact]
-    public void ChangePlan_moves_the_subscription_to_another_plan()
+    public void ChangePlan_during_a_paid_period_is_scheduled_for_its_end()
     {
         var subscription = Active();
 
         subscription.ChangePlan(_pro, _clock);
 
-        Assert.Equal(_pro.PlanId, subscription.PlanId);
+        Assert.Equal(_starter.PlanId, subscription.PlanId);
+        Assert.Equal((_pro.PlanId, FirstMonth.EndUtc, _pro.PlanId), (subscription.ScheduledPlanId, subscription.ScheduledPlanEffectiveAtUtc, subscription.NextPeriodPlanId));
         Assert.Equal(FirstMonth, subscription.CurrentPeriod);
-        var changed = DomainAssert.Raised<SubscriptionPlanChanged>(subscription);
+        var scheduled = DomainAssert.Raised<SubscriptionPlanChangeScheduled>(subscription);
         Assert.Equal(
-            (Tenant, subscription.Id, _starter.PlanId, _pro.PlanId, Now),
-            (changed.TenantId, changed.SubscriptionId, changed.PreviousPlanId, changed.NewPlanId, changed.OccurredAtUtc));
+            (Tenant, subscription.Id, _starter.PlanId, _pro.PlanId, FirstMonth.EndUtc, Now),
+            (scheduled.TenantId, scheduled.SubscriptionId, scheduled.PlanId, scheduled.ScheduledPlanId, scheduled.EffectiveAtUtc, scheduled.OccurredAtUtc));
+        DomainAssert.NotRaised<SubscriptionPlanChanged>(subscription);
+    }
+
+    [Fact]
+    public void The_scheduled_plan_becomes_current_when_the_next_period_starts()
+    {
+        var subscription = Active();
+        subscription.ChangePlan(_pro, _clock);
+        _clock.Set(FirstMonth.EndUtc);
+
+        subscription.RenewPeriod(SecondMonth, _clock);
+
+        Assert.Equal((_pro.PlanId, (PlanId?)null, SecondMonth), (subscription.PlanId, subscription.ScheduledPlanId, subscription.CurrentPeriod));
+        var changed = DomainAssert.Raised<SubscriptionPlanChanged>(subscription);
+        Assert.Equal((_starter.PlanId, _pro.PlanId), (changed.PreviousPlanId, changed.NewPlanId));
+        Assert.Equal(_pro.PlanId, DomainAssert.Raised<SubscriptionPeriodRenewed>(subscription).PlanId);
+    }
+
+    [Fact]
+    public void ApplyScheduledPlan_waits_for_the_period_end()
+    {
+        var subscription = Active();
+        Assert.False(subscription.ApplyScheduledPlan(_clock));
+        subscription.ChangePlan(_pro, _clock);
+
+        DomainAssert.Throws(SubscriptionErrors.PeriodNotEnded, () => subscription.ApplyScheduledPlan(_clock));
+        _clock.Set(FirstMonth.EndUtc);
+        Assert.True(subscription.ApplyScheduledPlan(_clock));
+
+        Assert.Equal((_pro.PlanId, (PlanId?)null), (subscription.PlanId, subscription.ScheduledPlanId));
+    }
+
+    [Fact]
+    public void A_scheduled_plan_change_is_withdrawn_or_replaced()
+    {
+        var subscription = Active();
+        var other = NewPlan("Max").ToReference();
+
+        subscription.ChangePlan(_pro, _clock);
+        subscription.ChangePlan(_pro, _clock);
+        subscription.ChangePlan(other, _clock);
+        Assert.Equal(other.PlanId, subscription.ScheduledPlanId);
+        subscription.ChangePlan(_starter, _clock);
+        Assert.Null(subscription.ScheduledPlanId);
+        subscription.ChangePlan(_pro, _clock);
+        subscription.UnschedulePlanChange(_clock);
+
+        Assert.Equal((_starter.PlanId, (PlanId?)null), (subscription.PlanId, subscription.ScheduledPlanId));
+        DomainAssert.Throws(SubscriptionErrors.PlanChangeNotScheduled, () => subscription.UnschedulePlanChange(_clock));
+        Assert.Equal(3, subscription.DomainEvents.OfType<SubscriptionPlanChangeScheduled>().Count());
+        Assert.Equal(2, subscription.DomainEvents.OfType<SubscriptionPlanChangeUnscheduled>().Count());
+        DomainAssert.NotRaised<SubscriptionPlanChanged>(subscription);
+    }
+
+    [Fact]
+    public void A_scheduled_plan_change_and_a_scheduled_cancellation_exclude_each_other()
+    {
+        var changing = Active();
+        changing.ChangePlan(_pro, _clock);
+        var leaving = Active();
+        leaving.ScheduleCancellation(_clock);
+
+        DomainAssert.Throws(SubscriptionErrors.PlanChangeScheduled, () => changing.ScheduleCancellation(_clock));
+        DomainAssert.Throws(SubscriptionErrors.CancellationScheduled, () => leaving.ChangePlan(_pro, _clock));
+
+        Assert.False(changing.CancelAtPeriodEnd);
+        Assert.Null(leaving.ScheduledPlanId);
+    }
+
+    [Fact]
+    public void An_offer_withdraws_the_scheduled_plan_change()
+    {
+        var subscription = Active();
+        subscription.ChangePlan(_pro, _clock);
+
+        subscription.GrantComplimentary(_starter, null, _clock);
+
+        Assert.Null(subscription.ScheduledPlanId);
+        DomainAssert.Raised<SubscriptionPlanChangeUnscheduled>(subscription);
     }
 
     [Fact]
@@ -334,6 +414,7 @@ public class SaasSubscriptionTests
         subscription.ChangePlan(_pro, _clock);
 
         Assert.Equal(_pro.PlanId, subscription.PlanId);
+        Assert.Null(subscription.ScheduledPlanId);
         Assert.Equal(SubscriptionStatus.Trialing, subscription.Status);
     }
 
@@ -780,7 +861,7 @@ public class SaasSubscriptionTests
         Assert.Equal(
             [
                 typeof(SubscriptionActivated), typeof(SubscriptionPastDue), typeof(SubscriptionSuspended),
-                typeof(SubscriptionActivated), typeof(SubscriptionPlanChanged), typeof(SubscriptionPeriodRenewed),
+                typeof(SubscriptionActivated), typeof(SubscriptionPlanChangeScheduled), typeof(SubscriptionPlanChanged), typeof(SubscriptionPeriodRenewed),
                 typeof(SubscriptionCancelled),
             ],
             subscription.DomainEvents.Select(domainEvent => domainEvent.GetType()));

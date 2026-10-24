@@ -65,6 +65,7 @@ public sealed class HostFixture : WebApplicationFactory<Program>, IAsyncLifetime
         // Le job des webhooks ne tourne pas : aucun envoi réseau depuis les tests de l'hôte.
         builder.UseSetting("Integrations:RunWorkers", "false");
         builder.UseSetting("Storefront:RunWorkers", "false");
+        builder.UseSetting("Backups:RunWorkers", "false");
         // Stockage R2 factice : aucun appel n'est fait par ces tests (URLs signées calculées localement).
         builder.UseSetting("Files:R2:AccountId", "host-tests");
         builder.UseSetting("Files:R2:AccessKeyId", "host-tests-key");

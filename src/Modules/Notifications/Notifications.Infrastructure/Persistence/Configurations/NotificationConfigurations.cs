@@ -68,6 +68,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
             content.Property(c => c.Subject).HasColumnName("subject").HasMaxLength(NotificationContent.MaxSubjectLength);
             // SÉCURITÉ : contenu rendu (peut citer un nom) ; un OTP n'y est JAMAIS écrit (envoyé avant la sauvegarde puis effacé).
             content.Property(c => c.Body).HasColumnName("body").HasMaxLength(NotificationContent.MaxBodyLength);
+            content.Property(c => c.IsHtml).HasColumnName("is_html");
             content.Ignore(c => c.IsRedacted);
         });
         builder.Property(notification => notification.TemplateId).HasColumnName("template_id").HasConversion(NotificationsConverters.TemplateIdKey);

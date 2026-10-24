@@ -290,49 +290,145 @@ public sealed class NotificationsPersistenceTests(NotificationsDatabase database
         Assert.Equal(WebhookReception.Accepted, await receiver.ReceiveAsync("fake", null, signed, body));
         Assert.Equal(WebhookReception.Rejected, await receiver.ReceiveAsync("fake", null, forged, body));
         Assert.Equal(WebhookReception.UnknownProvider, await receiver.ReceiveAsync("postmark", null, signed, body));
-        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NotificationsDbContext>().Webhooks.CountAsync(webhook => webhook.EventId == eventId));
+        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<NotificationsDbContext>().Webhooks.CountAsync(webhook => webhook.EventId == "p:" + eventId));
     }
 
     [Fact]
-    public async Task The_built_in_in_app_provider_and_otp_templates_are_seeded_once()
+    public async Task A_webhook_signed_by_a_restaurant_only_reaches_its_own_notifications()
     {
-        await database.Services.SeedBuiltInNotificationsAsync();
+        var fake = NotificationProviderCode.Create("FAKE");
+        var attacker = TenantId.New();
+        var victim = TenantId.New();
+        var suffix = Guid.NewGuid().ToString("N");
+        var victimMessage = "fake-victim-" + suffix;
+        var ownMessage = "fake-own-" + suffix;
 
+        // Le restaurant attaquant a SON compte chez le prestataire, avec son secret de webhook.
+        Guid configurationId;
+        await using (var write = database.NewScope(attacker))
+        {
+            var services = write.ServiceProvider;
+            var provider = await services.GetRequiredService<INotificationProviderRepository>().FindByCodeAsync(fake);
+            if (provider is null)
+            {
+                provider = NotificationProvider.Create(
+                    fake, "Fake", NotificationChannel.Email, NotificationProviderConfigurationType.PlatformOrTenant,
+                    NotificationProviderCapability.Create(NotificationChannel.Email, [NotificationFeature.Text]), true, Clock);
+                provider.Enable(Clock);
+                services.GetRequiredService<INotificationProviderRepository>().Add(provider);
+            }
+
+            var reference = NotificationCredentialReference.ForTenant(attacker, fake);
+            await services.GetRequiredService<INotificationSecretStore>().StoreAsync(
+                reference, new Dictionary<string, string> { ["api_key"] = "k", ["webhook_secret"] = "whsec_attacker" });
+            var configuration = RestaurantNotificationConfiguration.Create(attacker, provider, NotificationProviderMode.TenantManaged, true, Clock);
+            configuration.Configure(reference, Clock);
+            services.GetRequiredService<IRestaurantNotificationConfigurationRepository>().Add(configuration);
+            await services.GetRequiredService<INotificationsUnitOfWork>().SaveChangesAsync();
+            configurationId = configuration.Id.Value;
+        }
+
+        await using (var platform = database.NewScope(tenantId: null))
+        {
+            await platform.ServiceProvider.GetRequiredService<INotificationSecretStore>().StoreAsync(
+                NotificationCredentialReference.ForPlatform(fake), new Dictionary<string, string> { ["api_key"] = "k", ["webhook_secret"] = "whsec_platform" });
+        }
+
+        var target = EmailNotification(victim);
+        target.StartProcessing(Clock);
+        target.MarkAsSent(Clock, ProviderMessageId.Create(victimMessage));
+        await SavedAsync(target);
+        var own = EmailNotification(attacker);
+        own.StartProcessing(Clock);
+        own.MarkAsSent(Clock, ProviderMessageId.Create(ownMessage));
+        await SavedAsync(own);
+
+        var eventId = "evt-" + suffix;
+        var forgedBody = Encoding.UTF8.GetBytes(
+            $$"""{"events":[{"id":"{{eventId}}","messageId":"{{victimMessage}}","kind":"failed","permanent":true}]}""");
+        var platformBody = Encoding.UTF8.GetBytes($$"""{"events":[{"id":"{{eventId}}","messageId":"{{victimMessage}}","kind":"delivered"}]}""");
         await using var scope = database.NewScope(tenantId: null);
+        var receiver = scope.ServiceProvider.GetRequiredService<NotificationWebhookReceiver>();
         var context = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
-        var inApp = await context.Providers.SingleAsync(provider => provider.Code == NotificationProviderCode.InApp);
-        var otpTemplates = await context.Templates.CountAsync(template => template.TenantId == null && template.Key == NotificationTypes.SecurityOtp.Key);
 
-        Assert.True(inApp.IsEnabled);
-        Assert.Equal(6, otpTemplates);
+        Assert.Equal(WebhookReception.Accepted, await receiver.ReceiveAsync(
+            "fake", configurationId, new Dictionary<string, string> { [FakeWebhookReader.SignatureHeader] = FakeWebhookReader.Sign("whsec_attacker", forgedBody) }, forgedBody));
+        // Le même id d'événement, signé par la plateforme, n'est pas occupé par le restaurant.
+        Assert.Equal(WebhookReception.Accepted, await receiver.ReceiveAsync(
+            "fake", null, new Dictionary<string, string> { [FakeWebhookReader.SignatureHeader] = FakeWebhookReader.Sign("whsec_platform", platformBody) }, platformBody));
+        Assert.Equal(2, await context.Webhooks.CountAsync(webhook => webhook.EventId.EndsWith(":" + eventId)));
+        Assert.Equal(1, await context.Webhooks.CountAsync(webhook => webhook.EventId == $"t:{attacker.Value:N}:{eventId}"));
+
+        var directory = scope.ServiceProvider.GetRequiredService<INotificationDirectory>();
+        Assert.Null(await directory.FindByProviderMessageAsync(fake, ProviderMessageId.Create(victimMessage), attacker));
+        Assert.Equal(target.Id, (await directory.FindByProviderMessageAsync(fake, ProviderMessageId.Create(victimMessage), victim))?.Id);
+        Assert.Equal(target.Id, (await directory.FindByProviderMessageAsync(fake, ProviderMessageId.Create(victimMessage), null))?.Id);
+        Assert.Equal(own.Id, (await directory.FindByProviderMessageAsync(fake, ProviderMessageId.Create(ownMessage), attacker))?.Id);
+
+        // Un id rangé sans compte signataire n'est jamais appliqué.
+        var legacyId = "legacy-" + suffix;
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+             INSERT INTO notifications.provider_webhook_events
+                 (provider, event_id, kind, provider_message_id, is_permanent_failure, received_at_utc, attempts, next_attempt_at_utc)
+             VALUES ('FAKE', {legacyId}, {(int)WebhookEventKind.Failed}, {victimMessage}, true, {Clock.UtcNow}, 0, {Clock.UtcNow})
+             """);
+
+        await database.Services.GetRequiredService<Workers.NotificationWorker>().ApplyWebhooksAsync();
+
+        await using var read = database.NewScope(tenantId: null);
+        var rows = await read.ServiceProvider.GetRequiredService<NotificationsDbContext>().Webhooks.AsNoTracking()
+            .Where(webhook => webhook.EventId.EndsWith(suffix)).ToListAsync();
+        Assert.Equal("message_unknown", rows.Single(row => row.EventId.StartsWith("t:", StringComparison.Ordinal)).LastError);
+        Assert.Equal("signer_unknown", rows.Single(row => row.EventId == legacyId).LastError);
+        await using var victimScope = database.NewScope(victim);
+        var reloaded = await victimScope.ServiceProvider.GetRequiredService<INotificationRepository>().FindAsync(victim, target.Id);
+        Assert.NotEqual(NotificationStatus.Failed, reloaded!.Status);
     }
 
     [Fact]
-    public async Task The_platform_reads_the_send_log_and_counts_of_every_tenant_without_a_tenant_filter()
+    public void A_stored_webhook_event_id_names_its_signer()
     {
-        var since = Clock.UtcNow;
-        var sent = EmailNotification(TenantId.New());
-        sent.StartProcessing(Clock);
-        Clock.Advance(TimeSpan.FromSeconds(3));
-        sent.MarkAsSent(Clock, ProviderMessageId.Create("fake-log-1"));
-        var failed = EmailNotification(TenantId.New());
-        failed.StartProcessing(Clock);
-        failed.MarkAsFailed(NotificationFailure.Permanent(NotificationFailure.InvalidRecipient, "refusé"), Clock);
-        await SavedAsync(sent);
-        await SavedAsync(failed);
+        var tenant = TenantId.New();
+        var tenantId = WebhookEventScope.Qualify(tenant, "evt-1");
+        var platformId = WebhookEventScope.Qualify(null, new string('x', 400));
 
-        await using var scope = database.NewScope(null);
-        var directory = scope.ServiceProvider.GetRequiredService<INotificationDirectory>();
-        var counts = await directory.CountSinceAsync(since);
-        var recent = await directory.ListRecentAsync(NotificationChannel.Email, null, 0, 500);
-        var onlyFailed = await directory.ListRecentAsync(null, NotificationStatus.Failed, 0, 500);
-        var delays = await directory.SendDelaysSinceAsync(since, 10);
+        Assert.True(WebhookEventScope.TryReadSigner(tenantId, out var signer));
+        Assert.Equal(tenant, signer);
+        Assert.True(WebhookEventScope.TryReadSigner(platformId, out var platform));
+        Assert.Null(platform);
+        Assert.Equal(NotificationWebhookEvent.MaxEventIdLength, platformId.Length);
+        Assert.False(WebhookEventScope.TryReadSigner("evt-1", out _));
+        Assert.False(WebhookEventScope.TryReadSigner("t:not-a-tenant:evt-1", out _));
+    }
 
-        Assert.True(counts.Single(row => row.Channel == NotificationChannel.Email && row.Status == NotificationStatus.Sent).Count >= 1);
-        Assert.True(counts.Single(row => row.Channel == NotificationChannel.Email && row.Status == NotificationStatus.Failed).Count >= 1);
-        Assert.Contains(recent, notification => notification.Id == sent.Id);
-        Assert.Contains(onlyFailed, notification => notification.Id == failed.Id);
-        Assert.DoesNotContain(onlyFailed, notification => notification.Id == sent.Id);
-        Assert.Contains(TimeSpan.FromSeconds(3), delays);
+    [Fact]
+    public async Task Anonymous_phone_messages_of_the_last_hour_are_counted_per_tenant_and_type()
+    {
+        var tenant = TenantId.New();
+        Notification Sms(TenantId owner, NotificationTypeDefinition type) => Notification.Create(
+            owner, type, NotificationRecipient.ForSms(PhoneNumber.Create("+22997000000")), null, NotificationProviderCode.Create("FAKE"), French,
+            NotificationContent.Create(NotificationChannel.Sms, null, "Commande prête."), Clock);
+
+        var first = await SavedAsync(Sms(tenant, NotificationTypes.OrderReady));
+        Clock.Advance(TimeSpan.FromMinutes(5));
+        await SavedAsync(Sms(tenant, NotificationTypes.OrderConfirmed));
+        await SavedAsync(Sms(tenant, NotificationTypes.OrderReceipt));
+        await SavedAsync(EmailNotification(tenant));
+        await SavedAsync(Sms(TenantId.New(), NotificationTypes.OrderReady));
+
+        await using var scope = database.NewScope(tenant);
+        var repository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
+        var types = new[] { NotificationTypes.OrderReady.Key, NotificationTypes.OrderConfirmed.Key, NotificationTypes.OrderReceipt.Key };
+        var phones = new[] { NotificationChannel.Sms, NotificationChannel.WhatsApp };
+
+        var all = await repository.CountCreatedSinceAsync(tenant, phones, types, Clock.UtcNow - TimeSpan.FromHours(1));
+        var orders = await repository.CountCreatedSinceAsync(tenant, phones, types[..2], Clock.UtcNow - TimeSpan.FromHours(1));
+        var recent = await repository.CountCreatedSinceAsync(tenant, phones, types, Clock.UtcNow - TimeSpan.FromMinutes(1));
+
+        Assert.Equal(3, all.Count);
+        Assert.True((all.OldestAtUtc!.Value - first.CreatedAtUtc).Duration() < TimeSpan.FromMilliseconds(1));
+        Assert.Equal(2, orders.Count);
+        Assert.Equal(2, recent.Count);
     }
 }

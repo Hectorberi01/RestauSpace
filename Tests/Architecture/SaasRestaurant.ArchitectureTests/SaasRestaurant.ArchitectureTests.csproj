@@ -35,5 +35,6 @@
     <ProjectReference Include="..\..\..\src\Modules\Storefront\Storefront.Api\Storefront.Api.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Printing\Printing.Api\Printing.Api.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Audit\Audit.Api\Audit.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Backups\Backups.Api\Backups.Api.csproj" />
   </ItemGroup>
 </Project>

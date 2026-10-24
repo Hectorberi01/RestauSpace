@@ -153,8 +153,11 @@ internal sealed class StorefrontKeyAuthenticationHandler(IOptionsMonitor<Authent
 }
 
 /// <summary>L'application de la requête : seulement si la requête a été authentifiée par clé publique.</summary>
-internal sealed class HttpStorefrontClient(IHttpContextAccessor accessor) : IStorefrontClient
+internal sealed class HttpStorefrontClient(IHttpContextAccessor accessor, Storefront.Application.Checkout.ClientAddressKeys addressKeys) : IStorefrontClient
 {
+    /// <summary>La même adresse que les limites de débit (RemoteIpAddress).</summary>
+    public string? ClientKey => addressKeys.For(accessor.HttpContext?.Connection.RemoteIpAddress?.ToString());
+
     public SalesAppId? AppId => Read(StorefrontKeyAuthentication.AppClaim) is { } id ? SalesAppId.From(id) : null;
 
     public KioskDeviceId? DeviceId => Read(StorefrontKeyAuthentication.DeviceClaim) is { } id ? KioskDeviceId.From(id) : null;

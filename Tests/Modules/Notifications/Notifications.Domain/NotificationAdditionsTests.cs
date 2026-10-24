@@ -65,6 +65,49 @@ public class NotificationAdditionsTests
         Assert.Equal("Commande A-12", content.Subject);
     }
 
+    private NotificationTemplate PublishedEmail(string subject, string body)
+    {
+        var template = NotificationTemplate.Create(
+            _tenantId, NotificationTypes.OrderReady.Key, NotificationChannel.Email, French, subject, body, isKeyUniqueForChannelAndLanguage: true, _clock);
+        template.Publish(_clock);
+        return template;
+    }
+
+    private const string Injected = "<a href=\"https://evil.example\">Awa</a>";
+
+    [Fact]
+    public void Render_escapes_the_values_in_an_html_template_but_not_in_its_subject()
+    {
+        var template = PublishedEmail("Pour {{customer.firstName}}", "<p>Bonjour {{customer.firstName}}, commande {{order.number}}.</p>");
+
+        var content = TemplateRenderer.Render(template, Payload(("customer.firstName", Injected), ("order.number", "A&B")));
+
+        Assert.True(content.IsHtml);
+        Assert.Equal(
+            "<p>Bonjour &lt;a href=&quot;https://evil.example&quot;&gt;Awa&lt;/a&gt;, commande A&amp;B.</p>", content.Body);
+        Assert.Equal("Pour " + Injected, content.Subject);
+    }
+
+    [Fact]
+    public void Render_keeps_the_values_intact_in_a_text_template_even_when_the_body_then_starts_with_a_tag()
+    {
+        var template = PublishedEmail("Commande prête", "{{customer.firstName}}, votre commande est prête.");
+
+        var content = TemplateRenderer.Render(template, Payload(("customer.firstName", Injected)));
+
+        // Le format vient du modèle (texte) : le corps rendu part en texte brut, sans échappement.
+        Assert.False(content.IsHtml);
+        Assert.Equal(Injected + ", votre commande est prête.", content.Body);
+    }
+
+    [Fact]
+    public void Only_an_email_template_can_be_html()
+    {
+        Assert.False(PublishedSms("<p>Prête.</p>").IsHtml);
+        Assert.True(PublishedEmail("Prête", "  <!DOCTYPE html><html></html>").IsHtml);
+        Assert.False(NotificationContent.Create(NotificationChannel.Sms, null, "<p>Prête.</p>", isHtml: true).IsHtml);
+    }
+
     // ---- In-app
 
     private Notification InApp(UserId user)

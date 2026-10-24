@@ -19,6 +19,12 @@ public interface IPaymentRepository
     /// <summary>Acomptes d'une réservation (déduits d'une addition compris), les plus anciens d'abord.</summary>
     Task<IReadOnlyList<Payment>> ListByReservationAsync(TenantId tenantId, Guid reservationId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Vrai si un paiement de ce prestataire n'est pas terminé : en attente, autorisé, ou avec un remboursement demandé
+    /// (ses webhooks sont encore attendus).
+    /// </summary>
+    Task<bool> HasPaymentsInProgressAsync(TenantId tenantId, PaymentProviderCode provider, CancellationToken cancellationToken = default);
+
     void Add(Payment payment);
 }
 

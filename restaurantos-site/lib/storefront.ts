@@ -303,6 +303,7 @@ const messages: Record<string, string> = translated({
   'storefront.checkout.delivery_address_required': 'Indiquez votre nom, votre téléphone et votre adresse de livraison.',
   'storefront.checkout.slot_full': 'Ce créneau est complet : choisissez une autre heure.',
   'storefront.checkout.coupon_invalid': 'Ce code promo ne peut pas être utilisé.',
+  'storefront.checkout.too_many_pending_payments': 'Plusieurs commandes attendent déjà leur paiement : payez-les ou annulez-les avant d’en passer une autre.',
   'delivery.fulfillment.below_minimum_order': 'Le minimum de commande de votre zone n’est pas atteint.',
   'delivery.fulfillment.delivery_time_invalid': 'L’heure de livraison doit être dans les 7 prochains jours.',
   'storefront.checkout.payment_mode_not_allowed': 'Ce moyen de paiement n’est pas proposé.',
@@ -362,19 +363,8 @@ const messages: Record<string, string> = translated({
   'catalog.product.variant_unavailable': 'Une variante du panier n’est plus disponible.',
 });
 
-/** Pourquoi un code promo est refusé, en clair. */
-export const couponRefusal = (code: string | null) => {
-  if (!code) return tr('Ce code promo ne peut pas être utilisé.');
-  if (code === 'promotions.coupon.not_found' || code.startsWith('promotions.coupon_code.')) return tr('Ce code promo n’existe pas.');
-  if (code === 'promotions.coupon.exhausted' || code === 'promotions.promotion.usage_limit_reached') return tr('Ce code promo a déjà été utilisé autant de fois que prévu.');
-  if (code === 'promotions.discount.minimum_order_amount_not_reached') return tr('Le montant minimum de cette offre n’est pas atteint.');
-  if (code === 'promotions.discount.order_type_not_eligible') return tr('Cette offre ne vaut pas pour ce mode (sur place, à emporter ou livraison).');
-  if (code === 'promotions.discount.location_not_eligible') return tr('Cette offre ne vaut pas dans cet établissement.');
-  if (code === 'promotions.discount.no_eligible_amount') return tr('Aucun produit de votre panier n’est concerné par cette offre.');
-  if (code === 'promotions.discount.outside_validity_period' || code === 'promotions.promotion.expired' || code === 'promotions.promotion.not_active'
-    || code === 'promotions.coupon.disabled' || code === 'promotions.coupon.promotion_expired') return tr('Cette offre n’est plus valable.');
-  return tr('Ce code promo ne peut pas être utilisé.');
-};
+/** Un code promo refusé : l'API donne le même motif pour tout refus (on ne laisse pas deviner les codes). */
+export const couponRefusal = (code: string | null) => messages[code ?? ''] ?? tr('Ce code promo ne peut pas être utilisé.');
 
 export const errorMessage = (error: unknown) =>
   error instanceof StorefrontError

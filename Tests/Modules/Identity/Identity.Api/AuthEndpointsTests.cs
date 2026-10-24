@@ -96,6 +96,21 @@ public sealed class AuthEndpointsTests(IdentityApi api) : IClassFixture<Identity
         }
     }
 
+    [Fact]
+    public async Task Replaying_a_token_two_generations_old_signs_out_everywhere()
+    {
+        var (_, first, _) = await api.GivenSignedInUserAsync();
+        var second = await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = first.Text("refreshToken") })).ReadAsync();
+        var third = await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = second.Text("refreshToken") })).ReadAsync();
+        var fourth = await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = third.Text("refreshToken") })).ReadAsync();
+
+        api.Clock.Advance(RefreshSessionHandler.ConcurrentRefreshWindow + TimeSpan.FromSeconds(1));
+        await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = second.Text("refreshToken") }))
+            .AssertProblemAsync(HttpStatusCode.Unauthorized, "identity.session.refresh_token_replayed");
+        await (await Client.PostAsJsonAsync("/auth/refresh", new { refreshToken = fourth.Text("refreshToken") }))
+            .AssertProblemAsync(HttpStatusCode.Unauthorized, "identity.session.revoked");
+    }
+
     [Theory]
     [InlineData("never-issued")]
     [InlineData("")]

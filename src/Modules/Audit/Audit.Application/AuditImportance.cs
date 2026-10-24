@@ -30,6 +30,7 @@ public static class AuditImportance
         "integrations.webhook_endpoint.auto_disabled", "integrations.webhook_secret.rotated",
         "billing.subscription.past_due", "billing.subscription.suspended", "billing.subscription.cancelled",
         "billing.subscription.cancellation_scheduled", "billing.subscription.plan_changed",
+        "backups.backup.download_link_created", "backups.backup.deletion_requested", "backups.restore.requested", "backups.restore.cancelled",
     };
 
     public static IReadOnlySet<string> LowActions { get; } = new HashSet<string>(StringComparer.Ordinal)

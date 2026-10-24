@@ -202,7 +202,9 @@ internal sealed class ReservationMessagesFlow(IServiceScopeFactory scopes, ILogg
         variables["reservation.guestCount"] = entry.PartySize.ToString(CultureInfo.InvariantCulture);
         variables["offer.url"] = link.Url;
         variables["offer.expiresTime"] = Local(offer.ExpiresAtUtc, zone).ToString("HH:mm", CultureInfo.InvariantCulture);
-        return await SendAsync(services, NotificationTypes.WaitlistOffer, entry.GuestPhone, offer.LocationId, variables, $"waitlist-offer:{message.Id}", cancellationToken);
+        return await SendAsync(
+            services, NotificationTypes.WaitlistOffer, entry.GuestPhone, offer.LocationId, variables, $"waitlist-offer:{message.Id}",
+            entry.Source == Reservations.Domain.WaitlistSource.Online, cancellationToken);
     }
 
     private static async Task<bool> DepositAsync(IServiceProvider services, OutboxEnvelope message, CancellationToken cancellationToken)
@@ -230,7 +232,9 @@ internal sealed class ReservationMessagesFlow(IServiceScopeFactory scopes, ILogg
         variables["deposit.amount"] = string.Create(CultureInfo.InvariantCulture, $"{requested.Amount.Amount:0.##} {requested.Amount.Currency}");
         variables["deposit.dueTime"] = Local(requested.DueBeforeUtc, zone).ToString("HH:mm", CultureInfo.InvariantCulture);
         variables["reservation.url"] = link.Url;
-        return await SendAsync(services, NotificationTypes.ReservationDepositRequest, reservation.GuestPhone, requested.LocationId, variables, $"deposit-request:{message.Id}", cancellationToken);
+        return await SendAsync(
+            services, NotificationTypes.ReservationDepositRequest, reservation.GuestPhone, requested.LocationId, variables, $"deposit-request:{message.Id}",
+            NotificationTriggersFlow.ReservationIsAnonymous, cancellationToken);
     }
 
     private static async Task<bool> TableReadyAsync(IServiceProvider services, OutboxEnvelope message, CancellationToken cancellationToken)
@@ -245,19 +249,21 @@ internal sealed class ReservationMessagesFlow(IServiceScopeFactory scopes, ILogg
 
         var (variables, _) = await VariablesAsync(services, notified.LocationId, cancellationToken);
         variables["customer.firstName"] = party.Name;
-        return await SendAsync(services, NotificationTypes.WaitlistTableReady, party.Phone, notified.LocationId, variables, $"table-ready:{message.Id}", cancellationToken);
+        return await SendAsync(
+            services, NotificationTypes.WaitlistTableReady, party.Phone, notified.LocationId, variables, $"table-ready:{message.Id}", false, cancellationToken);
     }
 
     /// <summary>WhatsApp d'abord, SMS si WhatsApp n'a rien envoyé (pas de compte, pas de modèle validé...).</summary>
+    /// <param name="anonymous">Inscription ou réservation faite par le client sur le site : numéro du pays de l'établissement seulement.</param>
     private static async Task<bool> SendAsync(
         IServiceProvider services, NotificationTypeDefinition type, string phone, Guid locationId, Dictionary<string, string> variables, string key,
-        CancellationToken cancellationToken)
+        bool anonymous, CancellationToken cancellationToken)
     {
         var send = services.GetRequiredService<ICommandHandler<SendNotificationCommand, SendNotificationResult>>();
         foreach (var channel in Channels)
         {
             var result = await send.HandleAsync(
-                new SendNotificationCommand(type.Key.Value, channel, null, null, phone, locationId, null, variables, null, $"{key}:{channel}"),
+                new SendNotificationCommand(type.Key.Value, channel, null, null, phone, locationId, null, variables, null, $"{key}:{channel}", anonymous),
                 cancellationToken);
             if (result.NotificationIds.Count > 0)
             {

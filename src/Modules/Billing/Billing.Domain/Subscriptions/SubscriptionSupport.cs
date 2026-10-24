@@ -55,6 +55,8 @@ public static class SubscriptionErrors
     public static readonly DomainError CancellationNotScheduled = new("billing.subscription.cancellation_not_scheduled", "No cancellation is scheduled.");
     public static readonly DomainError Complimentary = new("billing.subscription.complimentary", "The plan is offered by the platform: only the platform can change it.");
     public static readonly DomainError NotComplimentary = new("billing.subscription.not_complimentary", "The subscription is not offered by the platform.");
+    public static readonly DomainError PlanChangeScheduled = new("billing.subscription.plan_change_scheduled", "A plan change is scheduled at the end of the current period: withdraw it before cancelling.");
+    public static readonly DomainError PlanChangeNotScheduled = new("billing.subscription.plan_change_not_scheduled", "No plan change is scheduled.");
     public static readonly DomainError ComplimentaryEndInvalid = new("billing.subscription.complimentary_end_invalid", "An offer must end in the future.");
 }
 
@@ -73,12 +75,28 @@ public sealed record SubscriptionActivated(
     Period CurrentPeriod,
     DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 
-/// <summary>L'abonnement est passé à une autre formule (nom dans la spec : "PlanChanged" de SaasSubscription).</summary>
+/// <summary>L'abonnement est passé à une autre formule (nom dans la spec : "PlanChanged" de SaasSubscription), y compris à l'application d'un changement programmé.</summary>
 public sealed record SubscriptionPlanChanged(
     TenantId TenantId,
     SubscriptionId SubscriptionId,
     PlanId PreviousPlanId,
     PlanId NewPlanId,
+    DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
+
+/// <summary>Un changement de plan est programmé pour <paramref name="EffectiveAtUtc"/> (fin de la période payée).</summary>
+public sealed record SubscriptionPlanChangeScheduled(
+    TenantId TenantId,
+    SubscriptionId SubscriptionId,
+    PlanId PlanId,
+    PlanId ScheduledPlanId,
+    DateTimeOffset EffectiveAtUtc,
+    DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
+
+/// <summary>Le changement de plan programmé est retiré (par le restaurant ou par une offre de la plateforme).</summary>
+public sealed record SubscriptionPlanChangeUnscheduled(
+    TenantId TenantId,
+    SubscriptionId SubscriptionId,
+    PlanId ScheduledPlanId,
     DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 
 public sealed record SubscriptionPastDue(

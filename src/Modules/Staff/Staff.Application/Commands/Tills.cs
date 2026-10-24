@@ -160,11 +160,9 @@ public sealed record TillSessionDto(
     Guid UserId,
     Guid SessionId,
     string AccessToken,
-    DateTimeOffset AccessTokenExpiresAtUtc,
-    string RefreshToken,
-    DateTimeOffset RefreshTokenExpiresAtUtc);
+    DateTimeOffset AccessTokenExpiresAtUtc);
 
-/// <summary>Un membre se fait reconnaître par son PIN : il reçoit une session à lui, pour ce restaurant.</summary>
+/// <summary>Un membre se fait reconnaître par son PIN : il reçoit une session de caisse à lui, sans refresh token.</summary>
 public sealed record UnlockTillCommand(Guid StaffMemberId, string? Pin) : ICommand<TillSessionDto>;
 
 public sealed class UnlockTillHandler(TillDesk desk, IOperatorSessions sessions, IUserAccounts users)
@@ -174,7 +172,7 @@ public sealed class UnlockTillHandler(TillDesk desk, IOperatorSessions sessions,
     {
         var till = await desk.RequireTillAsync(cancellationToken);
         var member = await desk.VerifyPinAsync(till, command.StaffMemberId, command.Pin, cancellationToken);
-        var tokens = await sessions.StartAsync(member.UserId, till.TenantId, $"Caisse partagée · {till.Name}", cancellationToken)
+        var tokens = await sessions.StartAsync(member.UserId, till.TenantId, till.Id, till.LocationId, $"Caisse partagée · {till.Name}", cancellationToken)
             ?? throw new ForbiddenException(StaffApplicationErrors.SessionRefused);
         var names = await users.DisplayNamesAsync([member.UserId], cancellationToken);
         return new TillSessionDto(
@@ -185,9 +183,7 @@ public sealed class UnlockTillHandler(TillDesk desk, IOperatorSessions sessions,
             tokens.UserId,
             tokens.SessionId,
             tokens.AccessToken,
-            tokens.AccessTokenExpiresAtUtc,
-            tokens.RefreshToken,
-            tokens.RefreshTokenExpiresAtUtc);
+            tokens.AccessTokenExpiresAtUtc);
     }
 }
 

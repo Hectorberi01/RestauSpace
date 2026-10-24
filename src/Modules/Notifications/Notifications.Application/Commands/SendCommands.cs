@@ -14,6 +14,7 @@ public sealed record SendNotificationResult(IReadOnlyList<Guid> NotificationIds,
 /// restaurant ou de la plateforme ; la politique d'envoi peut écarter la demande (raison renvoyée).
 /// </summary>
 /// <param name="IdempotencyKey">Rejouer la même demande ne crée rien de plus.</param>
+/// <param name="Anonymous">Déclenchée par un visiteur du site, jamais par le personnel (posé par l'hôte, pas par l'API).</param>
 public sealed record SendNotificationCommand(
     string Type,
     NotificationChannel Channel,
@@ -24,7 +25,8 @@ public sealed record SendNotificationCommand(
     string? Language = null,
     IReadOnlyDictionary<string, string>? Variables = null,
     DateTimeOffset? ScheduledAtUtc = null,
-    string? IdempotencyKey = null) : ICommand<SendNotificationResult>;
+    string? IdempotencyKey = null,
+    bool Anonymous = false) : ICommand<SendNotificationResult>;
 
 public sealed class SendNotificationHandler(NotificationsWorkspace workspace, NotificationRequests requests)
     : ICommandHandler<SendNotificationCommand, SendNotificationResult>
@@ -46,6 +48,7 @@ public sealed class SendNotificationHandler(NotificationsWorkspace workspace, No
 /// <summary>Une intention de notification produite par un événement d'un autre module (§ 17).</summary>
 /// <param name="Channels">Canaux à essayer DANS L'ORDRE : le premier que la politique accepte est le seul utilisé.</param>
 /// <param name="IdempotencyKey">Clé stable choisie par l'appelant (un rappel annulable plus tard) ; sinon dérivée de l'événement.</param>
+/// <param name="Anonymous">L'événement vient d'une action d'un visiteur du site (commande en ligne...).</param>
 public sealed record NotificationTrigger(
     string Type,
     IReadOnlyList<NotificationChannel> Channels,
@@ -54,7 +57,8 @@ public sealed record NotificationTrigger(
     Guid? LocationId,
     IReadOnlyDictionary<string, string> Variables,
     DateTimeOffset? ScheduledAtUtc = null,
-    string? IdempotencyKey = null);
+    string? IdempotencyKey = null,
+    bool Anonymous = false);
 
 /// <summary>
 /// Traduit un événement d'intégration en notifications (Transactional Inbox, § 27-28) : le même événement reçu deux fois
@@ -86,7 +90,7 @@ public sealed class TriggerNotificationsHandler(
                     tenant,
                     new SendNotificationCommand(
                         trigger.Type, channel, trigger.CustomerId, trigger.UserId, null, trigger.LocationId, null, trigger.Variables,
-                        trigger.ScheduledAtUtc, trigger.IdempotencyKey ?? $"{command.Consumer}:{command.EventId}:{index}"),
+                        trigger.ScheduledAtUtc, trigger.IdempotencyKey ?? $"{command.Consumer}:{command.EventId}:{index}", trigger.Anonymous),
                     cancellationToken);
                 if (result.NotificationIds.Count > 0)
                 {
@@ -159,7 +163,7 @@ public sealed class NotificationRequests(
         {
             var key = command.IdempotencyKey is { } baseKey ? (recipients.Count == 1 ? baseKey : $"{baseKey}:{index}") : null;
             var decision = await policy.DecideAsync(
-                new NotificationIntent(tenant, type, recipient, recipientId, location, language, payload, command.ScheduledAtUtc, key),
+                new NotificationIntent(tenant, type, recipient, recipientId, location, language, payload, command.ScheduledAtUtc, key, command.Anonymous),
                 cancellationToken);
             if (decision.Notification is { } notification)
             {

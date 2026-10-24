@@ -45,11 +45,16 @@ public sealed class RefreshSession : Entity<SessionId>
 
     internal static RefreshSession Create(TokenHash hash, DateTimeOffset nowUtc, SessionLifetime lifetime, string? deviceLabel = null)
     {
-        ArgumentNullException.ThrowIfNull(hash);
         ArgumentNullException.ThrowIfNull(lifetime);
+        return Create(hash, nowUtc, nowUtc.Add(lifetime.Duration), deviceLabel);
+    }
+
+    internal static RefreshSession Create(TokenHash hash, DateTimeOffset nowUtc, DateTimeOffset expiresAtUtc, string? deviceLabel = null)
+    {
+        ArgumentNullException.ThrowIfNull(hash);
 
         var label = string.IsNullOrWhiteSpace(deviceLabel) ? null : deviceLabel.Trim();
-        return new RefreshSession(SessionId.New(), hash, nowUtc, nowUtc.Add(lifetime.Duration))
+        return new RefreshSession(SessionId.New(), hash, nowUtc, expiresAtUtc)
         {
             DeviceLabel = label is { Length: > DeviceLabelMaxLength } ? label[..DeviceLabelMaxLength] : label,
         };
@@ -62,6 +67,16 @@ public sealed class RefreshSession : Entity<SessionId>
 
         RevokedAtUtc = nowUtc;
         ReplacedBy = replacedBy;
+    }
+
+    // Ancre de famille : gardée, révoquée, jusqu'à la fin de la famille pour reconnaître ses anciens jetons.
+    internal void RetainUntil(DateTimeOffset untilUtc)
+    {
+        DomainException.ThrowIf(!WasRotated, UserErrors.SessionNotFound);
+        if (untilUtc > ExpiresAtUtc)
+        {
+            ExpiresAtUtc = untilUtc;
+        }
     }
 
     internal void Revoke(DateTimeOffset nowUtc, SessionRevocationReason reason)

@@ -59,6 +59,14 @@ public sealed class BillingWorkspace(
         (id == Guid.Empty ? null : await plans.FindAsync(PlanId.From(id), cancellationToken))
         ?? throw new NotFoundException(BillingApplicationErrors.PlanNotFound);
 
+    /// <summary>Le plan de la prochaine période payée : le plan programmé s'il y en a un, sinon le plan courant.</summary>
+    public async Task<Plan> LoadNextPeriodPlanAsync(SaasSubscription subscription, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+        return await plans.FindAsync(subscription.NextPeriodPlanId, cancellationToken)
+            ?? throw new NotFoundException(BillingApplicationErrors.PlanNotFound);
+    }
+
     /// <summary>Un plan n'est proposé qu'aux restaurants de sa devise.</summary>
     public async Task EnsurePlanCurrencyAsync(TenantId tenantId, Plan plan, CancellationToken cancellationToken)
     {

@@ -112,7 +112,7 @@ public sealed class NotificationsFixture
 
     public NotificationRouting Routing => new(this, this, this);
 
-    public NotificationPolicy Policy => new(this, this, this, this, this, this, Routing, Settings, Clock, new RulesStore(this), new HistoryStore(this));
+    public NotificationPolicy Policy => new(this, this, this, this, this, this, Routing, Settings, Clock, new RulesStore(this), new HistoryStore(this), this);
 
     public NotificationSending Sending => new(Routing, this, this, this, this, this, Clock);
 
@@ -349,6 +349,17 @@ public sealed class NotificationsFixture
 
     public void Add(Notification notification, string? idempotencyKey = null) => _notifications.Add((notification, idempotencyKey));
 
+    public Task<NotificationWindowCount> CountCreatedSinceAsync(
+        TenantId tenantId, IReadOnlyCollection<NotificationChannel> channels, IReadOnlyCollection<TemplateKey> types, DateTimeOffset since,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = NotificationRows
+            .Where(notification => notification.TenantId == tenantId && channels.Contains(notification.Channel)
+                && types.Contains(notification.TemplateKey) && notification.CreatedAtUtc > since)
+            .ToList();
+        return Task.FromResult(new NotificationWindowCount(rows.Count, rows.Count == 0 ? null : rows.Min(notification => notification.CreatedAtUtc)));
+    }
+
     public Task<IReadOnlyList<NotificationLocator>> ListDueAsync(DateTimeOffset now, int take, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<NotificationLocator>>(NotificationRows.Where(notification => notification.IsDueAt(now))
             .OrderBy(notification => notification.Priority).Take(take).Select(notification => new NotificationLocator(notification.Id, notification.TenantId)).ToList());
@@ -360,9 +371,10 @@ public sealed class NotificationsFixture
         Task.FromResult<IReadOnlyList<NotificationLocator>>([]);
 
     public Task<NotificationLocator?> FindByProviderMessageAsync(
-        NotificationProviderCode provider, ProviderMessageId messageId, CancellationToken cancellationToken = default) =>
+        NotificationProviderCode provider, ProviderMessageId messageId, TenantId? signedBy, CancellationToken cancellationToken = default) =>
         Task.FromResult(NotificationRows
-            .Where(notification => notification.Deliveries.Any(delivery => delivery.ProviderCode == provider && delivery.ProviderMessageId == messageId))
+            .Where(notification => (signedBy == null || notification.TenantId == signedBy)
+                && notification.Deliveries.Any(delivery => delivery.ProviderCode == provider && delivery.ProviderMessageId == messageId))
             .Select(notification => new NotificationLocator(notification.Id, notification.TenantId))
             .SingleOrDefault());
 
@@ -436,6 +448,9 @@ public sealed class NotificationsFixture
 
     public Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) =>
         Task.FromResult<LocationReference?>(Locations.GetValueOrDefault((tenantId, locationId)));
+
+    public Task<IReadOnlyList<CountryCode>> CountriesAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<CountryCode>>(Locations.Where(pair => pair.Key.Item1 == tenantId).Select(pair => pair.Value.Country).Distinct().ToList());
 
     public Task<CustomerContact?> FindCustomerAsync(TenantId tenantId, CustomerId customerId, CancellationToken cancellationToken = default) =>
         Task.FromResult<CustomerContact?>(Customers.GetValueOrDefault((tenantId, customerId)));

@@ -10,6 +10,7 @@ public sealed class TillTests : ITillRepository, ITimeEntryRepository, IPinHashe
     private readonly List<Till> _tills = [];
     private readonly List<TimeEntry> _entries = [];
     private readonly List<(UserId User, TenantId Tenant)> _sessions = [];
+    private readonly List<(TillId Till, LocationId Location)> _tillScopes = [];
 
     public TillId? TillId { get; private set; }
 
@@ -49,6 +50,9 @@ public sealed class TillTests : ITillRepository, ITimeEntryRepository, IPinHashe
         Assert.Equal(waiter, session.StaffMemberId);
         Assert.Equal(_fixture.TenantA.Value, session.TenantId);
         Assert.Equal("token", session.AccessToken);
+        // Session de caisse : limitée à cette caisse et à son établissement.
+        Assert.Equal((TillId!.Value, here), Assert.Single(_tillScopes));
+        Assert.Equal(here.Value, session.LocationId);
     }
 
     [Fact]
@@ -178,9 +182,11 @@ public sealed class TillTests : ITillRepository, ITimeEntryRepository, IPinHashe
 
     public bool Matches(string secret, string hash) => hash == "s:" + secret;
 
-    public Task<OperatorTokens?> StartAsync(UserId userId, TenantId tenantId, string device, CancellationToken cancellationToken = default)
+    public Task<OperatorTokens?> StartAsync(
+        UserId userId, TenantId tenantId, TillId tillId, LocationId locationId, string device, CancellationToken cancellationToken = default)
     {
         _sessions.Add((userId, tenantId));
-        return Task.FromResult<OperatorTokens?>(new OperatorTokens(userId.Value, Guid.NewGuid(), "token", _fixture.Clock.UtcNow.AddMinutes(15), "refresh", _fixture.Clock.UtcNow.AddDays(30)));
+        _tillScopes.Add((tillId, locationId));
+        return Task.FromResult<OperatorTokens?>(new OperatorTokens(userId.Value, Guid.NewGuid(), "token", _fixture.Clock.UtcNow.AddHours(12)));
     }
 }

@@ -8,6 +8,7 @@ public static class PaymentConfigurationErrors
     public static readonly DomainError AlreadyExists = new("payments.configuration.already_exists", "The restaurant already has a configuration for this payment provider.", DomainErrorKind.Conflict);
     public static readonly DomainError ModeUnknown = new("payments.configuration.mode_unknown", "Unknown payment mode.");
     public static readonly DomainError ModeNotApplicable = new("payments.configuration.mode_not_applicable", "An on-site payment provider is always managed by the restaurant.");
+    public static readonly DomainError PaymentsInProgress = new("payments.configuration.payments_in_progress", "Online payments or refunds of this provider are still in progress: wait for them to finish (or cancel them) before changing the payment mode.", DomainErrorKind.Conflict);
     public static readonly DomainError PlatformModeNotAllowed = new("payments.configuration.platform_mode_not_allowed", "This provider does not allow the platform to collect payments on behalf of restaurants.");
     public static readonly DomainError CredentialsNotApplicable = new("payments.configuration.credentials_not_applicable", "Only an online provider managed by the restaurant has merchant credentials.");
     public static readonly DomainError CredentialsMissing = new("payments.configuration.credentials_missing", "Enter the merchant credentials before enabling this online payment provider.");

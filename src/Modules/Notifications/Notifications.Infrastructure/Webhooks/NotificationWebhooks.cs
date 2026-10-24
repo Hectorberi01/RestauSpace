@@ -95,8 +95,8 @@ public enum WebhookReception
 /// <summary>
 /// Reçoit un webhook (route anonyme : l'authenticité vient de la SIGNATURE) : retrouve le compte qui l'a signé (celui de
 /// la plateforme, ou celui de la configuration du restaurant désignée par l'URL), vérifie, puis range les événements
-/// dans <c>provider_webhook_events</c> (un événement renvoyé n'est rangé qu'une fois). Appliqués ensuite par le worker.
-/// Le corps brut n'est pas gardé (adresse, contenu).
+/// dans <c>provider_webhook_events</c> sous un id qualifié par ce compte (un événement renvoyé n'est rangé qu'une fois).
+/// Appliqués ensuite par le worker. Le corps brut n'est pas gardé (adresse, contenu).
 /// </summary>
 public sealed class NotificationWebhookReceiver
 {
@@ -143,8 +143,8 @@ public sealed class NotificationWebhookReceiver
             return WebhookReception.UnknownProvider;
         }
 
-        var reference = await ReferenceAsync(code, configurationId, cancellationToken);
-        var credentials = reference is null ? null : await _secrets.ReadAsync(reference, cancellationToken);
+        var account = await AccountAsync(code, configurationId, cancellationToken);
+        var credentials = account is null ? null : await _secrets.ReadAsync(account.Reference, cancellationToken);
         var events = credentials is null ? null : reader.Read(headers, body, credentials);
         if (events is null)
         {
@@ -156,7 +156,7 @@ public sealed class NotificationWebhookReceiver
         var now = _clock.UtcNow;
         foreach (var item in events)
         {
-            var eventId = item.EventId.Length > NotificationWebhookEvent.MaxEventIdLength ? item.EventId[..NotificationWebhookEvent.MaxEventIdLength] : item.EventId;
+            var eventId = WebhookEventScope.Qualify(account!.SignedBy, item.EventId);
             var messageId = item.ProviderMessageId is { Length: > 0 and <= ProviderMessageId.MaxLength } id ? id : null;
             var failureCode = item.FailureCode is { Length: > 0 } failure ? failure[..Math.Min(failure.Length, NotificationFailure.MaxCodeLength)] : null;
             var kind = (int)item.Kind;
@@ -196,8 +196,8 @@ public sealed class NotificationWebhookReceiver
             return null;
         }
 
-        var reference = await ReferenceAsync(code, configurationId, cancellationToken);
-        var credentials = reference is null ? null : await _secrets.ReadAsync(reference, cancellationToken);
+        var account = await AccountAsync(code, configurationId, cancellationToken);
+        var credentials = account is null ? null : await _secrets.ReadAsync(account.Reference, cancellationToken);
         var answer = credentials is null ? null : challenge.Answer(query, credentials);
         if (answer is null)
         {
@@ -208,24 +208,67 @@ public sealed class NotificationWebhookReceiver
     }
 
     /// <summary>Le compte qui signe : celui de la configuration (mode restaurant) désignée par l'URL, sinon celui de la plateforme.</summary>
-    private async Task<NotificationCredentialReference?> ReferenceAsync(
-        NotificationProviderCode code, Guid? configurationId, CancellationToken cancellationToken)
+    private async Task<SigningAccount?> AccountAsync(NotificationProviderCode code, Guid? configurationId, CancellationToken cancellationToken)
     {
+        var platform = new SigningAccount(NotificationCredentialReference.ForPlatform(code), null);
         if (configurationId is not { } id || id == Guid.Empty)
         {
-            return NotificationCredentialReference.ForPlatform(code);
+            return platform;
         }
 
         var configuration = await _context.Configurations.IgnoreQueryFilters().AsNoTracking()
             .Where(candidate => candidate.Id == RestaurantNotificationConfigurationId.From(id) && candidate.Provider == code)
-            .Select(candidate => new { candidate.Mode, candidate.SecretReference })
+            .Select(candidate => new { candidate.TenantId, candidate.Mode, candidate.SecretReference })
             .SingleOrDefaultAsync(cancellationToken);
         return configuration switch
         {
             null => null,
-            { Mode: NotificationProviderMode.TenantManaged } => configuration.SecretReference,
-            _ => NotificationCredentialReference.ForPlatform(code),
+            { Mode: NotificationProviderMode.TenantManaged, SecretReference: { } reference } => new SigningAccount(reference, configuration.TenantId),
+            { Mode: NotificationProviderMode.TenantManaged } => null,
+            _ => platform,
         };
+    }
+
+    /// <param name="SignedBy">Le restaurant propriétaire du secret ; null pour le compte de la plateforme.</param>
+    private sealed record SigningAccount(NotificationCredentialReference Reference, TenantId? SignedBy);
+}
+
+/// <summary>
+/// L'id d'événement rangé porte le compte signataire (« p: » plateforme, « t:{tenant}: » restaurant) : un restaurant
+/// n'occupe jamais l'id d'un autre, et le worker n'applique l'événement qu'aux notifications de ce compte.
+/// </summary>
+public static class WebhookEventScope
+{
+    private const string PlatformPrefix = "p:";
+    private const string TenantPrefix = "t:";
+    private const int TenantPrefixLength = 2 + 32 + 1;
+
+    public static string Qualify(TenantId? signedBy, string eventId)
+    {
+        ArgumentNullException.ThrowIfNull(eventId);
+        var prefix = signedBy is { } tenant ? $"{TenantPrefix}{tenant.Value:N}:" : PlatformPrefix;
+        var room = NotificationWebhookEvent.MaxEventIdLength - prefix.Length;
+        return prefix + (eventId.Length > room ? eventId[..room] : eventId);
+    }
+
+    /// <summary>Le signataire d'un id rangé ; faux pour un id sans compte (rangé avant cette règle), jamais appliqué.</summary>
+    public static bool TryReadSigner(string storedEventId, out TenantId? signedBy)
+    {
+        signedBy = null;
+        if (storedEventId?.StartsWith(PlatformPrefix, StringComparison.Ordinal) == true)
+        {
+            return true;
+        }
+
+        if (storedEventId is { Length: > TenantPrefixLength } && storedEventId.StartsWith(TenantPrefix, StringComparison.Ordinal)
+            && storedEventId[TenantPrefixLength - 1] == ':'
+            && Guid.TryParseExact(storedEventId.AsSpan(TenantPrefix.Length, 32), "N", out var id) && id != Guid.Empty)
+        {
+            signedBy = TenantId.From(id);
+            return true;
+        }
+
+        return false;
     }
 }
 

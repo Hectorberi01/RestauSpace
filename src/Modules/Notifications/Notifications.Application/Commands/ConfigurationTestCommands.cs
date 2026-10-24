@@ -5,13 +5,14 @@ namespace Notifications.Application.Commands;
 
 /// <summary>
 /// Le restaurant envoie un message de test, au contenu fixe, par une de SES configurations (même inactive) à l'adresse
-/// ou au numéro qu'il choisit. Rien n'est enregistré dans l'historique ni compté dans le quota. La réponse ne contient
-/// ni identifiant ni message brut du prestataire : seulement le résultat et le code d'échec stable.
+/// ou au numéro qu'il choisit. Rien n'est enregistré dans l'historique ni compté dans le quota. Un échec d'envoi reste
+/// binaire : aucun code (délai, refus, authentification), pour que le test ne serve pas à sonder un réseau.
 /// </summary>
 public sealed record TestNotificationConfigurationCommand(Guid ConfigurationId, string? Address) : ICommand<NotificationConfigurationTestDto>;
 
 /// <param name="Outcome"><c>sent</c>, <c>delivered</c>, <c>failed</c>, <c>credentials_missing</c> ou <c>credentials_invalid</c>.</param>
-/// <param name="FailureCode">Code stable de l'échec traduit par le prestataire (ex. <c>PROVIDER_AUTH_FAILED</c>).</param>
+/// <param name="FailureCode">Toujours null (gardé pour la compatibilité).</param>
+/// <param name="IsPermanent">Toujours faux (gardé pour la compatibilité).</param>
 public sealed record NotificationConfigurationTestDto(string Outcome, string? FailureCode, bool IsPermanent, DateTimeOffset TestedAtUtc)
 {
     public bool Succeeded => Outcome is NotificationConfigurationTestOutcomes.Sent or NotificationConfigurationTestOutcomes.Delivered;
@@ -82,17 +83,16 @@ public sealed class TestNotificationConfigurationHandler(NotificationsWorkspace 
         catch (Exception exception) when (exception is HttpRequestException or TimeoutException or IOException
             || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            return Result(NotificationConfigurationTestOutcomes.Failed, NotificationFailure.ProviderUnavailable);
+            return Result(NotificationConfigurationTestOutcomes.Failed);
         }
 
         return sent switch
         {
             { IsDelivered: true } => Result(NotificationConfigurationTestOutcomes.Delivered),
             { IsAccepted: true } => Result(NotificationConfigurationTestOutcomes.Sent),
-            _ => Result(NotificationConfigurationTestOutcomes.Failed, sent.Failure?.Code, sent.Failure?.IsPermanent ?? false),
+            _ => Result(NotificationConfigurationTestOutcomes.Failed),
         };
     }
 
-    private NotificationConfigurationTestDto Result(string outcome, string? failureCode = null, bool isPermanent = false) =>
-        new(outcome, failureCode, isPermanent, clock.UtcNow);
+    private NotificationConfigurationTestDto Result(string outcome) => new(outcome, null, false, clock.UtcNow);
 }

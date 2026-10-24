@@ -2,13 +2,14 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Files.Infrastructure.Storage;
+namespace SaasRestaurant.BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Signature AWS Signature Version 4, celle de l'API S3 que R2 implémente (région <c>auto</c>, service <c>s3</c>). Deux
-/// usages : URL pré-signée (paramètres de requête) et requête signée par l'en-tête <c>Authorization</c>.
+/// Signature AWS Signature Version 4 de l'API S3 (Cloudflare R2 : région <c>auto</c> ; OVH : <c>gra</c>...). Deux usages :
+/// URL pré-signée (paramètres de requête) et requête signée par l'en-tête <c>Authorization</c>. La clé secrète ne sort
+/// jamais d'ici : seule la signature figure dans l'URL.
 /// </summary>
-internal sealed class SigV4(string accessKeyId, string secretAccessKey, string region = "auto", string service = "s3")
+public sealed class SigV4(string accessKeyId, string secretAccessKey, string region = "auto", string service = "s3")
 {
     public const string Algorithm = "AWS4-HMAC-SHA256";
     public const string UnsignedPayload = "UNSIGNED-PAYLOAD";

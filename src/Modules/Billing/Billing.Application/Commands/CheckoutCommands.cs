@@ -70,8 +70,8 @@ public sealed class CheckoutDesk(
             return null;
         }
 
-        var plan = await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken)
-            ?? throw new NotFoundException(BillingApplicationErrors.PlanNotFound);
+        // La période suivante est facturée au plan programmé, s'il y en a un.
+        var plan = await workspace.LoadNextPeriodPlanAsync(subscription, cancellationToken);
         if (SubscriptionDues.NextPaidPeriod(subscription, plan, clock.UtcNow) is null)
         {
             return null;

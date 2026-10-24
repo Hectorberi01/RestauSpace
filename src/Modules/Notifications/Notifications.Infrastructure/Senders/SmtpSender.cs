@@ -1,9 +1,9 @@
-using System.Text.RegularExpressions;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 using Notifications.Application.Sending;
 using Notifications.Domain;
+using SaasRestaurant.BuildingBlocks.Infrastructure;
 
 namespace Notifications.Infrastructure.Senders;
 
@@ -12,7 +12,7 @@ namespace Notifications.Infrastructure.Senders;
 /// sécurité de connexion (<c>starttls</c>, <c>ssl</c> ou <c>none</c>), l'identifiant, le mot de passe et l'expéditeur.
 /// SMTP ne renvoie aucun accusé de remise : un message accepté par le serveur reste « envoyé ».
 /// </summary>
-internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INotificationSenderFactory
+internal sealed class SmtpSenderFactory(ISmtpTransport transport) : INotificationSenderFactory
 {
     public const string Code = "SMTP";
     public const string HostField = "host";
@@ -22,6 +22,9 @@ internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INot
     public const string PasswordField = "password";
     public const string FromEmailField = "from_email";
     public const string FromNameField = "from_name";
+
+    /// <summary>Le serveur d'un compte de restaurant se résout vers une adresse non publique.</summary>
+    public const string HostNotPublic = "SMTP_HOST_NOT_PUBLIC";
 
     public NotificationProviderCode Provider { get; } = NotificationProviderCode.Create(Code);
 
@@ -36,11 +39,12 @@ internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INot
         return new SmtpSender(Provider, transport, SmtpAccount.From(credentials));
     }
 
-    /// <summary>Un corps qui commence par une balise HTML courante part en HTML, sinon en texte.</summary>
-    internal static bool LooksLikeHtml(string body) => HtmlStart().IsMatch(body);
-
-    [GeneratedRegex(@"^\s*<(!doctype|html|body|div|p|table|h[1-6]|br|span|a)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex HtmlStart();
+    /// <summary>Compte d'un restaurant : ports SMTP usuels seulement, et connexion à une adresse publique uniquement.</summary>
+    public INotificationSender CreateForTenant(NotificationChannel channel, IReadOnlyDictionary<string, string> credentials)
+    {
+        ArgumentNullException.ThrowIfNull(credentials);
+        return new SmtpSender(Provider, transport, SmtpAccount.From(credentials, tenantManaged: true));
+    }
 
     internal static MimeMessage Build(SmtpAccount account, NotificationSendRequest request)
     {
@@ -51,7 +55,8 @@ internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INot
         // Identifiant de message stable par tentative : c'est l'id renvoyé au module.
         message.MessageId = $"{request.DeliveryId.Value:N}@{account.MessageIdDomain}";
         var builder = new BodyBuilder();
-        if (LooksLikeHtml(request.Content.Body))
+        // Format décidé par le modèle (valeurs déjà échappées au rendu).
+        if (request.Content.IsHtml)
         {
             builder.HtmlBody = request.Content.Body;
         }
@@ -77,6 +82,7 @@ internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INot
         SmtpCommandException { StatusCode: SmtpStatusCode.ExceededStorageAllocation or SmtpStatusCode.InsufficientStorage }
             => NotificationFailure.Temporary(NotificationFailure.RateLimited),
         SmtpCommandException command when (int)command.StatusCode >= 500 => NotificationFailure.Permanent(NotificationFailure.Rejected),
+        NonPublicAddressException => NotificationFailure.Permanent(HostNotPublic),
         AuthenticationException => NotificationFailure.Temporary("PROVIDER_AUTH_FAILED"),
         TimeoutException or OperationCanceledException => NotificationFailure.Temporary(NotificationFailure.Timeout),
         _ => NotificationFailure.Temporary(NotificationFailure.ProviderUnavailable),
@@ -115,12 +121,17 @@ internal sealed partial class SmtpSenderFactory(ISmtpTransport transport) : INot
 }
 
 /// <summary>Un compte SMTP lu au coffre, en mémoire le temps de l'envoi. <see cref="ToString"/> ne montre aucun secret.</summary>
+/// <param name="TenantManaged">Compte saisi par un restaurant : ports limités, adresse publique exigée à la connexion.</param>
 internal sealed record SmtpAccount(
-    string Host, int Port, SecureSocketOptions Security, string Username, string Password, string FromEmail, string FromName)
+    string Host, int Port, SecureSocketOptions Security, string Username, string Password, string FromEmail, string FromName,
+    bool TenantManaged = false)
 {
+    /// <summary>Ports autorisés pour un compte de restaurant.</summary>
+    public static readonly IReadOnlySet<int> TenantPorts = new HashSet<int> { 25, 465, 587, 2525 };
+
     public string MessageIdDomain => FromEmail[(FromEmail.IndexOf('@', StringComparison.Ordinal) + 1)..];
 
-    public static SmtpAccount From(IReadOnlyDictionary<string, string> credentials)
+    public static SmtpAccount From(IReadOnlyDictionary<string, string> credentials, bool tenantManaged = false)
     {
         string Read(string field) => credentials.TryGetValue(field, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
@@ -129,6 +140,11 @@ internal sealed record SmtpAccount(
         var port = int.TryParse(Read(SmtpSenderFactory.PortField), out var parsed) && parsed is > 0 and < 65536
             ? parsed
             : throw new InvalidOperationException("The SMTP port is invalid.");
+        if (tenantManaged && !TenantPorts.Contains(port))
+        {
+            throw new InvalidOperationException("The SMTP port is not allowed.");
+        }
+
         var security = Read(SmtpSenderFactory.SecurityField).ToLowerInvariant() switch
         {
             "ssl" or "tls" or "sslonconnect" => SecureSocketOptions.SslOnConnect,
@@ -148,7 +164,7 @@ internal sealed record SmtpAccount(
             : throw new InvalidOperationException("The SMTP account has no password.");
         return new SmtpAccount(
             Read(SmtpSenderFactory.HostField), port, security, Read(SmtpSenderFactory.UsernameField), password, from,
-            Read(SmtpSenderFactory.FromNameField));
+            Read(SmtpSenderFactory.FromNameField), tenantManaged);
     }
 
     public override string ToString() => $"SMTP {Host}:{Port}";
@@ -165,9 +181,37 @@ internal sealed class MailKitSmtpTransport : ISmtpTransport
     public async Task SendAsync(SmtpAccount account, MimeMessage message, CancellationToken cancellationToken)
     {
         using var client = new SmtpClient { Timeout = 20_000 };
-        await client.ConnectAsync(account.Host, account.Port, account.Security, cancellationToken);
+        if (account.TenantManaged)
+        {
+            await ConnectToPublicAddressAsync(client, account, cancellationToken);
+        }
+        else
+        {
+            await client.ConnectAsync(account.Host, account.Port, account.Security, cancellationToken);
+        }
+
         await client.AuthenticateAsync(account.Username, account.Password, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Anti-SSRF : résolution ici, adresse publique exigée, puis MailKit sur ce socket. Le nom reste celui du compte (TLS :
+    /// SNI et certificat).
+    /// </summary>
+    private static async Task ConnectToPublicAddressAsync(SmtpClient client, SmtpAccount account, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+        var socket = await PublicAddresses.ConnectAsync(account.Host, account.Port, timeout.Token);
+        try
+        {
+            await client.ConnectAsync(socket, account.Host, account.Port, account.Security, cancellationToken);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
     }
 }

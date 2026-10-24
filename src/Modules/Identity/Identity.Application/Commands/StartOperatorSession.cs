@@ -4,13 +4,14 @@ using Identity.Domain.Users;
 namespace Identity.Application.Commands;
 
 /// <summary>
-/// Session d'un membre du personnel reconnu par son PIN sur une caisse partagée (vérifié par Staff, appelant de
-/// confiance via l'hôte, jamais exposé en route) : une session à lui, dont l'access token agit pour ce restaurant après
-/// la même vérification d'appartenance qu'une sélection de restaurant. Null si son compte ne peut pas ouvrir de session.
+/// Session de caisse d'un membre reconnu par son PIN (vérifié par Staff, appelant de confiance via l'hôte, jamais exposé
+/// en route) : un access token marqué caisse, valable <see cref="IdentitySettings.TillSessionLifetime"/>, SANS refresh
+/// token. Les permissions sont restreintes par l'hôte. Null si le compte ne peut pas ouvrir de session.
 /// </summary>
-public sealed record StartOperatorSessionCommand(Guid UserId, Guid TenantId, string? Device) : ICommand<OperatorSessionDto?>;
+public sealed record StartOperatorSessionCommand(Guid UserId, Guid TenantId, Guid TillId, Guid LocationId, string? Device)
+    : ICommand<OperatorSessionDto?>;
 
-public sealed record OperatorSessionDto(AuthTokensDto Tokens, Guid TenantId);
+public sealed record OperatorSessionDto(Guid UserId, Guid SessionId, string AccessToken, DateTimeOffset AccessTokenExpiresAtUtc, Guid TenantId);
 
 public sealed class StartOperatorSessionHandler(
     IUserRepository users,
@@ -24,7 +25,7 @@ public sealed class StartOperatorSessionHandler(
 {
     public async Task<OperatorSessionDto?> HandleAsync(StartOperatorSessionCommand command, CancellationToken cancellationToken = default)
     {
-        if (command.UserId == Guid.Empty || command.TenantId == Guid.Empty)
+        if (command.UserId == Guid.Empty || command.TenantId == Guid.Empty || command.TillId == Guid.Empty || command.LocationId == Guid.Empty)
         {
             return null;
         }
@@ -36,9 +37,10 @@ public sealed class StartOperatorSessionHandler(
             return null;
         }
 
-        var refreshToken = refreshTokens.Generate();
+        // Jeton jamais remis : la session ne peut pas être renouvelée.
+        var unusable = refreshTokens.Generate();
         user.PurgeExpiredSessions(clock);
-        var session = user.StartSession(refreshToken.Hash, settings.SessionLifetime, clock, command.Device);
+        var session = user.StartSession(unusable.Hash, SessionLifetime.Create(settings.TillSessionLifetime), clock, command.Device);
         var live = user.ActiveSessionsAt(clock.UtcNow).OrderBy(candidate => candidate.CreatedAtUtc).ToList();
         foreach (var oldest in live.Take(Math.Max(0, live.Count - settings.MaxActiveSessions)))
         {
@@ -46,6 +48,8 @@ public sealed class StartOperatorSessionHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return new OperatorSessionDto(AuthTokensDto.From(user, session, accessTokens.Issue(user, session.Id, tenantId), refreshToken), tenantId.Value);
+        var till = new TillAccess(command.TillId, command.LocationId, session.ExpiresAtUtc);
+        var token = accessTokens.Issue(user, session.Id, tenantId, till);
+        return new OperatorSessionDto(user.Id.Value, session.Id.Value, token.Value, token.ExpiresAtUtc, tenantId.Value);
     }
 }

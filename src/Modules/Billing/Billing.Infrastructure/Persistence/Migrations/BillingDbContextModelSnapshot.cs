@@ -145,6 +145,10 @@ namespace Billing.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("plan_id");
 
+                    b.Property<Guid?>("ScheduledPlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scheduled_plan_id");
+
                     b.Property<DateTimeOffset>("StartedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at_utc");
@@ -184,6 +188,9 @@ namespace Billing.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PlanId")
                         .HasDatabaseName("ix_subscriptions_plan_id");
+
+                    b.HasIndex("ScheduledPlanId")
+                        .HasDatabaseName("ix_subscriptions_scheduled_plan_id");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_subscriptions_status");
@@ -699,6 +706,11 @@ namespace Billing.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Billing.Domain.Plan", null)
+                        .WithMany()
+                        .HasForeignKey("ScheduledPlanId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Billing.Domain.SubscriptionCheckout", b =>

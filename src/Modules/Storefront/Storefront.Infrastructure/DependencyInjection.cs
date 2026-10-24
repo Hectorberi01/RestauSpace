@@ -31,6 +31,13 @@ public static class DependencyInjection
         services.TryAddSingleton(new Storefront.Application.Reservations.ReservationLinks(options.TrackingKeyBytes()));
         services.TryAddSingleton(new Storefront.Application.Receipts.ReceiptLinks(options.TrackingKeyBytes()));
         services.TryAddSingleton(new Storefront.Application.Customers.CustomerSignInTickets(options.TrackingKeyBytes()));
+        services.TryAddSingleton(new ClientAddressKeys(options.TrackingKeyBytes()));
+        if (options.CheckoutLimits is not { MaxPendingPayments: >= 1, PaymentHoldMinutes: >= 1 })
+        {
+            throw new InvalidOperationException("Storefront:CheckoutLimits values must be at least 1.");
+        }
+
+        services.TryAddSingleton(options.CheckoutLimits);
 
         services.TryAddScoped<BackgroundTenant>();
         services.TryAddScoped<ITenantContext>(provider => new FixedTenantContext(provider.GetRequiredService<BackgroundTenant>().Current));

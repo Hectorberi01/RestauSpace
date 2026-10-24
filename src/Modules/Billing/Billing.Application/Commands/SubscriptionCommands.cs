@@ -51,8 +51,9 @@ internal static class SubscriptionStart
 }
 
 /// <summary>
-/// Passe à un autre plan actif, pendant l'essai, une période payée ou après un essai expiré (même plan = rien). Le plan
-/// gratuit : seulement pendant l'essai du premier abonnement, sans dépasser son premier mois.
+/// Passe à un autre plan actif. Essai ou essai expiré : tout de suite. Période payée : programmé pour l'échéance
+/// (rechoisir le plan courant annule le changement programmé). Le plan gratuit : seulement pendant l'essai du premier
+/// abonnement, sans dépasser son premier mois.
 /// </summary>
 public sealed record ChangeSubscriptionPlanCommand(Guid PlanId) : ICommand;
 
@@ -79,6 +80,19 @@ public sealed class ChangeSubscriptionPlanHandler(BillingWorkspace workspace, IC
         }
 
         subscription.ChangePlan(plan.ToReference(), clock);
+        await workspace.SaveAsync(cancellationToken);
+    }
+}
+
+/// <summary>Le restaurant annule le changement de plan programmé : il garde son plan à l'échéance.</summary>
+public sealed record UnscheduleSubscriptionPlanChangeCommand : ICommand;
+
+public sealed class UnscheduleSubscriptionPlanChangeHandler(BillingWorkspace workspace, IClock clock) : ICommandHandler<UnscheduleSubscriptionPlanChangeCommand>
+{
+    public async Task HandleAsync(UnscheduleSubscriptionPlanChangeCommand command, CancellationToken cancellationToken = default)
+    {
+        await workspace.RequireWritableTenantAsync(cancellationToken);
+        (await workspace.LoadLiveSubscriptionAsync(cancellationToken)).UnschedulePlanChange(clock);
         await workspace.SaveAsync(cancellationToken);
     }
 }
@@ -145,7 +159,7 @@ public sealed record SubscriptionPaymentDto(Guid SubscriptionId, SubscriptionSta
 /// <item>période payée en cours : rien à payer (<c>billing.subscription.nothing_to_pay</c>), ce qui rend un double envoi
 /// sans effet.</item>
 /// </list>
-/// La durée est l'intervalle de facturation du plan.
+/// La durée est l'intervalle de facturation du plan (le plan programmé s'il y en a un).
 /// </summary>
 public sealed record RecordSubscriptionPaymentCommand(Guid SubscriptionId) : ICommand<SubscriptionPaymentDto>;
 
@@ -155,8 +169,8 @@ public sealed class RecordSubscriptionPaymentHandler(BillingWorkspace workspace,
     public async Task<SubscriptionPaymentDto> HandleAsync(RecordSubscriptionPaymentCommand command, CancellationToken cancellationToken = default)
     {
         var subscription = await workspace.LoadAnySubscriptionAsync(command.SubscriptionId, cancellationToken);
-        var plan = await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken)
-            ?? throw new NotFoundException(BillingApplicationErrors.PlanNotFound);
+        // Le plan programmé devient le plan courant au début de la période payée.
+        var plan = await workspace.LoadNextPeriodPlanAsync(subscription, cancellationToken);
         var paid = SubscriptionDues.NextPaidPeriod(subscription, plan, clock.UtcNow)
             ?? throw new DomainException(BillingApplicationErrors.NothingToPay);
         SubscriptionDues.Apply(subscription, paid, clock);
@@ -217,8 +231,8 @@ public enum SubscriptionDueOutcome
 }
 
 /// <summary>
-/// Job d'échéance, pour un abonnement de son tenant (contexte du job) dont la période est terminée :
-/// résiliation programmée -> résilié ; période payée d'un plan gratuit (plan et options à 0, cas d'une offre) -> période
+/// Job d'échéance, pour un abonnement de son tenant (contexte du job) dont la période est terminée. Un plan programmé
+/// devient d'abord le plan courant. Puis : résiliation programmée -> résilié ; période payée d'un plan gratuit (plan et options à 0, cas d'une offre) -> période
 /// suivante, sans paiement ; essai, plan gratuit compris (Découverte : un mois) -> suspendu (essai expiré) ; période payée -> impayé ; impayé au-delà du délai de grâce -> suspendu (impayé).
 /// Rejouable : un abonnement déjà traité ne change plus.
 /// </summary>
@@ -236,6 +250,9 @@ public sealed class ProcessDueSubscriptionHandler(BillingWorkspace workspace, IC
         {
             return SubscriptionDueOutcome.Nothing;
         }
+
+        // L'échéance : le plan programmé devient le plan courant avant tout calcul de la période suivante.
+        var planApplied = subscription.ApplyScheduledPlan(clock);
 
         SubscriptionDueOutcome outcome;
         if (subscription.CancelAtPeriodEnd)
@@ -266,6 +283,10 @@ public sealed class ProcessDueSubscriptionHandler(BillingWorkspace workspace, IC
         {
             subscription.Suspend(SuspensionReason.PaymentOverdue, clock);
             outcome = SubscriptionDueOutcome.SuspendedForNonPayment;
+        }
+        else if (planApplied)
+        {
+            outcome = SubscriptionDueOutcome.Nothing;
         }
         else
         {

@@ -79,6 +79,8 @@ internal static partial class HostComposition
         // qu'avec Notifications:EnableFakeProvider, en développement seulement. Les événements d'Orders, Reservations et
         // Payments deviennent des notifications (NotificationTriggersFlow, par l'outbox, une fois par événement).
         // Notifications:UnsubscribePageUrl : la page de désinscription du site public ; sans elle, aucun e-mail marketing ne part.
+        // Notifications:AnonymousSmsPerTenantPerHour : SMS + WhatsApp déclenchés par les visiteurs du site, par restaurant et
+        // par heure (défaut 100, 0 = sans plafond) ; ces envois ne partent que vers un numéro du pays du restaurant.
         var notifications = builder.Configuration.GetSection("Notifications");
         var notificationsKey = notifications["CredentialsKey"];
         var otpKey = notifications["OtpKey"];
@@ -105,6 +107,7 @@ internal static partial class HostComposition
             {
                 settings.DefaultLanguage = notifications["DefaultLanguage"] ?? settings.DefaultLanguage;
                 settings.UnsubscribePageUrl = notifications["UnsubscribePageUrl"];
+                settings.AnonymousSmsPerTenantPerHour = notifications.GetValue("AnonymousSmsPerTenantPerHour", settings.AnonymousSmsPerTenantPerHour);
             });
         builder.Services.AddScoped<INotificationTenants, NotificationTenantsFromTenants>();
         builder.Services.AddScoped<INotificationLocations, NotificationLocationsFromLocations>();

@@ -16,6 +16,13 @@ done
 duplicates="$(grep -E '^(Identity__AccessTokens__SigningKey|Identity__TwoFactor__SecretKey|Payments__CredentialsKey|Notifications__CredentialsKey|Notifications__OtpKey|Integrations__SecretsKey|Fiscal__TokenKey|Storefront__TrackingKey|Files__PublicMedia__SigningKey)=' api.env \
   | cut -d= -f2- | sort | uniq -d | wc -l)"
 [ "$duplicates" -eq 0 ] || { echo "api.env : plusieurs clés ont la même valeur, régénérez-les avec ./generate-secrets.sh" >&2; exit 1; }
+# TLS PostgreSQL : en VerifyFull, l'autorité doit être là (sinon l'API ne démarre pas).
+ssl_mode="$(grep -E '^DATABASE_SSL_MODE=' .env | cut -d= -f2- || true)"
+case "$ssl_mode" in
+  Verify*) [ -s tls/db-ca.crt ] || { echo "tls/db-ca.crt manquant (DATABASE_SSL_MODE=$ssl_mode) : voir README, « TLS vérifié »" >&2; exit 1; } ;;
+  *) echo "Attention : DATABASE_SSL_MODE=${ssl_mode:-Require}, identité du serveur de base non vérifiée (VerifyFull conseillé)" >&2 ;;
+esac
+mkdir -p tls
 # Réseau edge : propre à RestauSpace, avec le sous-réseau déclaré (EDGE_SUBNET : seule source de X-Forwarded-For).
 edge="$(grep -E '^TRAEFIK_NETWORK=' .env | cut -d= -f2- || true)"; edge="${edge:-restauspace-edge}"
 docker network inspect "$edge" >/dev/null 2>&1 \

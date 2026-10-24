@@ -240,6 +240,13 @@ public sealed class PaymentsFixture
     Task<IReadOnlyList<Payment>> IPaymentRepository.ListByReservationAsync(TenantId tenantId, Guid reservationId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Payment>>(Payments.Where(payment => payment.TenantId == tenantId && payment.ReservationId == reservationId).ToList());
 
+    Task<bool> IPaymentRepository.HasPaymentsInProgressAsync(TenantId tenantId, PaymentProviderCode provider, CancellationToken cancellationToken) =>
+        Task.FromResult(Payments.Any(payment =>
+            payment.TenantId == tenantId
+            && payment.Provider == provider
+            && (payment.Status is PaymentStatus.Pending or PaymentStatus.Authorized
+                || payment.Refunds.Any(refund => refund.Status == RefundStatus.Requested))));
+
     void IPaymentRepository.Add(Payment payment) => Payments.Add(payment);
 
     IReadOnlyList<PaymentIntegration> IPaymentIntegrations.All => [new PaymentIntegration(FakePay, "FakePay", ["api_key"])];

@@ -19,7 +19,7 @@ Sans rapport avec les paiements des commandes (module Payments).
 
 | Classe | Rôle DDD | Responsabilité | Transitions | Events | Erreurs (`billing.…`) |
 |---|---|---|---|---|---|
-| `SaasSubscription` | AggregateRoot, tenant-owned | Cycle de vie de l'abonnement | `(StartTrial) -> Trialing` ; `Trialing/PastDue/Suspended -> Active` (Activate) ; `Active -> PastDue` (MarkPastDue) ; `Trialing/Active/PastDue -> Suspended` (Suspend, avec `SuspensionReason`) ; `Active -> Active` (RenewPeriod, période courante terminée) ; `tout état vivant -> Cancelled` (RenewPeriod avec annulation programmée, période courante terminée) ; `tout sauf Cancelled -> Cancelled` (Cancel) ; `Cancelled` terminal | `SubscriptionTrialStarted`, `SubscriptionActivated`, `SubscriptionPlanChanged`, `SubscriptionPastDue`, `SubscriptionSuspended`, `SubscriptionCancellationScheduled`, `SubscriptionCancellationUnscheduled`, `SubscriptionPeriodRenewed`, `SubscriptionCancelled` | `subscription.already_subscribed`, `plan_archived`, `plan_change_not_allowed`, `cancelled`, `cannot_activate`, `not_active`, `cannot_suspend`, `suspension_reason_invalid`, `trial_not_expired`, `period_ended`, `period_not_consistent`, `period_not_ended`, `period_not_contiguous`, `cancellation_scheduled`, `cancellation_already_scheduled`, `cancellation_not_scheduled` |
+| `SaasSubscription` | AggregateRoot, tenant-owned | Cycle de vie de l'abonnement | `(StartTrial) -> Trialing` ; `Trialing/PastDue/Suspended -> Active` (Activate) ; `Active -> PastDue` (MarkPastDue) ; `Trialing/Active/PastDue -> Suspended` (Suspend, avec `SuspensionReason`) ; `Active -> Active` (RenewPeriod, période courante terminée) ; `tout état vivant -> Cancelled` (RenewPeriod avec annulation programmée, période courante terminée) ; `tout sauf Cancelled -> Cancelled` (Cancel) ; `Cancelled` terminal | `SubscriptionTrialStarted`, `SubscriptionActivated`, `SubscriptionPlanChanged`, `SubscriptionPlanChangeScheduled`, `SubscriptionPlanChangeUnscheduled`, `SubscriptionPastDue`, `SubscriptionSuspended`, `SubscriptionCancellationScheduled`, `SubscriptionCancellationUnscheduled`, `SubscriptionPeriodRenewed`, `SubscriptionCancelled` | `subscription.already_subscribed`, `plan_archived`, `plan_change_not_allowed`, `cancelled`, `cannot_activate`, `not_active`, `cannot_suspend`, `suspension_reason_invalid`, `trial_not_expired`, `period_ended`, `period_not_consistent`, `period_not_ended`, `period_not_contiguous`, `cancellation_scheduled`, `cancellation_already_scheduled`, `cancellation_not_scheduled`, `plan_change_scheduled`, `plan_change_not_scheduled` |
 | `SuspensionReason` | Enum | `TrialExpired`, `PaymentOverdue`, `PolicyViolation`, `Other` ; stockée sur l'abonnement et portée par `SubscriptionSuspended` | — | — | — |
 | `Plan` | AggregateRoot global | Prix catalogue, intervalle, droits | `Active -> Archived` (Archive) ; `Archived` terminal | `PlanCreated`, `PlanDefinitionChanged`, `PlanArchived` | `plan.name_required`, `name_too_long`, `price_negative`, `price_currency_mismatch`, `billing_interval_invalid`, `duplicate_entitlement`, `archived` |
 | `Entitlement` | ValueObject | Droit/quota d'une fonctionnalité : `Enabled`, `Limit?` (null = illimité) | — | — | `entitlement.limit_negative`, `entitlement.disabled_with_limit` |
@@ -57,9 +57,15 @@ Sans rapport avec les paiements des commandes (module Payments).
   proposée est ignorée. `Cancel` direct porte la raison `Requested`.
 - **ScheduleCancellation** est réversible par `UnscheduleCancellation` tant que l'abonnement n'est pas annulé ;
   reprogrammer deux fois ou déprogrammer sans programmation est rejeté.
-- **ChangePlan** : permis en `Trialing` et `Active` seulement (un impayé se règle d'abord) ; plan archivé
-  rejeté ; **même plan = no-op silencieux** (ni événement ni erreur, même si ce plan a été archivé depuis). Le
-  prorata éventuel est une affaire de facturation, hors domaine.
+- **ChangePlan** : permis en `Trialing`, `Active` et après un essai expiré (un impayé se règle d'abord) ; plan
+  archivé rejeté ; **même plan = no-op silencieux**. Essai et essai expiré : immédiat. Période payée (`Active` hors
+  offre) : **programmé à l'échéance** (`ScheduledPlanId`, date d'effet = fin de période, pas de prorata) ; le plan
+  courant et ses droits restent jusque-là. Rechoisir le plan courant ou `UnschedulePlanChange` retire le changement ;
+  un autre plan le remplace. Le plan programmé devient le plan courant au début de la période suivante
+  (`RenewPeriod`, `Activate`, ou `ApplyScheduledPlan` par le job d'échéance), avant le calcul du montant : la
+  période suivante est facturée au nouveau plan, options comprises. Changement programmé et résiliation programmée
+  s'excluent (`plan_change_scheduled` / `cancellation_scheduled`). Une offre de la plateforme retire le changement
+  programmé. La plateforme n'a pas de route de changement de plan : elle offre un plan (immédiat).
 - **Suspend(reason)** : depuis `Trialing`, `Active` ou `PastDue`, avec une `SuspensionReason` explicite stockée
   (`SaasSubscription.SuspensionReason`, remise à `null` par `Activate`) et portée par `SubscriptionSuspended`
   (avec le statut précédent). **Fin d'essai sans perdre l'abonnement** : un essai non converti est suspendu avec
@@ -130,7 +136,7 @@ Sans rapport avec les paiements des commandes (module Payments).
 | Périodes cohérentes à l'activation : contient maintenant, ou suit la période qui court | `SaasSubscription.Activate` | `SaasSubscriptionTests.Activate_rejects_a_period_starting_before_the_current_one`, `Activate_rejects_a_period_already_over`, `Activate_can_convert_a_trial_early`, `Activate_can_be_paid_in_advance_for_the_period_following_the_running_trial`, `Activate_rejects_a_period_that_neither_contains_now_nor_follows_the_running_period`, `Activate_rejects_a_future_period_once_the_current_period_has_ended` |
 | Fin d'essai : suspension `TrialExpired` puis réactivation du même abonnement | `Suspend`, `Activate` | `SaasSubscriptionTests.Suspend_ends_an_expired_trial_without_cancelling_the_subscription`, `Suspend_for_trial_expiry_requires_a_trial_that_is_over`, `Activate_brings_back_a_subscription_suspended_at_trial_end_without_a_new_trial`, `Activate_after_a_trial_expiry_suspension_rejects_a_period_starting_after_now` |
 | Annulation programmée : pas d'activation au-delà de la période courante | `SaasSubscription.Activate` | `SaasSubscriptionTests.Activate_rejects_a_period_going_beyond_a_scheduled_cancellation`, `Activate_within_the_current_period_keeps_a_scheduled_cancellation` |
-| Changement de plan : plan actif ; même plan = no-op | `SaasSubscription.ChangePlan` | `SaasSubscriptionTests.ChangePlan_moves_the_subscription_to_another_plan`, `ChangePlan_to_the_current_plan_changes_nothing`, `ChangePlan_rejects_an_archived_plan`, `ChangePlan_is_allowed_during_the_trial` |
+| Changement de plan : plan actif ; même plan = no-op | `SaasSubscription.ChangePlan` | `SaasSubscriptionTests.ChangePlan_during_a_paid_period_is_scheduled_for_its_end`, `The_scheduled_plan_becomes_current_when_the_next_period_starts`, `ChangePlan_to_the_current_plan_changes_nothing`, `ChangePlan_rejects_an_archived_plan`, `ChangePlan_is_allowed_during_the_trial` |
 | Changement de plan en Trialing/Active seulement | `SaasSubscription.ChangePlan` | `SaasSubscriptionTests.ChangePlan_rejects_a_past_due_or_suspended_subscription` |
 | Deux events « PlanChanged » distincts | events | `SaasSubscriptionTests.Events_of_subscription_and_plan_have_distinct_names` |
 | PastDue depuis Active seulement | `SaasSubscription.MarkPastDue` | `SaasSubscriptionTests.MarkPastDue_flags_an_active_subscription`, `MarkPastDue_rejects_any_status_but_active` |
@@ -276,7 +282,7 @@ canaux vendus.
 | Route | Accès |
 |---|---|
 | `GET /billing/plans`, `GET /billing/subscription` | Restaurant, `billing.view` |
-| `POST /billing/subscription`, `PUT /billing/subscription/plan`, `POST` et `DELETE /billing/subscription/cancellation` | Restaurant, `billing.manage` |
+| `POST /billing/subscription`, `PUT /billing/subscription/plan`, `DELETE /billing/subscription/scheduled-plan`, `POST` et `DELETE /billing/subscription/cancellation` | Restaurant, `billing.manage` |
 | `GET` et `POST /admin/billing/plans`, `GET /admin/billing/plans/{id}`, `PUT /{id}/price`, `PUT /{id}/entitlements`, `POST /{id}/archive` | Plateforme (`Policies.PlatformAdmin`) |
 | `POST /admin/billing/tenants/{tenantId}/subscription`, `GET /admin/billing/subscriptions[?tenantId,status,skip,take]`, `GET /{id}`, `POST /{id}/payments`, `/past-due`, `/suspend`, `/cancel` | Plateforme |
 
@@ -307,7 +313,7 @@ démarrage (`MigrateBillingDatabaseAsync`) ; job coupable par `Billing:RunWorker
 | Journal | Ids, statuts et codes seulement (`BillingFlow`, `SubscriptionDueWorker`) | Revue |
 
 Limites connues : pas de prestataire de paiement ni de factures (montant facturé non historisé : `Plan.Price` est le
-prix courant) ; pas de prorata au changement de plan ; quotas de stock (établissements, personnel) déclarés mais pas
+prix courant) ; pas de prorata au changement de plan (programmé à l'échéance pendant une période payée) ; quotas de stock (établissements, personnel) déclarés mais pas
 encore appliqués par Locations et Staff ; `orders.monthly` non encore consommé par Orders.
 
 ## 10. Historique des paiements d'abonnement

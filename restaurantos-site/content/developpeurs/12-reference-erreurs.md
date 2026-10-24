@@ -50,7 +50,8 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 | `storefront.checkout.delivery_zone_required` | 422 | Livraison sans zone | Choisissez votre zone de livraison. |
 | `storefront.checkout.delivery_zone_unavailable` | 422 | Zone inconnue ou inactive | L’établissement ne livre plus cette zone. |
 | `storefront.checkout.delivery_address_required` | 422 | Livraison sans adresse ou sans téléphone | Indiquez votre nom, votre téléphone et votre adresse de livraison. |
-| `storefront.checkout.coupon_invalid` | 422 | Code promo refusé (sans motif plus précis) | Ce code promo ne peut pas être utilisé. |
+| `storefront.checkout.coupon_invalid` | 422 | Code promo refusé (même code pour tout motif) | Ce code promo ne peut pas être utilisé. |
+| `storefront.checkout.too_many_pending_payments` | 409 | Trop de commandes en attente de paiement en ligne (même adresse IP ou même client) | Plusieurs commandes attendent déjà leur paiement : payez-les ou annulez-les avant d’en passer une autre. |
 | `storefront.checkout.reward_unavailable` | 422 | Récompense inconnue, inactive ou programme désactivé | Cette récompense n’est plus disponible. |
 | `storefront.checkout.reward_not_affordable` | 422 | Pas assez de points | Vous n’avez pas assez de points pour cette récompense. |
 | `storefront.order.not_found` | 404 | Jeton de suivi invalide ou d'un autre restaurant | Cette commande est introuvable. |
@@ -146,19 +147,10 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 
 ## Codes promo
 
-Un code promo refusé n'est pas une erreur au devis : `coupon.isValid` vaut `false` et `coupon.refusalCode` donne le
-motif. À la commande, le même motif est renvoyé comme `code` d'erreur.
-
-| `refusalCode` | Message proposé |
-|---|---|
-| `promotions.coupon.not_found`, `promotions.coupon_code.*` | Ce code promo n’existe pas. |
-| `promotions.coupon.exhausted`, `promotions.promotion.usage_limit_reached` | Ce code promo a déjà été utilisé autant de fois que prévu. |
-| `promotions.discount.minimum_order_amount_not_reached` | Le montant minimum de cette offre n’est pas atteint. |
-| `promotions.discount.order_type_not_eligible` | Cette offre ne vaut pas pour ce mode (sur place, à emporter ou livraison). |
-| `promotions.discount.location_not_eligible` | Cette offre ne vaut pas dans cet établissement. |
-| `promotions.discount.no_eligible_amount` | Aucun produit de votre panier n’est concerné par cette offre. |
-| `promotions.discount.outside_validity_period`, `promotions.promotion.expired`, `promotions.promotion.not_active`, `promotions.coupon.disabled`, `promotions.coupon.promotion_expired` | Cette offre n’est plus valable. |
-| autre `promotions.*` | Ce code promo ne peut pas être utilisé. |
+Un code promo refusé n'est pas une erreur au devis : `coupon.isValid` vaut `false` et `coupon.refusalCode` vaut
+toujours `storefront.checkout.coupon_invalid`, quel que soit le motif (inconnu, épuisé, expiré, non applicable) : on ne
+laisse pas deviner les codes. À la commande, le même code est renvoyé comme erreur (422). Message proposé : « Ce code
+promo ne peut pas être utilisé. »
 
 ## API d'intégration
 

@@ -136,6 +136,8 @@ public sealed class BillingFixture
 
     public UnscheduleSubscriptionCancellationHandler UnscheduleCancellation => new(Workspace, Clock);
 
+    public UnscheduleSubscriptionPlanChangeHandler UnschedulePlanChange => new(Workspace, Clock);
+
     public AdminStartSubscriptionHandler AdminStart => new(Workspace, Clock);
 
     public RecordSubscriptionPaymentHandler RecordPayment => new(Workspace, Clock);

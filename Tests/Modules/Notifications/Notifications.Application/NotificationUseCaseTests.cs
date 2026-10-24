@@ -507,7 +507,8 @@ public sealed class NotificationUseCaseTests
         Assert.Equal("chef@example.com", _fixture.Sent[0].Recipient.Address);
         Assert.Equal(TestNotificationConfigurationHandler.Subject, _fixture.Sent[0].Content.Subject);
         Assert.Equal(NotificationConfigurationTestOutcomes.Failed, refused.Outcome);
-        Assert.Equal("PROVIDER_AUTH_FAILED", refused.FailureCode);
+        // Résultat binaire : aucun code ne distingue un refus d'identifiants d'un délai ou d'un serveur injoignable.
+        Assert.Equal((null, false), (refused.FailureCode, refused.IsPermanent));
         Assert.DoesNotContain("re_SECRET_123", System.Text.Json.JsonSerializer.Serialize(refused), StringComparison.Ordinal);
         Assert.Empty(_fixture.NotificationRows);
     }

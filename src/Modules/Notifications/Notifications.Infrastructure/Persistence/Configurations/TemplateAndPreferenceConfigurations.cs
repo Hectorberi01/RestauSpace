@@ -55,6 +55,7 @@ internal sealed class NotificationTemplateConfiguration : IEntityTypeConfigurati
         builder.Ignore(template => template.Type);
         builder.Ignore(template => template.Variables);
         builder.Ignore(template => template.IsUsable);
+        builder.Ignore(template => template.IsHtml);
     }
 }
 

@@ -28,6 +28,7 @@ import {
 import {AccentButton, cx, LanguageSwitch, Notice, Spinner} from '@/components/order-ui';
 import {ProductSheet} from '../commander/[locationId]/ordering';
 import {tr, useLang} from '@/lib/i18n';
+import {safeCheckoutUrl} from '@/lib/checkout';
 
 // La borne : une tablette en plein écran, appairée à UN établissement. La clé de l'application borne arrive dans le
 // fragment de l'adresse (#cle=…, jamais envoyé au serveur du site) ; le jeton d'appareil est remis à l'appairage. Les
@@ -592,8 +593,9 @@ function Review({location, catalog, mode, cart, onCart, onClose, onFailure, onPl
         idempotencyKey: newIdempotencyKey(),
         body: {provider: payment.provider, method: payment.method, payerPhone: null, returnUrl: null},
       }).catch(() => null);
-      if (started?.checkoutUrl) {
-        onPlaced(placed, started.checkoutUrl);
+      const checkout = safeCheckoutUrl(started?.checkoutUrl);
+      if (checkout) {
+        onPlaced(placed, checkout);
         return;
       }
 

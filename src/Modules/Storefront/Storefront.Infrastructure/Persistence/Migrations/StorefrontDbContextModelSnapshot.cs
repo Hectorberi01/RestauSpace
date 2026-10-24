@@ -373,6 +373,15 @@ namespace Storefront.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("channel");
 
+                    b.Property<string>("ClientKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_key");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
                     b.Property<Guid>("LocationId")
                         .HasColumnType("uuid")
                         .HasColumnName("location_id");
@@ -432,6 +441,10 @@ namespace Storefront.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "OrderId")
                         .IsUnique()
                         .HasDatabaseName("ux_online_orders_tenant_id_order_id");
+
+                    b.HasIndex("TenantId", "AppId", "State")
+                        .HasDatabaseName("ix_online_orders_awaiting_payment")
+                        .HasFilter("state = 5");
 
                     b.HasIndex("TenantId", "LocationId", "SlotStartUtc")
                         .HasDatabaseName("ix_online_orders_tenant_id_location_id_slot_start_utc")

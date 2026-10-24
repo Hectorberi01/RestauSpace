@@ -64,7 +64,9 @@ public sealed record SubscriptionDto(
     DateTimeOffset StartedAtUtc,
     DateTimeOffset? CancelledAtUtc,
     bool IsComplimentary = false,
-    DateTimeOffset? ComplimentaryUntilUtc = null)
+    DateTimeOffset? ComplimentaryUntilUtc = null,
+    Guid? ScheduledPlanId = null,
+    DateTimeOffset? ScheduledPlanEffectiveAtUtc = null)
 {
     public static SubscriptionDto From(SaasSubscription subscription)
     {
@@ -73,7 +75,8 @@ public sealed record SubscriptionDto(
             subscription.Id.Value, subscription.TenantId.Value, subscription.PlanId.Value, subscription.Status,
             subscription.CurrentPeriod.StartUtc, subscription.CurrentPeriod.EndUtc, subscription.CancelAtPeriodEnd,
             subscription.SuspensionReason, subscription.StartedAtUtc, subscription.CancelledAtUtc,
-            subscription.IsComplimentary, subscription.IsComplimentary && !subscription.IsComplimentaryUnlimited ? subscription.CurrentPeriod.EndUtc : null);
+            subscription.IsComplimentary, subscription.IsComplimentary && !subscription.IsComplimentaryUnlimited ? subscription.CurrentPeriod.EndUtc : null,
+            subscription.ScheduledPlanId?.Value, subscription.ScheduledPlanEffectiveAtUtc);
     }
 }
 
@@ -97,8 +100,16 @@ public sealed record ChargeLineDto(Guid PlanId, PlanKind Kind, string Label, int
 public sealed record SubscriptionChargeDto(
     Guid SubscriptionId, Guid TenantId, string CurrencyCode, BillingInterval BillingInterval, IReadOnlyList<ChargeLineDto> Lines, decimal Total, decimal MonthlyTotal);
 
-/// <summary>Ce que voit le restaurant : son abonnement, son plan, ses droits avec leur consommation, et ce que coûtera sa prochaine période.</summary>
-public sealed record MySubscriptionDto(SubscriptionDto Subscription, PlanDto Plan, IReadOnlyList<FeatureUsageDto> Usage, SubscriptionChargeDto? NextCharge = null);
+/// <summary>Le changement de plan programmé : le plan qui s'appliquera, et quand.</summary>
+public sealed record ScheduledPlanChangeDto(Guid PlanId, string PlanName, DateTimeOffset EffectiveAtUtc);
+
+/// <summary>
+/// Ce que voit le restaurant : son abonnement, son plan, ses droits avec leur consommation, ce que coûtera sa prochaine
+/// période (au plan programmé s'il y en a un) et le changement de plan programmé.
+/// </summary>
+public sealed record MySubscriptionDto(
+    SubscriptionDto Subscription, PlanDto Plan, IReadOnlyList<FeatureUsageDto> Usage, SubscriptionChargeDto? NextCharge = null,
+    ScheduledPlanChangeDto? ScheduledPlan = null);
 
 /// <summary>
 /// La réponse donnée aux autres modules : activé ou non, limite (null = illimité), et si le restaurant a un abonnement

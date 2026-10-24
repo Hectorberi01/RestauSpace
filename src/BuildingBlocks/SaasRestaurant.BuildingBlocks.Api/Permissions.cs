@@ -94,7 +94,8 @@ public static class ApiKeyClaims
 
 /// <summary>
 /// Refus par défaut : pas de checker enregistré, d'utilisateur ou de tenant dans le token = pas de permission. Une clé
-/// d'API a la permission si et seulement si elle porte le scope du même nom (pas de rôle, pas de joker).
+/// d'API a la permission si et seulement si elle porte le scope du même nom (pas de rôle, pas de joker). Une session de
+/// caisse n'a que les permissions de <see cref="TillSessionPermissions"/>, dans l'établissement de sa caisse.
 /// </summary>
 internal sealed class PermissionAuthorizationHandler(IServiceProvider services) : AuthorizationHandler<PermissionRequirement>
 {
@@ -118,12 +119,47 @@ internal sealed class PermissionAuthorizationHandler(IServiceProvider services) 
             return;
         }
 
+        var http = context.Resource as HttpContext;
+        var aborted = http?.RequestAborted ?? CancellationToken.None;
+        if (TillSessions.IsTillSession(context.User))
+        {
+            // Caisse : liste blanche, rôle du membre dans l'établissement de la caisse, et aucun autre établissement.
+            var allowed = services.GetService<TillSessionPermissions>();
+            if (allowed is null || !allowed.Allows(requirement.Permission)
+                || TillSessions.LocationOf(context.User) is not { } tillLocation
+                || (http is not null && RequestedLocation(http) is { } requested && requested != tillLocation))
+            {
+                return;
+            }
+
+            if (await checker.HasLocationPermissionAsync(
+                    UserId.From(userId), TenantId.From(tenantId), LocationId.From(tillLocation), requirement.Permission, aborted))
+            {
+                context.Succeed(requirement);
+            }
+
+            return;
+        }
+
         // Rôle de restaurant seul : un locationId fourni par la requête ne doit jamais choisir le rôle évalué.
-        var aborted = (context.Resource as HttpContext)?.RequestAborted ?? CancellationToken.None;
         if (await checker.HasTenantPermissionAsync(UserId.From(userId), TenantId.From(tenantId), requirement.Permission, aborted))
         {
             context.Succeed(requirement);
         }
+    }
+
+    // Établissement visé par la route ou la query ; un établissement illisible compte comme un autre.
+    private static Guid? RequestedLocation(HttpContext http)
+    {
+        var raw = http.Request.RouteValues.TryGetValue("locationId", out var route) && route is not null
+            ? route.ToString()
+            : http.Request.Query.TryGetValue("locationId", out var query) ? query.ToString() : null;
+        if (string.IsNullOrEmpty(raw))
+        {
+            return null;
+        }
+
+        return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
     }
 }
 

@@ -46,6 +46,15 @@ internal sealed class PaymentRepository(PaymentsDbContext context) : IPaymentRep
             .ThenBy(payment => payment.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<bool> HasPaymentsInProgressAsync(TenantId tenantId, PaymentProviderCode provider, CancellationToken cancellationToken = default) =>
+        context.Payments.AsNoTracking().AnyAsync(
+            payment => payment.TenantId == tenantId
+                && payment.Provider == provider
+                && (payment.Status == PaymentStatus.Pending
+                    || payment.Status == PaymentStatus.Authorized
+                    || payment.Refunds.Any(refund => refund.Status == RefundStatus.Requested)),
+            cancellationToken);
+
     public void Add(Payment payment) => context.Payments.Add(payment);
 }
 

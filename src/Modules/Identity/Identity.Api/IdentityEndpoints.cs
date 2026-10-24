@@ -114,10 +114,11 @@ public static class IdentityEndpoints
         return auth;
     }
 
-    // L'utilisateur est toujours celui de l'access token, jamais un id venant de la requête.
+    // L'utilisateur est toujours celui de l'access token, jamais un id venant de la requête. Session de caisse : lecture
+    // du profil seulement, et fin de sa propre session.
     private static RouteGroupBuilder MapMe(IEndpointRouteBuilder routes)
     {
-        var me = routes.MapGroup("/me").WithTags("Me").RequireAuthorization().RetryOnConflict();
+        var me = routes.MapGroup("/me").WithTags("Me").RequireAuthorization().RestrictTillSessions().RetryOnConflict();
 
         me.MapGet("/", async (
             ClaimsPrincipal caller, IQueryHandler<GetUserByIdQuery, UserDto> handler, CancellationToken ct) =>
@@ -239,14 +240,20 @@ public static class IdentityEndpoints
             var sessions = await handler.HandleAsync(new GetUserSessionsQuery(caller.GetUserId()), ct);
             return TypedResults.Ok(sessions.Select(session =>
                 new MySessionResponse(session.Id, session.CreatedAtUtc, session.ExpiresAtUtc, session.Id == current, session.DeviceLabel)));
-        });
+        }).DenyTillSession();
 
+        // Une session de caisse ne peut fermer que la sienne (verrouillage de la caisse).
         me.MapDelete("/sessions/{sessionId:guid}", async (
             Guid sessionId, ClaimsPrincipal caller, ICommandHandler<RevokeSessionCommand> handler, CancellationToken ct) =>
         {
+            if (TillSessions.IsTillSession(caller) && caller.GetSessionId() != sessionId)
+            {
+                throw new ForbiddenException(TillSessions.Forbidden);
+            }
+
             await handler.HandleAsync(new RevokeSessionCommand(caller.GetUserId(), sessionId), ct);
             return TypedResults.NoContent();
-        });
+        }).AllowTillSession();
 
         me.MapDelete("/sessions", async (
             ClaimsPrincipal caller, ICommandHandler<RevokeAllSessionsCommand> handler, CancellationToken ct) =>

@@ -161,21 +161,15 @@ public interface ITillSecrets
 }
 
 /// <summary>
-/// Les jetons d'un membre identifié par PIN sur une caisse partagée, émis par Identity (servi par l'hôte) : une session
-/// propre au membre, qui agit pour ce restaurant. Null si son compte ne peut pas ouvrir de session.
+/// Session de caisse d'un membre identifié par PIN, émise par Identity (servi par l'hôte) : un access token limité à la
+/// caisse et à son établissement, sans refresh token. Null si son compte ne peut pas ouvrir de session.
 /// </summary>
 public interface IOperatorSessions
 {
-    Task<OperatorTokens?> StartAsync(UserId userId, TenantId tenantId, string device, CancellationToken cancellationToken = default);
+    Task<OperatorTokens?> StartAsync(UserId userId, TenantId tenantId, TillId tillId, LocationId locationId, string device, CancellationToken cancellationToken = default);
 }
 
-public sealed record OperatorTokens(
-    Guid UserId,
-    Guid SessionId,
-    string AccessToken,
-    DateTimeOffset AccessTokenExpiresAtUtc,
-    string RefreshToken,
-    DateTimeOffset RefreshTokenExpiresAtUtc);
+public sealed record OperatorTokens(Guid UserId, Guid SessionId, string AccessToken, DateTimeOffset AccessTokenExpiresAtUtc);
 
 /// <summary>L'utilisateur qui fait la requête. Null hors requête HTTP (job, seed, maintenance) : aucun contrôle d'escalade.</summary>
 public interface IStaffActor

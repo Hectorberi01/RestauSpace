@@ -116,7 +116,12 @@ public sealed class StorefrontFixture
 
     public QuoteCartHandler Quote => new(Workspace, this, this, this, this, this, this, Clock);
 
-    public PlaceGuestOrderHandler Place => new(Workspace, this, this, this, this, this, this, this, this, this, Tokens, this, this, Clock);
+    public PlaceGuestOrderHandler Place => new(Workspace, this, this, this, this, this, this, this, this, this, Tokens, this, this, Clock, Limits);
+
+    public CheckoutLimits Limits { get; } = new();
+
+    /// <summary>Empreinte de l'adresse IP de la requête ; null = inconnue.</summary>
+    public string? ClientKey { get; set; } = "ip-1";
 
     /// <summary>Tables du faux module Floor, par jeton de QR ; les sessions ouvertes par table.</summary>
     public Dictionary<string, (TenantId Tenant, StorefrontTable Table)> Tables { get; } = [];
@@ -600,6 +605,12 @@ public sealed class StorefrontFixture
     public ListWaitingOnlineOrdersHandler Waiting => new(Workspace, this);
 
     void IOnlineOrderRepository.Add(OnlineOrder order) => OnlineOrders.Add(order);
+
+    Task<int> IOnlineOrderRepository.CountAwaitingPaymentAsync(
+        TenantId tenantId, SalesAppId appId, string? clientKey, CustomerId? customerId, DateTimeOffset nowUtc, CancellationToken cancellationToken) =>
+        Task.FromResult(clientKey is null && customerId is null ? 0 : OnlineOrders.Count(order =>
+            order.TenantId == tenantId && order.AppId == appId && order.IsAwaitingPayment && order.NextDeadlineUtc > nowUtc
+            && ((clientKey != null && order.ClientKey == clientKey) || (customerId != null && order.CustomerId == customerId))));
 
     Task<int> IOnlineOrderRepository.CountInSlotAsync(TenantId tenantId, LocationId locationId, DateTimeOffset slotStartUtc, CancellationToken cancellationToken) =>
         Task.FromResult(OnlineOrders.Count(order => order.TenantId == tenantId && order.LocationId == locationId && order.SlotStartUtc == slotStartUtc && order.HoldsSlot));

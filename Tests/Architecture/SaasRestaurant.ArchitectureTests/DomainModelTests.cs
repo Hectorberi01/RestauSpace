@@ -14,6 +14,8 @@ public sealed class DomainModelTests
         "Billing.Domain.Plan",
         "Payments.Domain.PaymentProvider",
         "Notifications.Domain.NotificationProvider",
+        "Backups.Domain.Backup",
+        "Backups.Domain.Restore",
     ];
 
     private static readonly Type[] MutableCollections =

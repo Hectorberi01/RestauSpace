@@ -136,6 +136,11 @@ internal sealed class AuditFeed(IServiceScopeFactory scopes) : IOutboxConsumer
             "billing.subscription.activated", "subscription", "SubscriptionId", "PlanId=plan_id", "PreviousStatus=previous_status", "CurrentPeriod=current_period"),
         [("billing", "SubscriptionPlanChanged")] = R(
             "billing.subscription.plan_changed", "subscription", "SubscriptionId", "PreviousPlanId=previous_plan_id", "NewPlanId=new_plan_id"),
+        [("billing", "SubscriptionPlanChangeScheduled")] = R(
+            "billing.subscription.plan_change_scheduled", "subscription", "SubscriptionId", "PlanId=plan_id", "ScheduledPlanId=scheduled_plan_id",
+            "EffectiveAtUtc=effective_at_utc"),
+        [("billing", "SubscriptionPlanChangeUnscheduled")] =
+            R("billing.subscription.plan_change_unscheduled", "subscription", "SubscriptionId", "ScheduledPlanId=scheduled_plan_id"),
         [("billing", "SubscriptionPastDue")] = R("billing.subscription.past_due", "subscription", "SubscriptionId", "CurrentPeriod=current_period"),
         [("billing", "SubscriptionSuspended")] =
             R("billing.subscription.suspended", "subscription", "SubscriptionId", "PreviousStatus=previous_status", "Reason=reason"),
@@ -224,6 +229,18 @@ internal sealed class AuditFeed(IServiceScopeFactory scopes) : IOutboxConsumer
             "reviews.feedback.customer_detached", "feedback", "FeedbackId", [], SystemActor: "customer-anonymization"),
         [("reviews", "SurveyPublished")] = R("reviews.survey.published", "survey", "SurveyId", "QuestionCount=question_count"),
         [("reviews", "SurveyClosed")] = R("reviews.survey.closed", "survey", "SurveyId"),
+
+        // --- Backups : demandes de la plateforme. Jamais l'URL signée ni la clé de stockage.
+        [("backups", "BackupRequested")] = new(
+            "backups.backup.requested", "backup", "BackupId", ["Trigger=trigger", "DatabaseName=database_name"],
+            UserActorField: "RequestedBy", SystemActor: "backup-schedule"),
+        [("backups", "BackupDownloadLinkCreated")] =
+            ByUser("backups.backup.download_link_created", "backup", "BackupId", "RequestedBy", "ExpiresAtUtc=expires_at_utc"),
+        [("backups", "BackupDeletionRequested")] = new(
+            "backups.backup.deletion_requested", "backup", "BackupId", [], UserActorField: "RequestedBy", SystemActor: "backup-retention"),
+        [("backups", "RestoreRequested")] = ByUser(
+            "backups.restore.requested", "restore", "RestoreId", "RequestedBy", "BackupId=backup_id", "DatabaseName=database_name", "NotBeforeUtc=not_before_utc"),
+        [("backups", "RestoreCancelled")] = ByUser("backups.restore.cancelled", "restore", "RestoreId", "CancelledBy", "BackupId=backup_id"),
     };
 
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken = default)

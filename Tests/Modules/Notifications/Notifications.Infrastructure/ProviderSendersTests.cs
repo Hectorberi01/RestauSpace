@@ -19,7 +19,7 @@ public sealed class ProviderSendersTests
 {
     private static NotificationSendRequest Request(NotificationRecipient recipient, string? subject, string body) => new(
         NotificationId.New(), NotificationDeliveryId.New(), TenantId.New(), "reservation.confirmed", NotificationPriority.Normal,
-        recipient, NotificationContent.Create(recipient.Channel, subject, body));
+        recipient, NotificationContent.Create(recipient.Channel, subject, body, isHtml: body.StartsWith('<')));
 
     private static NotificationRecipient Email => NotificationRecipient.ForEmail(SaasRestaurant.BuildingBlocks.Domain.Email.Create("awa@example.com"));
 

@@ -6,6 +6,7 @@ namespace Notifications.Application.Sending;
 /// <summary>Ce qu'on veut envoyer, avant toute décision.</summary>
 /// <param name="TenantId">Null pour un envoi de la plateforme elle-même.</param>
 /// <param name="IdempotencyKey">Une seule notification par clé (événement d'intégration, appel rejoué).</param>
+/// <param name="Anonymous">Déclenchée par un visiteur du site (pas par le personnel) : SMS et WhatsApp restreints.</param>
 public sealed record NotificationIntent(
     TenantId? TenantId,
     NotificationTypeDefinition Type,
@@ -15,7 +16,8 @@ public sealed record NotificationIntent(
     NotificationLanguage Language,
     NotificationPayload Payload,
     DateTimeOffset? ScheduledAtUtc = null,
-    string? IdempotencyKey = null);
+    string? IdempotencyKey = null,
+    bool Anonymous = false);
 
 /// <summary>Pourquoi rien n'est envoyé. Valeurs explicites et définitives (renvoyées par l'API).</summary>
 public enum NotificationSkipReason
@@ -31,6 +33,12 @@ public enum NotificationSkipReason
     Duplicate = 9,
     NoContact = 10,
     FrequencyLimited = 11,
+
+    /// <summary>Envoi anonyme vers un numéro d'un autre pays que celui du restaurant.</summary>
+    PhoneCountryNotAllowed = 12,
+
+    /// <summary>Plafond horaire des SMS/WhatsApp anonymes du restaurant atteint.</summary>
+    AnonymousPhoneLimitReached = 13,
 }
 
 /// <param name="Notification">À ajouter et sauvegarder par l'appelant ; null si l'envoi est écarté.</param>
@@ -41,7 +49,7 @@ public sealed record NotificationDecision(Notification? Notification, Notificati
 
 /// <summary>
 /// La politique d'envoi (§ 18) : un événement ou une demande ne crée une notification QUE si tout est réuni, dans cet
-/// ordre : pas déjà créée (idempotence), préférences et consentement (transactionnel n'implique jamais marketing ; un
+/// ordre : pas déjà créée (idempotence), SMS/WhatsApp anonyme permis (pays, plafond horaire), préférences et consentement (transactionnel n'implique jamais marketing ; un
 /// message de sécurité passe toujours), template disponible (restaurant puis plateforme, puis langue par défaut), rendu
 /// complet, prestataire disponible, quota du mois. Un refus n'est pas une erreur : la raison est renvoyée.
 /// </summary>
@@ -56,8 +64,22 @@ public sealed class NotificationPolicy(
     NotificationsSettings settings,
     IClock clock,
     IMarketingRulesRepository marketingRules,
-    IMarketingHistory marketingHistory)
+    IMarketingHistory marketingHistory,
+    INotificationLocations locations)
 {
+    public static readonly TimeSpan AnonymousWindow = TimeSpan.FromHours(1);
+
+    private static readonly NotificationChannel[] PhoneChannels = [NotificationChannel.Sms, NotificationChannel.WhatsApp];
+
+    /// <summary>Types qu'une action anonyme peut déclencher : comptés dans le plafond (y compris ceux envoyés par le personnel).</summary>
+    public static readonly IReadOnlyList<TemplateKey> AnonymousTypes =
+    [
+        NotificationTypes.SecurityOtp.Key, NotificationTypes.OrderConfirmed.Key, NotificationTypes.OrderReady.Key,
+        NotificationTypes.OrderCancelled.Key, NotificationTypes.PaymentFailed.Key, NotificationTypes.ReservationConfirmed.Key,
+        NotificationTypes.ReservationReminder.Key, NotificationTypes.ReservationCancelled.Key,
+        NotificationTypes.ReservationDepositRequest.Key, NotificationTypes.WaitlistOffer.Key,
+    ];
+
     public async Task<NotificationDecision> DecideAsync(NotificationIntent intent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(intent);
@@ -68,6 +90,11 @@ public sealed class NotificationPolicy(
         if (intent.IdempotencyKey is { } key && await notifications.ExistsAsync(tenant, key, cancellationToken))
         {
             return NotificationDecision.Skip(NotificationSkipReason.Duplicate);
+        }
+
+        if (await AnonymousPhoneRefusalAsync(intent, cancellationToken) is { } anonymousRefusal)
+        {
+            return NotificationDecision.Skip(anonymousRefusal);
         }
 
         var consent = await ConsentAsync(intent, cancellationToken);
@@ -119,6 +146,44 @@ public sealed class NotificationPolicy(
                 intent.ScheduledAtUtc, template.Id);
         return new NotificationDecision(notification, null);
     }
+
+    /// <summary>Délai avant qu'un envoi anonyme sorte du plafond horaire du restaurant.</summary>
+    public async Task<TimeSpan> AnonymousRetryAfterAsync(TenantId tenant, NotificationTypeDefinition type, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        var now = clock.UtcNow;
+        var window = await CountAnonymousAsync(tenant, type, now, cancellationToken);
+        var wait = (window.OldestAtUtc ?? now) + AnonymousWindow - now;
+        return wait > TimeSpan.FromMinutes(1) ? wait : TimeSpan.FromMinutes(1);
+    }
+
+    /// <summary>SMS/WhatsApp anonyme : numéro du pays de l'établissement (sinon des établissements du restaurant), plafond horaire.</summary>
+    private async Task<NotificationSkipReason?> AnonymousPhoneRefusalAsync(NotificationIntent intent, CancellationToken cancellationToken)
+    {
+        if (!intent.Anonymous || intent.TenantId is not { } tenant || !PhoneChannels.Contains(intent.Recipient.Channel))
+        {
+            return null;
+        }
+
+        IReadOnlyList<CountryCode> countries = intent.Location is { } location
+            ? [location.Country]
+            : await locations.CountriesAsync(tenant, cancellationToken);
+        if (!countries.Any(country => PhoneCountries.IsFrom(intent.Recipient.Address, country)))
+        {
+            return NotificationSkipReason.PhoneCountryNotAllowed;
+        }
+
+        var limit = settings.AnonymousSmsPerTenantPerHour;
+        return limit > 0 && (await CountAnonymousAsync(tenant, intent.Type, clock.UtcNow, cancellationToken)).Count >= limit
+            ? NotificationSkipReason.AnonymousPhoneLimitReached
+            : null;
+    }
+
+    private Task<NotificationWindowCount> CountAnonymousAsync(
+        TenantId tenant, NotificationTypeDefinition type, DateTimeOffset now, CancellationToken cancellationToken) =>
+        notifications.CountCreatedSinceAsync(
+            tenant, PhoneChannels, AnonymousTypes.Contains(type.Key) ? AnonymousTypes : [.. AnonymousTypes, type.Key], now - AnonymousWindow,
+            cancellationToken);
 
     /// <summary>Règle de fréquence du restaurant : un message marketing au plus par intervalle et par client.</summary>
     private async Task<bool> TooSoonAsync(NotificationIntent intent, CancellationToken cancellationToken)

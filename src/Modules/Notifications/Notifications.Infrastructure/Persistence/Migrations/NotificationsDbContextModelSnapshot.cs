@@ -346,6 +346,10 @@ namespace Notifications.Infrastructure.Persistence.Migrations
                                 .HasColumnType("integer")
                                 .HasColumnName("content_channel");
 
+                            b1.Property<bool>("IsHtml")
+                                .HasColumnType("boolean")
+                                .HasColumnName("is_html");
+
                             b1.Property<string>("Subject")
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")

@@ -377,11 +377,15 @@ public sealed class User : AggregateRoot<UserId>
         return session;
     }
 
+    /// <param name="familyTokenHash">Empreinte du premier jeton de la famille (l'ancre) ; null : la session présentée est l'ancre.</param>
+    /// <param name="familyLifetime">Durée maximale de la famille depuis la connexion ; null : sans limite absolue.</param>
     public SessionRotationResult RotateSession(
         TokenHash presentedTokenHash,
         TokenHash newTokenHash,
         SessionLifetime lifetime,
-        IClock clock)
+        IClock clock,
+        TokenHash? familyTokenHash = null,
+        SessionLifetime? familyLifetime = null)
     {
         ArgumentNullException.ThrowIfNull(presentedTokenHash);
         ArgumentNullException.ThrowIfNull(newTokenHash);
@@ -404,12 +408,52 @@ public sealed class User : AggregateRoot<UserId>
         DomainException.ThrowIf(current.IsExpiredAt(now), UserErrors.SessionExpired);
         EnsureTokenHashIsUnused(newTokenHash);
 
-        var next = RefreshSession.Create(newTokenHash, now, lifetime, current.DeviceLabel);
+        var anchor = familyTokenHash is null || familyTokenHash == current.Hash
+            ? current
+            : _sessions.SingleOrDefault(session => session.Hash == familyTokenHash && session.WasRotated);
+        DomainException.ThrowIf(anchor is null, UserErrors.SessionNotFound);
+
+        var expiresAtUtc = now.Add(lifetime.Duration);
+        DateTimeOffset? familyEndsAtUtc = familyLifetime is null ? null : anchor!.CreatedAtUtc.Add(familyLifetime.Duration);
+        if (familyEndsAtUtc is { } end)
+        {
+            DomainException.ThrowIf(now >= end, UserErrors.SessionFamilyExpired);
+            expiresAtUtc = expiresAtUtc < end ? expiresAtUtc : end;
+        }
+
+        var next = RefreshSession.Create(newTokenHash, now, expiresAtUtc, current.DeviceLabel);
         current.Rotate(next.Id, now);
+        if (familyEndsAtUtc is { } retention)
+        {
+            anchor!.RetainUntil(retention);
+        }
+
         _sessions.Add(next);
-        DropSupersededRotations();
+        // Seules restent l'ancre, la session remplacée (double envoi) et la nouvelle.
+        _sessions.RemoveAll(session => session.ReplacedBy == current.Id && session != anchor);
         Raise(new RefreshTokenRotated(Id, current.Id, next.Id, next.ExpiresAtUtc, now));
         return SessionRotationResult.Rotated(next);
+    }
+
+    /// <summary>
+    /// Ancien jeton d'une famille, déjà effacé : vol présumé, toutes les sessions sont révoquées. Faux si l'ancre est
+    /// inconnue ou la famille terminée.
+    /// </summary>
+    public bool RevokeAfterFamilyTokenReuse(TokenHash familyTokenHash, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(familyTokenHash);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        var now = clock.UtcNow;
+        var anchor = _sessions.SingleOrDefault(session => session.Hash == familyTokenHash && session.WasRotated);
+        if (anchor is null || anchor.IsExpiredAt(now))
+        {
+            return false;
+        }
+
+        var revokedCount = RevokeSessions(now, SessionRevocationReason.ReplayDetected);
+        Raise(new RefreshTokenReplayDetected(Id, anchor.Id, revokedCount, now));
+        return true;
     }
 
     public void RevokeSession(SessionId sessionId, IClock clock)
@@ -444,12 +488,6 @@ public sealed class User : AggregateRoot<UserId>
         var usableIds = _sessions.Where(session => session.IsUsableAt(now)).Select(session => session.Id).ToHashSet();
         return _sessions.RemoveAll(session =>
             session.IsExpiredAt(now) && !(session.ReplacedBy is { } successor && usableIds.Contains(successor)));
-    }
-
-    private void DropSupersededRotations()
-    {
-        var rotatedIds = _sessions.Where(session => session.WasRotated).Select(session => session.Id).ToHashSet();
-        _sessions.RemoveAll(session => session.ReplacedBy is { } successor && rotatedIds.Contains(successor));
     }
 
     private void MarkEmailVerified(DateTimeOffset now)

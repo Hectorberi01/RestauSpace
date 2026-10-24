@@ -89,6 +89,17 @@ internal static partial class HostComposition
             signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         }
 
+        // Sessions : durée maximale d'une famille (jours) et durée d'une session de caisse (heures).
+        var sessions = builder.Configuration.GetSection("Identity:Sessions");
+        var defaults = new Identity.Application.IdentitySettings();
+        builder.Services.AddSingleton(defaults with
+        {
+            SessionFamilyLifetime = Identity.Domain.Users.SessionLifetime.Create(TimeSpan.FromDays(
+                sessions.GetValue("FamilyMaxDays", defaults.SessionFamilyLifetime.Duration.TotalDays))),
+            TillSessionLifetime = Identity.Domain.Users.SessionLifetime.Create(TimeSpan.FromHours(
+                sessions.GetValue("TillSessionHours", defaults.TillSessionLifetime.TotalHours))).Duration,
+        });
+
         var authRateLimit = builder.Configuration.GetSection("Identity:RateLimiting:Auth");
         builder.Services.AddIdentityModule(
             builder.ConnectionStringFor("Identity", connectionString),

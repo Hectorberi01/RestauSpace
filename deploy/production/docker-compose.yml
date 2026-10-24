@@ -42,7 +42,9 @@ services:
     env_file: api.env
     environment:
       <<: *api-environment
-      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST:?DATABASE_HOST manquant dans .env};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB:?POSTGRES_DB manquant dans .env};Username=${POSTGRES_USER:?POSTGRES_USER manquant dans .env};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=5;Keepalive=30
+      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST:?DATABASE_HOST manquant dans .env};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB:?POSTGRES_DB manquant dans .env};Username=${POSTGRES_USER:?POSTGRES_USER manquant dans .env};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env};SSL Mode=${DATABASE_SSL_MODE:-Require};Root Certificate=/etc/restauspace/tls/db-ca.crt;Maximum Pool Size=5;Keepalive=30
+    volumes:
+      - ./tls:/etc/restauspace/tls:ro
     restart: "no"
     networks: [default]
 
@@ -58,8 +60,10 @@ services:
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGSSLMODE: ${DATABASE_PGSSLMODE:-require}
+      PGSSLROOTCERT: /etc/restauspace/tls/db-ca.crt
     volumes:
       - ./db-grants.sql:/db-grants.sql:ro
+      - ./tls:/etc/restauspace/tls:ro
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -73,9 +77,11 @@ services:
     environment:
       <<: *api-environment
       # Compte limité aux données (DATABASE_APP_USER) ; à défaut, le propriétaire.
-      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB};Username=${DATABASE_APP_USER:-${POSTGRES_USER}};Password=${DATABASE_APP_PASSWORD:-${POSTGRES_PASSWORD}};SSL Mode=${DATABASE_SSL_MODE:-Require};Maximum Pool Size=${DATABASE_POOL_SIZE:-50};Keepalive=30
+      ConnectionStrings__SaasRestaurant: Host=${DATABASE_HOST};Port=${DATABASE_PORT:-5432};Database=${POSTGRES_DB};Username=${DATABASE_APP_USER:-${POSTGRES_USER}};Password=${DATABASE_APP_PASSWORD:-${POSTGRES_PASSWORD}};SSL Mode=${DATABASE_SSL_MODE:-Require};Root Certificate=/etc/restauspace/tls/db-ca.crt;Maximum Pool Size=${DATABASE_POOL_SIZE:-50};Keepalive=30
     volumes:
       - api-keys:/home/app/.aspnet/DataProtection-Keys
+      # Autorité du certificat PostgreSQL (VerifyFull) : deploy/database/tls-ca.sh.
+      - ./tls:/etc/restauspace/tls:ro
     depends_on:
       db-grants:
         condition: service_completed_successfully

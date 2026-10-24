@@ -58,6 +58,20 @@ internal sealed class OnlineOrderRepository(StorefrontDbContext context) : IOnli
 
     public void Add(OnlineOrder order) => context.OnlineOrders.Add(order);
 
+    public Task<int> CountAwaitingPaymentAsync(
+        TenantId tenantId, SalesAppId appId, string? clientKey, CustomerId? customerId, DateTimeOffset nowUtc, CancellationToken cancellationToken = default)
+    {
+        var pending = context.OnlineOrders.AsNoTracking().Where(order =>
+            order.TenantId == tenantId && order.AppId == appId && order.State == OnlineOrderState.AwaitingPayment && order.NextDeadlineUtc > nowUtc);
+        return (clientKey, customerId) switch
+        {
+            (null, null) => Task.FromResult(0),
+            ({ } key, null) => pending.CountAsync(order => order.ClientKey == key, cancellationToken),
+            (null, { } customer) => pending.CountAsync(order => order.CustomerId == customer, cancellationToken),
+            ({ } key, { } customer) => pending.CountAsync(order => order.ClientKey == key || order.CustomerId == customer, cancellationToken),
+        };
+    }
+
     public Task<int> CountInSlotAsync(TenantId tenantId, LocationId locationId, DateTimeOffset slotStartUtc, CancellationToken cancellationToken = default) =>
         HoldingSlots(tenantId, locationId).CountAsync(order => order.SlotStartUtc == slotStartUtc, cancellationToken);
 

@@ -1,6 +1,14 @@
 // Traductions des codes d'erreur du backend (champ « code » des réponses).
 // Reprises de la console quand elles existent ; les invariants internes ne sont pas traduits.
 export const errorMessages: Record<string, string> = {
+  'backups.backup.already_in_progress': 'Une sauvegarde est déjà en cours : attendez qu’elle se termine.',
+  'backups.backup.keep_min_reached': 'Suppression refusée : le nombre minimum de sauvegardes terminées à garder serait dépassé.',
+  'backups.backup.not_completed': 'Cette sauvegarde n’est pas terminée.',
+  'backups.restore.confirmation_mismatch': 'Le nom saisi ne correspond pas au nom de la base.',
+  'backups.restore.in_progress': 'Une restauration est en cours ou programmée : attendez-la ou annulez-la.',
+  'backups.restore.not_cancellable': 'Cette restauration a déjà commencé ou est terminée : elle ne peut plus être annulée.',
+  'backups.storage.not_configured': 'Le stockage des sauvegardes n’est pas configuré sur l’API.',
+  'backups.two_factor.invalid': 'Code de validation en deux étapes incorrect.',
   'billing.add_on.already_active': 'Cette option est déjà active.',
   'billing.add_on.archived': 'Cette option n’est plus proposée.',
   'billing.add_on.cancelled': 'Cette option a été résiliée.',
@@ -42,6 +50,8 @@ export const errorMessages: Record<string, string> = {
   'billing.subscription.cancellation_not_scheduled': 'Aucune résiliation n’est programmée.',
   'billing.subscription.cancellation_scheduled': 'Une résiliation est prévue en fin de période : annulez-la avant de prolonger l’abonnement.',
   'billing.subscription.cancelled': 'Abonnement résilié : souscrivez un nouveau plan.',
+  'billing.subscription.plan_change_scheduled': 'Un changement de plan est programmé : il doit être annulé avant la résiliation.',
+  'billing.subscription.plan_change_not_scheduled': 'Aucun changement de plan n’est programmé.',
   'billing.subscription.cannot_activate': 'Seul un abonnement en essai, impayé ou suspendu peut être activé.',
   'billing.subscription.cannot_suspend': 'Seul un abonnement en essai, actif ou impayé peut être suspendu.',
   'billing.subscription.complimentary': 'Votre plan est offert par RestauSpace : contactez l’équipe pour le modifier.',

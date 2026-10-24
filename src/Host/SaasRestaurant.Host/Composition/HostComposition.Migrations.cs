@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Audit.Api;
 using Audit.Application;
+using Backups.Api;
 using Billing.Api;
 using Billing.Application;
 using Billing.Application.Abstractions;
@@ -103,5 +104,6 @@ internal static partial class HostComposition
         await services.MigrateDeliveryDatabaseAsync();
         await services.MigratePrintingDatabaseAsync();
         await services.MigrateFiscalDatabaseAsync();
+        await services.MigrateBackupsDatabaseAsync();
     }
 }

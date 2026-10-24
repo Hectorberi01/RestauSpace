@@ -6,6 +6,7 @@ using Notifications.Application.Abstractions;
 using Notifications.Application.Commands;
 using Notifications.Domain;
 using Notifications.Infrastructure.Persistence;
+using Notifications.Infrastructure.Webhooks;
 
 namespace Notifications.Infrastructure.Workers;
 
@@ -108,8 +109,17 @@ public sealed class NotificationWorker(
                 continue;
             }
 
+            if (!WebhookEventScope.TryReadSigner(webhook.EventId, out var signedBy))
+            {
+                // Rangé sans compte signataire : on ne sait pas à qui il s'applique.
+                webhook.ProcessedAtUtc = now;
+                webhook.LastError = "signer_unknown";
+                continue;
+            }
+
+            // Seulement les notifications du compte qui a signé (le restaurant, ou la plateforme).
             var located = await directory.FindByProviderMessageAsync(
-                NotificationProviderCode.Create(webhook.Provider), ProviderMessageId.Create(webhook.ProviderMessageId), cancellationToken);
+                NotificationProviderCode.Create(webhook.Provider), ProviderMessageId.Create(webhook.ProviderMessageId), signedBy, cancellationToken);
             if (located is null)
             {
                 // Le webhook peut précéder l'enregistrement de l'envoi (id du message pas encore connu) : on réessaie.

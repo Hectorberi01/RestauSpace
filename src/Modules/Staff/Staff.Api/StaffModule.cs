@@ -42,7 +42,8 @@ public static class StaffModule
     /// <summary>Tant que l'hôte n'a pas branché Identity : aucune session n'est ouverte sur une caisse partagée.</summary>
     private sealed class NoOperatorSessions : Staff.Application.Abstractions.IOperatorSessions
     {
-        public Task<Staff.Application.Abstractions.OperatorTokens?> StartAsync(UserId userId, TenantId tenantId, string device, CancellationToken cancellationToken = default) =>
+        public Task<Staff.Application.Abstractions.OperatorTokens?> StartAsync(
+            UserId userId, TenantId tenantId, Staff.Domain.TillId tillId, LocationId locationId, string device, CancellationToken cancellationToken = default) =>
             Task.FromResult<Staff.Application.Abstractions.OperatorTokens?>(null);
     }
 

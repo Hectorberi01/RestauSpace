@@ -58,3 +58,10 @@ public static class TenantClaims
 {
     public const string TenantId = "tid";
 }
+
+/// <summary>Claims d'une session de caisse partagée (ouverte par PIN) : la caisse et son établissement. Écrits par Identity.</summary>
+public static class TillClaims
+{
+    public const string TillId = "till";
+    public const string LocationId = "till_loc";
+}

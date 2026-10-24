@@ -9,6 +9,7 @@ using Notifications.Domain;
 using Notifications.Infrastructure.Persistence;
 using Notifications.Infrastructure.Senders;
 using Notifications.Infrastructure.Webhooks;
+using SaasRestaurant.BuildingBlocks.Infrastructure;
 
 namespace Notifications.Infrastructure;
 
@@ -37,7 +38,7 @@ public sealed class ProviderIntegrationsTests
 
     private static NotificationSendRequest Request(NotificationRecipient recipient, string? subject, string body) => new(
         NotificationId.New(), NotificationDeliveryId.New(), TenantId.New(), "reservation.confirmed", NotificationPriority.Normal,
-        recipient, NotificationContent.Create(recipient.Channel, subject, body));
+        recipient, NotificationContent.Create(recipient.Channel, subject, body, isHtml: body.StartsWith('<')));
 
     // --- SMTP.
 
@@ -91,6 +92,20 @@ public sealed class ProviderIntegrationsTests
         Assert.Equal("<p>Bonjour</p>", message.HtmlBody);
     }
 
+    [Fact]
+    public void Smtp_keeps_text_when_the_template_is_text_even_if_the_rendered_body_starts_with_a_tag()
+    {
+        var request = new NotificationSendRequest(
+            NotificationId.New(), NotificationDeliveryId.New(), TenantId.New(), "reservation.confirmed", NotificationPriority.Normal,
+            NotificationRecipient.ForEmail(Email.Create("kofi@example.com")),
+            NotificationContent.Create(NotificationChannel.Email, "Sujet", "<a href=\"https://evil.example\">Kofi</a>, à ce soir."));
+
+        var message = SmtpSenderFactory.Build(SmtpAccount.From(SmtpCredentials), request);
+
+        Assert.Null(message.HtmlBody);
+        Assert.StartsWith("<a href=", message.TextBody, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("port", "70000")]
     [InlineData("security", "quantum")]
@@ -101,6 +116,92 @@ public sealed class ProviderIntegrationsTests
         var credentials = new Dictionary<string, string>(SmtpCredentials) { [field] = value };
 
         Assert.Throws<InvalidOperationException>(() => new SmtpSenderFactory(new RecordingTransport()).Create(NotificationChannel.Email, credentials));
+    }
+
+    [Theory]
+    [InlineData("25")]
+    [InlineData("465")]
+    [InlineData("587")]
+    [InlineData("2525")]
+    public void A_restaurant_smtp_account_accepts_the_usual_smtp_ports(string port)
+    {
+        var account = SmtpAccount.From(new Dictionary<string, string>(SmtpCredentials) { ["port"] = port }, tenantManaged: true);
+
+        Assert.True(account.TenantManaged);
+    }
+
+    [Theory]
+    [InlineData("22")]
+    [InlineData("80")]
+    [InlineData("5432")]
+    [InlineData("6379")]
+    public void A_restaurant_smtp_account_refuses_other_ports_but_the_platform_account_keeps_them(string port)
+    {
+        var credentials = new Dictionary<string, string>(SmtpCredentials) { ["port"] = port };
+        var factory = new SmtpSenderFactory(new RecordingTransport());
+
+        Assert.Throws<InvalidOperationException>(() => factory.CreateForTenant(NotificationChannel.Email, credentials));
+        Assert.False(SmtpAccount.From(credentials).TenantManaged);
+        Assert.NotNull(factory.Create(NotificationChannel.Email, credentials));
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("10.10.0.2")]
+    [InlineData("169.254.169.254")]
+    [InlineData("::1")]
+    [InlineData("localhost")]
+    public async Task A_restaurant_smtp_server_on_a_private_address_is_never_contacted(string host)
+    {
+        var account = SmtpAccount.From(new Dictionary<string, string>(SmtpCredentials) { ["host"] = host }, tenantManaged: true);
+
+        var refused = await Assert.ThrowsAsync<NonPublicAddressException>(() =>
+            new MailKitSmtpTransport().SendAsync(account, new MimeMessage(), CancellationToken.None));
+
+        var failure = SmtpSenderFactory.Translate(refused);
+        Assert.Equal((SmtpSenderFactory.HostNotPublic, true), (failure.Code, failure.IsPermanent));
+    }
+
+    [Fact]
+    public async Task The_resolver_applies_the_restaurant_rules_only_to_a_restaurant_account()
+    {
+        var clock = new FakeClock();
+        var tenant = TenantId.New();
+        var code = NotificationProviderCode.Create(SmtpSenderFactory.Code);
+        var provider = NotificationProvider.Create(
+            code, "SMTP", NotificationChannel.Email, NotificationProviderConfigurationType.PlatformOrTenant,
+            NotificationProviderCapability.Create(NotificationChannel.Email, [NotificationFeature.Text]), true, clock);
+        provider.Enable(clock);
+        var tenantConfiguration = RestaurantNotificationConfiguration.Create(tenant, provider, NotificationProviderMode.TenantManaged, true, clock);
+        var tenantReference = NotificationCredentialReference.ForTenant(tenant, code);
+        tenantConfiguration.Configure(tenantReference, clock);
+        var platformConfiguration = RestaurantNotificationConfiguration.Create(tenant, provider, NotificationProviderMode.PlatformManaged, true, clock);
+        var secrets = new MemorySecrets
+        {
+            [tenantReference.Value] = new Dictionary<string, string>(SmtpCredentials) { ["host"] = "127.0.0.1" },
+            [NotificationCredentialReference.ForPlatform(code).Value] = new Dictionary<string, string>(SmtpCredentials) { ["host"] = "127.0.0.1" },
+        };
+        var transport = new RecordingTransport();
+        var resolver = new NotificationSenderResolver([new SmtpSenderFactory(transport)], secrets);
+        var request = Request(NotificationRecipient.ForEmail(Email.Create("kofi@example.com")), "Sujet", "Corps");
+
+        await (await resolver.ResolveAsync(code, NotificationChannel.Email, tenantConfiguration))!.SendAsync(request);
+        await (await resolver.ResolveAsync(code, NotificationChannel.Email, platformConfiguration))!.SendAsync(request);
+        await (await resolver.ResolveAsync(code, NotificationChannel.Email, null))!.SendAsync(request);
+
+        Assert.Equal([true, false, false], transport.Sent.Select(sent => sent.Account.TenantManaged));
+    }
+
+    private sealed class MemorySecrets : Dictionary<string, IReadOnlyDictionary<string, string>>, Notifications.Application.Abstractions.INotificationSecretStore
+    {
+        public Task StoreAsync(NotificationCredentialReference reference, IReadOnlyDictionary<string, string> credentials, CancellationToken cancellationToken = default)
+        {
+            this[reference.Value] = credentials;
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyDictionary<string, string>?> ReadAsync(NotificationCredentialReference reference, CancellationToken cancellationToken = default) =>
+            Task.FromResult(TryGetValue(reference.Value, out var credentials) ? credentials : null);
     }
 
     [Fact]

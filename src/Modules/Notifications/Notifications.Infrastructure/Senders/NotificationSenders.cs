@@ -21,6 +21,10 @@ public interface INotificationSenderFactory
 
     /// <param name="credentials">Les identifiants du compte, en clair, en mémoire seulement le temps de l'envoi.</param>
     INotificationSender Create(NotificationChannel channel, IReadOnlyDictionary<string, string> credentials);
+
+    /// <summary>Compte saisi par un restaurant (mode TenantManaged) : l'intégration peut y appliquer des règles plus strictes.</summary>
+    INotificationSender CreateForTenant(NotificationChannel channel, IReadOnlyDictionary<string, string> credentials) =>
+        Create(channel, credentials);
 }
 
 /// <summary>
@@ -76,11 +80,15 @@ internal sealed class NotificationSenderResolver : INotificationSenderResolver
             return factory.Create(channel, NoCredentials);
         }
 
-        var reference = configuration is { Mode: NotificationProviderMode.TenantManaged }
-            ? configuration.SecretReference
-            : NotificationCredentialReference.ForPlatform(provider);
+        var tenantManaged = configuration is { Mode: NotificationProviderMode.TenantManaged };
+        var reference = tenantManaged ? configuration!.SecretReference : NotificationCredentialReference.ForPlatform(provider);
         var credentials = reference is null ? null : await _secrets.ReadAsync(reference, cancellationToken);
-        return credentials is null ? null : factory.Create(channel, credentials);
+        if (credentials is null)
+        {
+            return null;
+        }
+
+        return tenantManaged ? factory.CreateForTenant(channel, credentials) : factory.Create(channel, credentials);
     }
 }
 

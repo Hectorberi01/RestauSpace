@@ -58,7 +58,7 @@ internal sealed class MailjetSenderFactory(HttpClient http) : INotificationSende
             ["Subject"] = request.Content.Subject ?? string.Empty,
             ["CustomID"] = request.DeliveryId.Value.ToString("N"),
         };
-        message[SmtpSenderFactory.LooksLikeHtml(request.Content.Body) ? "HTMLPart" : "TextPart"] = request.Content.Body;
+        message[request.Content.IsHtml ? "HTMLPart" : "TextPart"] = request.Content.Body;
         return new JsonObject { ["Messages"] = new JsonArray(message) };
     }
 

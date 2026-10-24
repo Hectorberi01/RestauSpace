@@ -123,18 +123,14 @@ internal sealed class UserAccountsFromIdentity(
 /// <summary>Staff -> Identity : la session d'un membre reconnu par son PIN sur une caisse partagée.</summary>
 internal sealed class OperatorSessionsFromIdentity(ICommandHandler<StartOperatorSessionCommand, OperatorSessionDto?> start) : IOperatorSessions
 {
-    public async Task<OperatorTokens?> StartAsync(UserId userId, TenantId tenantId, string device, CancellationToken cancellationToken = default)
+    public async Task<OperatorTokens?> StartAsync(
+        UserId userId, TenantId tenantId, TillId tillId, LocationId locationId, string device, CancellationToken cancellationToken = default)
     {
-        var session = await start.HandleAsync(new StartOperatorSessionCommand(userId.Value, tenantId.Value, device), cancellationToken);
+        var session = await start.HandleAsync(
+            new StartOperatorSessionCommand(userId.Value, tenantId.Value, tillId.Value, locationId.Value, device), cancellationToken);
         return session is null
             ? null
-            : new OperatorTokens(
-                session.Tokens.UserId,
-                session.Tokens.SessionId,
-                session.Tokens.AccessToken,
-                session.Tokens.AccessTokenExpiresAtUtc,
-                session.Tokens.RefreshToken,
-                session.Tokens.RefreshTokenExpiresAtUtc);
+            : new OperatorTokens(session.UserId, session.SessionId, session.AccessToken, session.AccessTokenExpiresAtUtc);
     }
 }
 

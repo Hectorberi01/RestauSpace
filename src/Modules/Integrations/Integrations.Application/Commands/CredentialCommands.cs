@@ -46,7 +46,7 @@ public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, I
         await workspace.RequireWritableTenantAsync(cancellationToken);
         await workspace.RequireApiKeysOptionAsync(cancellationToken);
         var scopes = (command.Scopes ?? Array.Empty<string>()).Select(ApiScope.Create).ToList();
-        await RequireHeldAsync(scopes, cancellationToken);
+        await HeldScopes.RequireAsync(workspace, permissions, clock, scopes, cancellationToken);
         var key = ApiKeys.NewKey();
         var credential = ApiCredential.Issue(
             workspace.CurrentTenant, command.Name, ApiKeys.Hash(key), scopes, workspace.Settings.ScopeCatalog(), command.ExpiresAtUtc, clock, workspace.Actor);
@@ -54,12 +54,16 @@ public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, I
         await workspace.SaveAsync(cancellationToken);
         return new IssuedApiKey(credential.Id.Value, key);
     }
+}
 
-    /// <summary>
-    /// Chaque scope doit être détenu par l'auteur : par son rôle (utilisateur), ou par la clé qui fait la demande. Sans
-    /// auteur identifié, refus.
-    /// </summary>
-    private async Task RequireHeldAsync(IReadOnlyList<ApiScope> scopes, CancellationToken cancellationToken)
+/// <summary>
+/// Chaque scope doit être détenu par l'auteur : par son rôle (utilisateur), ou par la clé qui fait la demande. Sans
+/// auteur identifié, refus. Vaut pour l'émission ET la rotation.
+/// </summary>
+internal static class HeldScopes
+{
+    public static async Task RequireAsync(
+        IntegrationsWorkspace workspace, IPermissionChecker permissions, IClock clock, IEnumerable<ApiScope> scopes, CancellationToken cancellationToken)
     {
         var actor = workspace.Actor;
         if (actor?.Kind == ChangeActorKind.ApiCredential && actor.Id is { } credentialId)
@@ -88,15 +92,22 @@ public sealed class IssueApiCredentialHandler(IntegrationsWorkspace workspace, I
     }
 }
 
-/// <summary>Nouvelle clé pour le même credential (mêmes scopes) : l'ancienne cesse aussitôt de fonctionner.</summary>
+/// <summary>
+/// Nouvelle clé pour le même credential (mêmes scopes) : l'ancienne cesse aussitôt de fonctionner. Mêmes règles qu'à
+/// l'émission : option API, et l'auteur doit détenir tous les scopes de la clé.
+/// </summary>
 public sealed record RotateApiCredentialCommand(Guid CredentialId) : ICommand<IssuedApiKey>;
 
-public sealed class RotateApiCredentialHandler(IntegrationsWorkspace workspace, IClock clock) : ICommandHandler<RotateApiCredentialCommand, IssuedApiKey>
+public sealed class RotateApiCredentialHandler(IntegrationsWorkspace workspace, IPermissionChecker permissions, IClock clock)
+    : ICommandHandler<RotateApiCredentialCommand, IssuedApiKey>
 {
     public async Task<IssuedApiKey> HandleAsync(RotateApiCredentialCommand command, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireApiKeysOptionAsync(cancellationToken);
         var credential = await workspace.LoadCredentialAsync(command.CredentialId, cancellationToken);
+        await HeldScopes.RequireAsync(workspace, permissions, clock, credential.Scopes, cancellationToken);
         var key = ApiKeys.NewKey();
         credential.Rotate(ApiKeys.Hash(key), clock, workspace.Actor);
         await workspace.SaveAsync(cancellationToken);

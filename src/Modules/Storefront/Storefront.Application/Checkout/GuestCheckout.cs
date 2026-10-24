@@ -18,7 +18,7 @@ public sealed record DeliveryAddressInput(Guid ZoneId, string? AddressLine, stri
 
 /// <param name="MinimumOrderAmount">Minimum à atteindre (établissement, et zone de livraison) ; null = aucun. Comparé au total hors frais.</param>
 /// <param name="DeliveryFee">Frais de la zone, compris dans <paramref name="Total"/> ; null hors livraison ou sans zone choisie.</param>
-/// <param name="Coupon">Le coupon envoyé : accepté avec sa remise (dans <paramref name="DiscountTotal"/>), ou refusé avec le motif.</param>
+/// <param name="Coupon">Le coupon envoyé : accepté avec sa remise (dans <paramref name="DiscountTotal"/>), ou refusé (même motif pour tout refus).</param>
 /// <param name="CanPayAtCounter">Le paiement au comptoir est proposé pour ce canal et ce montant.</param>
 /// <param name="CanPayOnline">Le paiement en ligne est proposé pour ce canal et un prestataire est configuré.</param>
 /// <param name="OnlinePaymentOptions">Les prestataires en ligne proposés, pour le choix du client.</param>
@@ -136,6 +136,10 @@ public static class CheckoutErrors
         new("storefront.checkout.counter_limit_exceeded", "This amount cannot be paid at the counter: pay online.");
     public static readonly DomainError PriceChanged =
         new("storefront.checkout.price_changed", "Prices have changed since the cart was quoted: review the cart.", DomainErrorKind.Conflict);
+    public static readonly DomainError TooManyPendingPayments = new(
+        "storefront.checkout.too_many_pending_payments",
+        "Too many orders are waiting for an online payment: pay or cancel them first.",
+        DomainErrorKind.Conflict);
     public static readonly DomainError CustomerRequired =
         new("storefront.checkout.customer_required", "A name and a phone number or an e-mail address are required.");
 
@@ -226,6 +230,8 @@ public sealed class QuoteCartHandler(
 /// automatique : la commande part en cuisine ; manuelle : le personnel a jusqu'à l'échéance pour l'accepter. Le coupon
 /// est compté et la fiche de livraison créée, avec ses frais, avant la validation : le total payé est celui du devis.
 /// En livraison, <paramref name="ScheduledForUtc"/> est l'heure de livraison demandée.
+/// Paiement en ligne (hors borne) : au plus <see cref="CheckoutLimits.MaxPendingPayments"/> commandes impayées par
+/// application, adresse IP et client ; le délai pour payer est plafonné à <see cref="CheckoutLimits.PaymentHoldMinutes"/>.
 /// </summary>
 public sealed record PlaceGuestOrderCommand(
     Guid LocationId,
@@ -257,7 +263,8 @@ public sealed class PlaceGuestOrderHandler(
     OrderTrackingTokens tokens,
     IStorefrontUnitOfWork unitOfWork,
     IStorefrontTables tables,
-    IClock clock) : ICommandHandler<PlaceGuestOrderCommand, GuestOrderPlacedDto>
+    IClock clock,
+    CheckoutLimits limits) : ICommandHandler<PlaceGuestOrderCommand, GuestOrderPlacedDto>
 {
     public async Task<GuestOrderPlacedDto> HandleAsync(PlaceGuestOrderCommand command, CancellationToken cancellationToken = default)
     {
@@ -281,10 +288,7 @@ public sealed class PlaceGuestOrderHandler(
         var price = await CheckoutPricing.PriceAsync(
             tenant, context, command.Mode, command.Lines!, command.CouponCode, command.Delivery?.ZoneId, zoneRequired: isDelivery, orders, coupons, delivery,
             cancellationToken, command.RewardId, signedIn?.CustomerId, loyalty);
-        if (price.Coupon is { IsValid: false } refused)
-        {
-            throw new DomainException(refused.RefusalCode is { } code ? new DomainError(code, "This coupon cannot be used.") : DeliveryCheckoutErrors.CouponInvalid);
-        }
+        DomainException.ThrowIf(price.Coupon is { IsValid: false }, DeliveryCheckoutErrors.CouponInvalid);
 
         // En livraison, l'heure demandée est celle de la livraison : la commande doit être prête un trajet plus tôt.
         var travel = TimeSpan.FromMinutes(price.Zone?.EstimatedMinutes ?? 0);
@@ -346,6 +350,14 @@ public sealed class PlaceGuestOrderHandler(
                 tenant, new GuestCustomer(contact!.Name, contact.Email, contact.Phone, contact.MarketingConsent, contact.Language), cancellationToken);
         }
 
+        var clientKey = app.Kind == SalesAppKind.Kiosk ? null : client.ClientKey;
+        var holder = customerId is { } id ? CustomerId.From(id) : (CustomerId?)null;
+        if (command.Payment == PaymentMode.Online && app.Kind != SalesAppKind.Kiosk)
+        {
+            var pending = await onlineOrders.CountAwaitingPaymentAsync(tenant, app.Id, clientKey, holder, now, cancellationToken);
+            DomainException.ThrowIf(pending >= limits.MaxPendingPayments, CheckoutErrors.TooManyPendingPayments);
+        }
+
         var session = table is null ? (TableSessionId?)null : await tables.SeatAsync(tenant, table.TableId, cancellationToken);
         var placed = await orders.PlaceAsync(
             tenant,
@@ -355,7 +367,7 @@ public sealed class PlaceGuestOrderHandler(
             cancellationToken);
         var online = OnlineOrder.Record(
             tenant, placed.OrderId, app, context.Location.LocationId, command.Payment, policy.Acceptance,
-            TimeSpan.FromMinutes(settings.ManualAcceptanceMinutes), TimeSpan.FromMinutes(settings.UnpaidExpiryMinutes), clock, readyAt);
+            TimeSpan.FromMinutes(settings.ManualAcceptanceMinutes), limits.UnpaidDelay(settings.UnpaidExpiryMinutes), clock, readyAt, holder, clientKey);
         onlineOrders.Add(online);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

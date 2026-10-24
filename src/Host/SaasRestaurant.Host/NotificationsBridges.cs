@@ -28,10 +28,34 @@ internal sealed class NotificationTenantsFromTenants(CachedTenants tenants) : IN
             : null;
 }
 
-/// <summary>Notifications -> Locations : l'établissement du tenant et son pays (choix d'un prestataire qui y délivre).</summary>
-internal sealed class NotificationLocationsFromLocations(ITenantContext tenantContext, IQueryHandler<GetLocationByIdQuery, LocationDto> locations)
+/// <summary>Notifications -> Locations : l'établissement du tenant et son pays (choix d'un prestataire, pays d'un envoi anonyme).</summary>
+internal sealed class NotificationLocationsFromLocations(
+    ITenantContext tenantContext,
+    IQueryHandler<GetLocationByIdQuery, LocationDto> locations,
+    IQueryHandler<ListLocationsQuery, PagedResult<LocationSummaryDto>> list)
     : INotificationLocations
 {
+    public async Task<IReadOnlyList<CountryCode>> CountriesAsync(TenantId tenantId, CancellationToken cancellationToken = default)
+    {
+        if (tenantContext.CurrentTenantId != tenantId)
+        {
+            return [];
+        }
+
+        var countries = new HashSet<string>(StringComparer.Ordinal);
+        for (var page = 1; page <= ListLocationsQuery.MaxPage; page++)
+        {
+            var found = await list.HandleAsync(new ListLocationsQuery(page, ListLocationsQuery.MaxPageSize), cancellationToken);
+            countries.UnionWith(found.Items.Select(location => location.CountryCode));
+            if (found.Items.Count < ListLocationsQuery.MaxPageSize)
+            {
+                break;
+            }
+        }
+
+        return countries.Select(CountryCode.Create).ToList();
+    }
+
     public async Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default)
     {
         if (tenantContext.CurrentTenantId != tenantId)
@@ -147,6 +171,9 @@ internal sealed class NotificationTriggersFlow(IServiceScopeFactory scopes, ILog
     /// <summary>Canaux essayés pour un client, dans l'ordre : le premier possible est le seul utilisé.</summary>
     private static readonly NotificationChannel[] CustomerChannels = [NotificationChannel.Email, NotificationChannel.WhatsApp, NotificationChannel.Sms];
 
+    /// <summary>Une réservation ne dit pas qui l'a prise (site ou équipe) : toujours traitée comme anonyme.</summary>
+    internal const bool ReservationIsAnonymous = true;
+
     /// <summary>Rappel de réservation : quelques heures avant l'arrivée.</summary>
     private static readonly TimeSpan ReminderBefore = TimeSpan.FromHours(3);
 
@@ -216,8 +243,16 @@ internal sealed class NotificationTriggersFlow(IServiceScopeFactory scopes, ILog
         var variables = await CommonVariablesAsync(services, order.LocationId, cancellationToken);
         variables["order.number"] = order.Number;
         variables["order.total"] = string.Create(CultureInfo.InvariantCulture, $"{order.Total:0.##} {order.CurrencyCode}");
-        return await TriggerAsync(services, message, eventId, [new NotificationTrigger(type.Key.Value, CustomerChannels, customerId, null, order.LocationId, variables)], cancellationToken);
+        return await TriggerAsync(
+            services, message, eventId,
+            [new NotificationTrigger(type.Key.Value, CustomerChannels, customerId, null, order.LocationId, variables, Anonymous: IsSelfService(order.Channel))],
+            cancellationToken);
     }
+
+    /// <summary>Commande passée par le client lui-même (site, QR code, application, borne) : SMS/WhatsApp restreints.</summary>
+    internal static bool IsSelfService(Orders.Domain.OrderChannel channel) =>
+        channel is Orders.Domain.OrderChannel.Web or Orders.Domain.OrderChannel.QrCode or Orders.Domain.OrderChannel.MobileApp
+            or Orders.Domain.OrderChannel.Kiosk;
 
     private static async Task<int> ReservationConfirmedAsync(
         IServiceProvider services, Guid reservationId, OutboxEnvelope message, string eventId, CancellationToken cancellationToken)
@@ -236,14 +271,14 @@ internal sealed class NotificationTriggersFlow(IServiceScopeFactory scopes, ILog
 
         var triggers = new List<NotificationTrigger>
         {
-            new(NotificationTypes.ReservationConfirmed.Key.Value, CustomerChannels, customerId, null, reservation.LocationId, variables),
+            new(NotificationTypes.ReservationConfirmed.Key.Value, CustomerChannels, customerId, null, reservation.LocationId, variables, Anonymous: ReservationIsAnonymous),
         };
         var reminderAt = reservation.StartAtUtc - ReminderBefore;
         if (reminderAt > services.GetRequiredService<IClock>().UtcNow.AddMinutes(5))
         {
             triggers.Add(new NotificationTrigger(
                 NotificationTypes.ReservationReminder.Key.Value, CustomerChannels, customerId, null, reservation.LocationId, variables, reminderAt,
-                ReminderKey(reservationId)));
+                ReminderKey(reservationId), ReservationIsAnonymous));
         }
 
         return await TriggerAsync(services, message, eventId, triggers, cancellationToken);
@@ -269,7 +304,9 @@ internal sealed class NotificationTriggersFlow(IServiceScopeFactory scopes, ILog
         AddReservationVariables(variables, reservation, location.TimeZoneId);
         return cancelled + await TriggerAsync(
             services, message, eventId,
-            [new NotificationTrigger(NotificationTypes.ReservationCancelled.Key.Value, CustomerChannels, customerId, null, reservation.LocationId, variables)],
+            [new NotificationTrigger(
+                NotificationTypes.ReservationCancelled.Key.Value, CustomerChannels, customerId, null, reservation.LocationId, variables,
+                Anonymous: ReservationIsAnonymous)],
             cancellationToken);
     }
 

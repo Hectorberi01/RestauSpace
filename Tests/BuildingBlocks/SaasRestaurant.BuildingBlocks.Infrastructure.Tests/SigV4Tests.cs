@@ -1,6 +1,4 @@
-using Files.Infrastructure.Storage;
-
-namespace Files.Infrastructure;
+namespace SaasRestaurant.BuildingBlocks.Infrastructure;
 
 /// <summary>La signature SigV4, vérifiée sur l'exemple publié par AWS (URL pré-signée d'un GET, documentation S3).</summary>
 public sealed class SigV4Tests

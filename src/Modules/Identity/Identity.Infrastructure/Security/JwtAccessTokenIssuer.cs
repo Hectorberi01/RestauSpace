@@ -8,17 +8,18 @@ namespace Identity.Infrastructure.Security;
 
 /// <summary>
 /// JWT signé : <c>sub</c> = id utilisateur, <c>sid</c> = id de session, <c>tid</c> = tenant sélectionné (seulement une
-/// fois l'appartenance vérifiée). Aucun rôle : les permissions ne relèvent pas d'Identity.
+/// fois l'appartenance vérifiée), <c>till</c>/<c>till_loc</c> pour une session de caisse. Aucun rôle : les permissions
+/// ne relèvent pas d'Identity.
 /// </summary>
 internal sealed class JwtAccessTokenIssuer(AccessTokenOptions options, IClock clock) : IAccessTokenIssuer
 {
     private readonly SigningCredentials _credentials =
         new(new SymmetricSecurityKey(options.SigningKeyBytes()), SecurityAlgorithms.HmacSha256);
 
-    public AccessToken Issue(User user, SessionId sessionId, TenantId? tenantId = null)
+    public AccessToken Issue(User user, SessionId sessionId, TenantId? tenantId = null, TillAccess? till = null)
     {
         var now = clock.UtcNow;
-        var expiresAtUtc = now.Add(options.Lifetime);
+        var expiresAtUtc = till?.ExpiresAtUtc ?? now.Add(options.Lifetime);
         List<Claim> claims =
         [
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.Value.ToString()),
@@ -36,6 +37,12 @@ internal sealed class JwtAccessTokenIssuer(AccessTokenOptions options, IClock cl
         if (tenantId is { } tenant)
         {
             claims.Add(new Claim(TenantClaims.TenantId, tenant.Value.ToString()));
+        }
+
+        if (till is not null)
+        {
+            claims.Add(new Claim(TillClaims.TillId, till.TillId.ToString()));
+            claims.Add(new Claim(TillClaims.LocationId, till.LocationId.ToString()));
         }
 
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor

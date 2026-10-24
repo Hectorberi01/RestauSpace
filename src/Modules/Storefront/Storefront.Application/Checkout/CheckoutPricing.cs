@@ -7,7 +7,7 @@ namespace Storefront.Application.Checkout;
 /// <summary>La récompense de fidélité utilisée : son coût en points et sa remise.</summary>
 public sealed record CartRewardDto(Guid RewardId, string Name, int PointCost, decimal Discount);
 
-/// <summary>Le coupon tel que le client le voit au devis : accepté avec sa remise, ou refusé avec le motif.</summary>
+/// <summary>Le coupon tel que le client le voit au devis : accepté avec sa remise, ou refusé (toujours <c>storefront.checkout.coupon_invalid</c>).</summary>
 public sealed record CartCouponDto(string Code, bool IsValid, string? RefusalCode, string? Label, decimal Discount);
 
 /// <summary>
@@ -87,6 +87,11 @@ internal static class CheckoutPricing
         if (!string.IsNullOrWhiteSpace(couponCode))
         {
             coupon = await coupons.PreviewAsync(tenant, locationId, mode, quote.CurrencyCode, quote.Lines, couponCode, cancellationToken);
+            // Refus uniforme (introuvable, épuisé, expiré, non applicable) : on ne laisse pas deviner les codes.
+            if (!coupon.IsValid)
+            {
+                coupon = new CouponPreview(couponCode.Trim(), false, DeliveryCheckoutErrors.CouponInvalid.Code, null, null, 0m);
+            }
         }
 
         LoyaltyRewardOption? reward = null;

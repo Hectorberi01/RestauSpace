@@ -214,11 +214,16 @@ public sealed class IdentityFixture :
 
     TokenHash IRefreshTokens.Hash(string token) => TokenHash.Create($"sha.{Hex(token)}");
 
-    /// <summary>Faux lisible : <c>access.{user}.{session}</c> (+ <c>.tenant.{tenant}</c> s'il agit pour un tenant).</summary>
-    public AccessToken Issue(User user, SessionId sessionId, TenantId? tenantId = null)
+    /// <summary>Faux lisible : <c>access.{user}.{session}</c> (+ <c>.tenant.{tenant}</c>, + <c>.till.{caisse}.{établissement}</c>).</summary>
+    public AccessToken Issue(User user, SessionId sessionId, TenantId? tenantId = null, TillAccess? till = null)
     {
         var suffix = tenantId.HasValue ? ".tenant." + tenantId.Value : string.Empty;
-        return new AccessToken($"access.{user.Id}.{sessionId}{suffix}", Clock.UtcNow.AddMinutes(15));
+        if (till is not null)
+        {
+            suffix += $".till.{till.TillId}.{till.LocationId}";
+        }
+
+        return new AccessToken($"access.{user.Id}.{sessionId}{suffix}", till?.ExpiresAtUtc ?? Clock.UtcNow.AddMinutes(15));
     }
 
     public Task<bool> CanActForTenantAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default) =>

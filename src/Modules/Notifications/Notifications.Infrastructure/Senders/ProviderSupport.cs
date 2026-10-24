@@ -122,8 +122,6 @@ internal static class ProviderSupport
         var cleaned = new string((raw ?? string.Empty).Where(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-').ToArray());
         return cleaned.Length is > 0 and <= 40 ? prefix + "_" + cleaned.ToUpperInvariant().Replace('-', '_') : NotificationFailure.Rejected;
     }
-
-    public static bool LooksLikeHtml(string body) => SmtpSenderFactory.LooksLikeHtml(body);
 }
 
 /// <summary>Authentification des webhooks des prestataires qui ne signent pas : mot de passe en <c>Authorization: Basic</c>.</summary>

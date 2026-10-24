@@ -278,7 +278,17 @@ internal sealed class StorefrontOrdersFromOrders(
             {
                 // Compté par Promotions (usage du coupon et de sa promotion), puis posé sur la commande avec la même
                 // provenance que le flux PromotionApplied : celui-ci le trouvera déjà posé.
-                var applied = await applyPromotion.HandleAsync(new ApplyPromotionToOrderCommand(id, CouponCode: code), cancellationToken);
+                PromotionApplicationDto applied;
+                try
+                {
+                    applied = await applyPromotion.HandleAsync(new ApplyPromotionToOrderCommand(id, CouponCode: code), cancellationToken);
+                }
+                catch (Exception exception) when (exception is DomainException or NotFoundException)
+                {
+                    // Refus uniforme côté public (épuisé entre le devis et la validation, etc.).
+                    throw new DomainException(DeliveryCheckoutErrors.CouponInvalid);
+                }
+
                 await applyDiscount.HandleAsync(
                     new ApplyExternalDiscountCommand(id, DiscountSource.Promotion, applied.DiscountAmount, applied.CurrencyCode, applied.DiscountReference, "Coupon " + code),
                     cancellationToken);
@@ -534,6 +544,7 @@ internal sealed class StorefrontCustomersFromCustomers(
 /// <summary>
 /// Storefront -> Notifications : code de connexion du client (envoi, limites, vérification). Le code n'existe qu'en
 /// mémoire de Notifications ; rien ici ne le garde ni ne le journalise. Fail-closed hors du tenant du contexte.
+/// Demande anonyme : SMS/WhatsApp vers le pays du restaurant seulement, plafond horaire par restaurant.
 /// </summary>
 internal sealed class StorefrontOtpFromNotifications(
     ITenantContext tenantContext,
@@ -551,10 +562,23 @@ internal sealed class StorefrontOtpFromNotifications(
             CustomerSignInChannel.Email => Notifications.Domain.NotificationChannel.Email,
             _ => throw new DomainException(Storefront.Application.Customers.CustomerAccountErrors.AddressInvalid),
         };
-        var issued = await request.HandleAsync(
-            new Notifications.Application.Commands.RequestOtpCommand(
-                Storefront.Application.Customers.RequestCustomerCodeHandler.Purpose, notificationChannel, address, language),
-            cancellationToken);
+        Notifications.Application.Commands.OtpRequested issued;
+        try
+        {
+            issued = await request.HandleAsync(
+                new Notifications.Application.Commands.RequestOtpCommand(
+                    Storefront.Application.Customers.RequestCustomerCodeHandler.Purpose, notificationChannel, address, language, Anonymous: true),
+                cancellationToken);
+        }
+        catch (DomainException exception) when (exception.Code == Notifications.Application.NotificationsApplicationErrors.OtpPhoneCountryNotAllowed.Code)
+        {
+            throw new DomainException(Storefront.Application.Customers.CustomerAccountErrors.PhoneCountryNotAllowed);
+        }
+        catch (TooManyRequestsException exception) when (exception.Error.Code == Notifications.Application.NotificationsApplicationErrors.OtpPhoneLimitReached.Code)
+        {
+            throw new TooManyRequestsException(Storefront.Application.Customers.CustomerAccountErrors.PhoneLimitReached, exception.RetryAfter);
+        }
+
         return new OtpChallengeIssued(issued.ChallengeId, issued.ExpiresAtUtc);
     }
 

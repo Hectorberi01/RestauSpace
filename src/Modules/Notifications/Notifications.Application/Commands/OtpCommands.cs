@@ -13,7 +13,9 @@ public sealed record OtpRequested(Guid ChallengeId, DateTimeOffset ExpiresAtUtc)
 /// SÉCURITÉ : le code est envoyé IMMÉDIATEMENT puis le contenu de la notification est effacé AVANT toute sauvegarde ;
 /// il n'est donc jamais écrit en base, dans l'outbox ni dans un journal. Seule son empreinte HMAC est gardée.
 /// </summary>
-public sealed record RequestOtpCommand(string Purpose, NotificationChannel Channel, string Address, string? Language = null) : ICommand<OtpRequested>;
+/// <param name="Anonymous">Demandé par un visiteur du site : SMS et WhatsApp vers le pays du restaurant seulement, plafond horaire.</param>
+public sealed record RequestOtpCommand(string Purpose, NotificationChannel Channel, string Address, string? Language = null, bool Anonymous = false)
+    : ICommand<OtpRequested>;
 
 public sealed class RequestOtpHandler(
     ITenantContext tenantContext,
@@ -63,11 +65,20 @@ public sealed class RequestOtpHandler(
         var decision = await policy.DecideAsync(
             new NotificationIntent(
                 tenant, NotificationTypes.SecurityOtp, recipient, null, null,
-                NotificationLanguage.Create(command.Language ?? settings.DefaultLanguage), payload),
+                NotificationLanguage.Create(command.Language ?? settings.DefaultLanguage), payload, Anonymous: command.Anonymous),
             cancellationToken);
         if (decision.Notification is not { } notification)
         {
-            throw new DomainException(NotificationsApplicationErrors.OtpNotSent);
+            if (decision.Skipped == NotificationSkipReason.AnonymousPhoneLimitReached && tenant is { } owner)
+            {
+                throw new TooManyRequestsException(
+                    NotificationsApplicationErrors.OtpPhoneLimitReached,
+                    await policy.AnonymousRetryAfterAsync(owner, NotificationTypes.SecurityOtp, cancellationToken));
+            }
+
+            throw new DomainException(decision.Skipped == NotificationSkipReason.PhoneCountryNotAllowed
+                ? NotificationsApplicationErrors.OtpPhoneCountryNotAllowed
+                : NotificationsApplicationErrors.OtpNotSent);
         }
 
         // Envoi immédiat, SANS sauvegarde intermédiaire : le code n'existe qu'en mémoire.

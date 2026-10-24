@@ -83,6 +83,9 @@ public sealed class NotificationTemplate : AggregateRoot<TemplateId>
 
     public DateTimeOffset? ArchivedAtUtc { get; private set; }
 
+    /// <summary>Modèle HTML (Email dont le corps commence par une balise) : décide du format du message rendu.</summary>
+    public bool IsHtml => TemplateFormat.IsHtml(Channel, Body);
+
     /// <summary>Les variables utilisées par le sujet et le corps, dans l'ordre de première apparition.</summary>
     public IReadOnlyList<string> Variables =>
         TemplateVariables.Extract(Subject).Concat(TemplateVariables.Extract(Body)).Distinct(StringComparer.Ordinal).ToList();

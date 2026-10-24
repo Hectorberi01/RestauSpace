@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using Files.Application.Abstractions;
 using Files.Domain;
+using SaasRestaurant.BuildingBlocks.Infrastructure;
 
 namespace Files.Infrastructure.Storage;
 

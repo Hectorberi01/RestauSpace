@@ -81,8 +81,33 @@ docker run --rm postgres:16-alpine psql \
   "postgresql://<utilisateur>:<mdp>@10.10.0.2:5432/<base>?sslmode=require" -c "select 1"
 ```
 
-`DATABASE_SSL_MODE=Require` reste conseillé, même sur le réseau privé. `Disable` seulement pour un PostgreSQL déjà
-installé sans TLS (et `host` au lieu de `hostssl` dans son `pg_hba.conf`).
+### TLS vérifié (VerifyFull)
+
+`Require` chiffre mais ne vérifie pas le serveur : une machine qui prendrait l'IP `10.10.0.2` recevrait les mots de
+passe. `VerifyFull` vérifie le certificat avec une autorité propre au projet.
+
+Sur le serveur de base (PostgreSQL natif), avec le script recopié s'il n'y a pas le dépôt
+(`scp deploy/database/tls-ca.sh <serveur de base>:`) :
+
+```bash
+chmod +x tls-ca.sh
+sudo ./tls-ca.sh 10.10.0.2 18      # autorité (une fois) + certificat pour l'IP privée, ssl activé, rechargement
+```
+
+L'autorité est créée dans `/root/restauspace-db-ca/` : sauvegarder `ca.key` hors du serveur (coffre), puis l'effacer du
+serveur ; il faut la remettre seulement pour `sudo ./tls-ca.sh --renew` (certificat serveur valable 3 ans).
+
+Sur le serveur applicatif, recopier le certificat de l'autorité affiché à la fin (fichier public) :
+
+```bash
+mkdir -p deploy/production/tls && nano deploy/production/tls/db-ca.crt && chmod 644 deploy/production/tls/db-ca.crt
+# .env : DATABASE_SSL_MODE=VerifyFull et DATABASE_PGSSLMODE=verify-full
+docker run --rm -v "$PWD/deploy/production/tls:/tls:ro" postgres:16-alpine psql \
+  "postgresql://<utilisateur>:<mdp>@10.10.0.2:5432/<base>?sslmode=verify-full&sslrootcert=/tls/db-ca.crt" -c "select 1"
+```
+
+`deploy.sh` refuse de démarrer en `VerifyFull` sans `tls/db-ca.crt` et prévient tant que le mode est `Require`.
+`DATABASE_HOST` doit rester l'IP du certificat (`10.10.0.2`), pas un nom.
 
 ## 3. Serveur applicatif
 
@@ -121,18 +146,43 @@ contacts ou de `STOREFRONT_KEY`, relancer le pipeline.
 
 ### Jenkins (sur le Mac)
 
-`Jenkinsfile` à la racine. Toutes les branches : tests .NET, typecheck et build des 3 fronts. `main` : build des images
-en `linux/amd64` et push sur `ghcr.io/hectorberi01/`, validation manuelle (24 h), puis `ssh … ./deploy.sh <commit>`.
+`Jenkinsfile` à la racine, utilisé par deux jobs. Le job Multibranch construit n'importe quelle branche, donc le code
+de n'importe qui ayant le droit de pousser : il ne doit voir AUCUN identifiant. Seul le job de livraison, limité à
+`main`, les voit.
+
+| Job | Type | Fait | Identifiants |
+|---|---|---|---|
+| `ci/restauspace-ci` | Multibranch Pipeline | tests .NET, typecheck et build des 3 fronts, toutes les branches | aucun |
+| `release/restauspace-release` | Pipeline | mêmes vérifications, images `linux/amd64` sur `ghcr.io/hectorberi01/`, validation (24 h), `ssh … ./deploy.sh <commit>` | ceux du dossier `release` |
 
 À configurer :
-- Docker Desktop lancé (images et Testcontainers) ; plugins Pipeline, Git, Credentials Binding.
-- Job **Multibranch Pipeline** sur `https://github.com/Hectorberi01/RestauSpace.git`. GitHub ne peut pas joindre le
-  Mac : déclencheur « Scan périodique » toutes les 5 minutes.
-- Identifiants : `ghcr` (compte GitHub + jeton `write:packages`), `restauspace-build-env` (Secret file, copie remplie de
-  `build.env.example`), `restauspace-vps-ssh` (clé SSH du compte de déploiement).
-- Administrer Jenkins › Système › variables : `RESTAUSPACE_DEPLOY_HOST=deploy@<ip du VPS>` ;
-  `RESTAUSPACE_DEPLOY_DIR` si le dépôt n'est pas dans `~/restauspace`.
-- VPS : la clé publique dans `~deploy/.ssh/authorized_keys`, `deploy` membre du groupe `docker`, dépôt cloné.
+- Docker Desktop lancé (images et Testcontainers) ; plugins Pipeline, Git, Credentials Binding, Folders.
+- Deux dossiers : `ci` et `release`.
+- `ci/restauspace-ci` : Multibranch sur `https://github.com/Hectorberi01/RestauSpace.git`, « Scan périodique » 5 min
+  (GitHub ne peut pas joindre le Mac). Si les demandes de fusion sont découvertes : « Trust » = **Nobody** (le
+  Jenkinsfile d'un fork n'est jamais exécuté).
+- `release/restauspace-release` : Pipeline › « Pipeline script from SCM », même dépôt, branche `*/main` seulement,
+  script `Jenkinsfile`, déclencheur « Scrutation de l'outil de gestion de version » `H/5 * * * *`. Le nom du job et le
+  type Pipeline comptent : le Jenkinsfile ne pousse et ne déploie que dans ce job (pas de `BRANCH_NAME`, `main`).
+- Identifiants **dans le dossier `release`** (dossier › Credentials), jamais au niveau global : `ghcr` (compte GitHub +
+  jeton `write:packages`), `restauspace-build-env` (Secret file, copie remplie de `build.env.example`),
+  `restauspace-vps-ssh` (clé SSH du compte de déploiement). Supprimer ceux qui existent au niveau global.
+- GitHub : protéger `main` (pas de push direct, revue obligatoire), puisque tout ce qui arrive sur `main` est livré.
+- Administrer Jenkins › Système › variables : `RESTAUSPACE_DEPLOY_HOST=deploy@79.137.35.129` ;
+  `RESTAUSPACE_DEPLOY_DIR=/opt/restauspace/deploy/production` ; `RESTAUSPACE_DEPLOY_KNOWN_HOSTS` = clé du VPS, lue
+  avec `ssh-keyscan -t ed25519 79.137.35.129` et comparée à `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` sur le
+  VPS (sinon la clé est acceptée à la première connexion).
+
+VPS, compte `deploy` (membre du groupe `docker`, donc équivalent root : sa clé doit être bridée). Dans
+`~deploy/.ssh/authorized_keys`, une seule ligne pour Jenkins :
+
+```
+restrict,command="/opt/restauspace/deploy/production/deploy-ssh.sh" ssh-ed25519 AAAA… jenkins-restauspace
+```
+
+`restrict` coupe terminal, redirections de ports et agent ; `deploy-ssh.sh` n'accepte que `./deploy.sh <commit>`
+(hexadécimal) et refuse tout le reste. Vérifier depuis le Mac : `ssh deploy@79.137.35.129 id` doit répondre
+« Commande refusée ».
 
 ### Observabilité
 
@@ -167,25 +217,104 @@ La console envoie et lit les photos directement sur R2. Deux réglages, sinon l'
 ## 4. Sécurité
 
 - Seul Traefik est exposé ; les conteneurs n'ouvrent aucun port.
+- Traefik partagé : voir « Traefik partagé » ci-dessous.
 - L'API lit l'adresse du client dans `X-Forwarded-For`, accepté seulement des réseaux privés (`ReverseProxy__Enabled`).
 - Back-office et routes `/v1/admin` de l'API : restreindre `ADMIN_ALLOWED_IPS` dès que possible ; validation en deux
   étapes obligatoire pour les administrateurs.
 - PostgreSQL : l'API n'a que la lecture et l'écriture des données (`DATABASE_APP_USER`) ; le superutilisateur n'est
   jamais joignable à distance.
+- PostgreSQL en `VerifyFull` (« TLS vérifié »).
+- Jenkins : identifiants dans le seul job de livraison, clé SSH bridée (« Jenkins »).
 - `.env` et `api.env` ne sont jamais versionnés (`.gitignore`).
+
+### Traefik partagé
+
+Traefik sert aussi un autre projet. Un conteneur de cet autre projet qui porterait des labels ``Host(`api.restauspace.com`)``
+pourrait capter le trafic de RestauSpace. Dans la configuration statique de Traefik (son compose ou `traefik.yml`) :
+
+```yaml
+providers:
+  docker:
+    exposedByDefault: false            # seuls les conteneurs avec traefik.enable=true
+    network: proxy                     # réseau par défaut de l'autre projet
+    # Option : n'accepter que les conteneurs étiquetés, par projet.
+    # constraints: "Label(`traefik.project`, `restauspace`) || Label(`traefik.project`, `autre`)"
+```
+
+et dans son compose :
+
+```yaml
+services:
+  traefik:
+    networks: [proxy, restauspace-edge]
+networks:
+  restauspace-edge:
+    external: true
+```
+
+À vérifier après chaque changement : `docker network inspect restauspace-edge` ne liste que `traefik` et les
+conteneurs `restauspace-*` (`deploy.sh` le signale aussi) ; aucun autre conteneur ne déclare un routeur sur
+`*.restauspace.com` (`docker ps -q | xargs docker inspect -f '{{.Name}} {{json .Config.Labels}}' | grep restauspace`).
+Le tableau de bord de Traefik (`api.dashboard`) reste fermé ou protégé, et le socket Docker n'est monté qu'en lecture
+seule (`/var/run/docker.sock:/var/run/docker.sock:ro`).
 
 ## 5. Sauvegardes
 
-Faites sur le serveur de base (`deploy/database`, conteneur `backup`) : un dump par jour dans `backups/`, 14 jours.
-En garder une copie hors du serveur (par exemple `rclone copy backups r2:restauspace-backups`).
+Demandées depuis le back-office (ou chaque jour à 02:30 par l'API), faites par un agent sur le serveur de base :
+`deploy/database/backup-agent.sh`, lancé chaque minute par un timer systemd. L'agent lit la file `backups.*` en local
+(`postgres`, socket), fait `pg_dump -Fc`, vérifie, chiffre avec `age`, envoie dans OVH Object Storage (`rclone`) et
+écrit le statut. L'API n'a qu'une clé S3 en lecture (liens de téléchargement).
 
-Restaurer (sur le serveur de base, API arrêtée côté applicatif) :
+**Installation (serveur de base, une fois)** :
+
+1. OVH : un bucket privé `restauspace-backups` et deux utilisateurs S3 : l'agent (lecture, écriture, suppression sur ce
+   bucket) et l'API (lecture seule, `Backups__Storage__*` dans `api.env`).
+2. Sur le serveur :
 
 ```bash
-docker compose run --rm -T --entrypoint pg_restore backup --clean --if-exists -d <base> < backups/<fichier>.dump
+sudo apt install -y age rclone
+sudo install -d -m 700 /root/restauspace-backup
+sudo age-keygen -o /root/restauspace-backup/age-identity.txt     # affiche « public key: age1... »
+sudo chmod 600 /root/restauspace-backup/age-identity.txt
+sudo ./deploy/database/backup-agent.sh --install                  # script, unités systemd, /etc/restauspace-backup.env
+sudo nano /etc/restauspace-backup.env                             # age1..., clés S3 de l'agent, endpoint, région
+sudo systemctl enable --now restauspace-backup.timer
+sudo restauspace-backup-agent --status                            # agent, dernières sauvegardes
+systemctl status restauspace-backup.timer
+journalctl -t restauspace-backup -f
 ```
 
-Tester une restauration avant l'ouverture.
+Copier `age-identity.txt` hors ligne (coffre) : sans elle, aucune sauvegarde n'est lisible. Elle reste aussi sur le
+serveur pour restaurer : le chiffrement protège la copie dans le stockage, pas le serveur.
+`--install` n'écrase jamais un `/etc/restauspace-backup.env` existant.
+
+**Back-office** : demander une sauvegarde, la télécharger (code 2FA, lien de 5 minutes, fichier chiffré :
+`age -d -i age-identity.txt <fichier>.dump.age > restore.dump`), la supprimer, la restaurer.
+
+**Restauration** : refusée par l'agent (`disabled`) tant que `RESTORE_ENABLED=true` n'est pas dans
+`/etc/restauspace-backup.env`. Une fois activée : demande dans le back-office (code 2FA, nom de la base), 5 minutes
+pour annuler, puis l'agent restaure dans une base temporaire, garde l'historique `backups`, coupe les connexions et
+échange les noms. L'ancienne base reste sous `es_restaurant_before_<date>` (jamais supprimée automatiquement). Il faut
+la place libre de la base actuelle plus une marge, sinon `restore_failed`.
+
+Après une restauration, sur le serveur applicatif : `./deploy.sh <version actuelle>` (migrations et droits).
+
+Retour arrière (API arrêtée), sur le serveur de base :
+
+```sql
+-- sudo -u postgres psql -d postgres
+ALTER DATABASE es_restaurant RENAME TO es_restaurant_failed;
+ALTER DATABASE es_restaurant_before_<date> RENAME TO es_restaurant;
+GRANT CONNECT ON DATABASE es_restaurant TO es_restaurant_user, es_restaurant_app;   -- et monitoring s'il existe
+```
+
+puis `./deploy.sh <version actuelle>`. Supprimer les bases `_before_` à la main quand elles ne servent plus
+(`DROP DATABASE ...`).
+
+Tester une restauration avant l'ouverture, puis une fois par trimestre (`RESTORE_ENABLED=true` le temps du test).
+
+**Avec `deploy/database` (Docker)** : `backup.sh` reste utilisé par le conteneur `backup` (variables `BACKUP_*` du
+`.env`, `rclone.conf` dans `deploy/database/rclone/`). Il n'est pas relié au back-office.
 
 ## 6. Avant d'ouvrir au public
 

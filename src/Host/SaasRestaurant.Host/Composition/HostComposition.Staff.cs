@@ -74,6 +74,21 @@ internal static partial class HostComposition
 {
     public static string[] TenantPermissions => [.. LocationsPermissions.All, .. CatalogPermissions.All, .. FloorPermissions.All, .. ReservationsPermissions.All, .. OrdersPermissions.All, .. KitchenPermissions.All, .. PaymentsPermissions.All, .. InventoryPermissions.All, .. CustomersPermissions.All, .. NotificationsPermissions.All, .. LoyaltyPermissions.All, .. PromotionsPermissions.All, .. BillingPermissions.All, .. ReportingPermissions.All, .. FilesPermissions.All, .. IntegrationsPermissions.All, .. AuditPermissions.All, .. ReviewsPermissions.All, .. DeliveryPermissions.All, .. Tenants.Application.TenantsPermissions.All, .. Storefront.Application.StorefrontPermissions.All, .. Printing.Application.PrintingPermissions.All, .. Fiscal.Application.FiscalPermissions.All];
 
+    /// <summary>
+    /// Liste blanche d'une session de caisse (PIN) : vente, salle, cuisine, encaissement, remboursement, fidélité et
+    /// promotions au comptoir. Jamais le personnel, les rôles, la configuration, l'abonnement, l'audit ou le fiscal.
+    /// </summary>
+    public static string[] TillPermissions =>
+    [
+        OrdersPermissions.Take, OrdersPermissions.Process, OrdersPermissions.Discount,
+        PaymentsPermissions.Collect, PaymentsPermissions.Refund,
+        FloorPermissions.Serve, KitchenPermissions.Operate, ReservationsPermissions.Manage,
+        DeliveryPermissions.Operate, DeliveryPermissions.Remit, InventoryPermissions.Operate,
+        CustomersPermissions.View, CustomersPermissions.Manage,
+        LoyaltyPermissions.View, LoyaltyPermissions.Operate, PromotionsPermissions.View, PromotionsPermissions.Apply,
+        Printing.Application.PrintingPermissions.View, Storefront.Application.StorefrontPermissions.SendReceipts, ReviewsPermissions.Submit,
+    ];
+
     public static WebApplicationBuilder AddStaffComposition(this WebApplicationBuilder builder, string connectionString)
     {
         // --- Staff & RBAC : qui appartient à quel restaurant, avec quelles permissions. Les codes de permission de chaque
@@ -89,6 +104,7 @@ internal static partial class HostComposition
         builder.Services.AddScoped<IScheduleLocations, ScheduleLocationsFromLocations>();
         builder.Services.AddScoped<IOutboxConsumer, ScheduleNoticesFlow>();
         builder.Services.AddPermissionAuthorization();
+        builder.Services.AddTillSessionPermissions(TillPermissions);
         // Sélectionner un restaurant (POST /me/tenant) interroge désormais Staff : un profil actif dans un tenant non fermé.
         builder.Services.AddIdentityTenantMemberships<TenantMembershipsFromStaff>();
         return builder;

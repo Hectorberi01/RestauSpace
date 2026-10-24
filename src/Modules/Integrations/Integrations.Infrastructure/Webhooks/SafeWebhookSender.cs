@@ -4,70 +4,9 @@ using System.Net.Sockets;
 using System.Text;
 using Integrations.Application.Abstractions;
 using Microsoft.Extensions.Logging;
+using SaasRestaurant.BuildingBlocks.Infrastructure;
 
 namespace Integrations.Infrastructure.Webhooks;
-
-/// <summary>
-/// Adresses joignables par un webhook : uniquement des adresses publiques routables. Plus strict que le contrôle lexical
-/// de <c>WebhookUrl</c> : appliqué à CHAQUE adresse obtenue par la résolution DNS, juste avant la connexion.
-/// </summary>
-public static class PublicAddresses
-{
-    public static bool IsPublic(IPAddress address)
-    {
-        ArgumentNullException.ThrowIfNull(address);
-        if (address.IsIPv4MappedToIPv6)
-        {
-            address = address.MapToIPv4();
-        }
-
-        return address.AddressFamily switch
-        {
-            AddressFamily.InterNetwork => IsPublicV4(address.GetAddressBytes()),
-            AddressFamily.InterNetworkV6 => IsPublicV6(address.GetAddressBytes()),
-            _ => false,
-        };
-    }
-
-    private static bool IsPublicV4(byte[] b) => b[0] switch
-    {
-        0 or 10 or 127 => false,                     // « ce réseau », privé, loopback
-        100 => b[1] is < 64 or > 127,                // CGNAT 100.64.0.0/10
-        169 => b[1] != 254,                          // link-local (métadonnées des clouds : 169.254.169.254)
-        172 => b[1] is < 16 or > 31,                 // privé 172.16.0.0/12
-        192 => !(b[1] == 168 || (b[1] == 0 && b[2] is 0 or 2)), // privé, IETF 192.0.0.0/24, documentation
-        198 => b[1] is not (18 or 19) && !(b[1] == 51 && b[2] == 100), // bancs d'essai, documentation
-        203 => !(b[1] == 0 && b[2] == 113),          // documentation
-        >= 224 => false,                             // multicast, réservé, diffusion
-        _ => true,
-    };
-
-    private static bool IsPublicV6(byte[] b)
-    {
-        // Seul l'espace unicast global 2000::/3 est routable sur Internet.
-        if ((b[0] & 0xE0) != 0x20)
-        {
-            return false;
-        }
-
-        // Documentation 2001:db8::/32, Teredo 2001::/32 (tunnel vers une IPv4 quelconque).
-        if (b[0] == 0x20 && b[1] == 0x01 && ((b[2] == 0x0D && b[3] == 0xB8) || (b[2] == 0 && b[3] == 0)))
-        {
-            return false;
-        }
-
-        // 6to4 2002::/16 : l'adresse IPv4 embarquée décide.
-        if (b[0] == 0x20 && b[1] == 0x02)
-        {
-            return IsPublicV4([b[2], b[3], b[4], b[5]]);
-        }
-
-        return true;
-    }
-}
-
-/// <summary>La connexion a été refusée parce que le nom se résout vers une adresse non publique.</summary>
-internal sealed class BlockedAddressException() : Exception("The webhook host resolves to a non-public address.");
 
 /// <summary>
 /// Envoi des webhooks, protégé contre la SSRF : le nom est résolu ICI, chaque adresse obtenue doit être publique, et la
@@ -144,7 +83,7 @@ internal sealed class SafeWebhookSender : IWebhookSender, IDisposable
     {
         for (var current = exception.InnerException; current is not null; current = current.InnerException)
         {
-            if (current is BlockedAddressException)
+            if (current is NonPublicAddressException)
             {
                 return true;
             }
@@ -155,26 +94,7 @@ internal sealed class SafeWebhookSender : IWebhookSender, IDisposable
 
     private static async ValueTask<Stream> ConnectToPublicAddressAsync(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
     {
-        var endpoint = context.DnsEndPoint;
-        var addresses = IPAddress.TryParse(endpoint.Host, out var literal)
-            ? new[] { literal }
-            : await Dns.GetHostAddressesAsync(endpoint.Host, cancellationToken);
-        // Une seule adresse non publique suffit à refuser : un nom « mixte » est le signe d'un rebinding.
-        if (addresses.Length == 0 || !addresses.All(PublicAddresses.IsPublic))
-        {
-            throw new BlockedAddressException();
-        }
-
-        var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
-        try
-        {
-            await socket.ConnectAsync(addresses, endpoint.Port, cancellationToken);
-            return new NetworkStream(socket, ownsSocket: true);
-        }
-        catch
-        {
-            socket.Dispose();
-            throw;
-        }
+        var socket = await PublicAddresses.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port, cancellationToken);
+        return new NetworkStream(socket, ownsSocket: true);
     }
 }

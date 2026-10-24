@@ -105,6 +105,7 @@ export const en: Record<string, string> = {
   'Ce code a expiré : demandez-en un nouveau.': 'This code has expired: request a new one.',
   'Ce code promo a déjà été utilisé autant de fois que prévu.': 'This promo code has reached its usage limit.',
   'Ce code promo ne peut pas être utilisé.': 'This promo code cannot be used.',
+  'Plusieurs commandes attendent déjà leur paiement : payez-les ou annulez-les avant d’en passer une autre.': 'Several orders are already waiting for payment: pay or cancel them before placing another one.',
   'Ce code promo n’existe pas.': 'This promo code does not exist.',
   'Ce créneau est complet : choisissez une autre heure.': 'This time slot is full: choose another time.',
   'Ce lien de réservation n’est pas valable.': 'This booking link is not valid.',

@@ -88,7 +88,7 @@ public sealed class ListTenantAddOnsHandler(BillingWorkspace workspace) : IQuery
     }
 }
 
-/// <summary>Plateforme : ce que coûtera la prochaine période payée d'un abonnement (plan et options actives).</summary>
+/// <summary>Plateforme : ce que coûtera la prochaine période payée d'un abonnement (plan programmé compris, et options actives).</summary>
 public sealed record GetSubscriptionChargeQuery(Guid SubscriptionId) : IQuery<SubscriptionChargeDto>;
 
 public sealed class GetSubscriptionChargeHandler(BillingWorkspace workspace) : IQueryHandler<GetSubscriptionChargeQuery, SubscriptionChargeDto>
@@ -97,9 +97,7 @@ public sealed class GetSubscriptionChargeHandler(BillingWorkspace workspace) : I
     {
         ArgumentNullException.ThrowIfNull(query);
         var subscription = await workspace.LoadAnySubscriptionAsync(query.SubscriptionId, cancellationToken);
-        var plan = await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken)
-            ?? throw new NotFoundException(BillingApplicationErrors.PlanNotFound);
-        return await workspace.ChargeAsync(subscription, plan, cancellationToken);
+        return await workspace.ChargeAsync(subscription, await workspace.LoadNextPeriodPlanAsync(subscription, cancellationToken), cancellationToken);
     }
 }
 
@@ -140,7 +138,7 @@ public sealed class GetPlanHandler(BillingWorkspace workspace) : IQueryHandler<G
         PlanDto.From(await workspace.LoadPlanAsync(query.PlanId, cancellationToken));
 }
 
-/// <summary>L'abonnement vivant du restaurant, son plan et sa consommation du mois (404 sans abonnement).</summary>
+/// <summary>L'abonnement vivant du restaurant, son plan, sa consommation du mois et son changement programmé (404 sans abonnement).</summary>
 public sealed record GetMySubscriptionQuery : IQuery<MySubscriptionDto>;
 
 public sealed class GetMySubscriptionHandler(BillingWorkspace workspace, IClock clock) : IQueryHandler<GetMySubscriptionQuery, MySubscriptionDto>
@@ -165,7 +163,10 @@ public sealed class GetMySubscriptionHandler(BillingWorkspace workspace, IClock 
             .Select(entitlement => new FeatureUsageDto(
                 entitlement.FeatureCode.Value, entitlement.Enabled, entitlement.Limit, used.GetValueOrDefault(entitlement.FeatureCode.Value)))
             .ToList();
-        return new MySubscriptionDto(SubscriptionDto.From(subscription), PlanDto.From(plan), usage, await workspace.ChargeAsync(subscription, plan, cancellationToken));
+        var next = await workspace.LoadNextPeriodPlanAsync(subscription, cancellationToken);
+        var scheduled = subscription.ScheduledPlanEffectiveAtUtc is { } effectiveAt ? new ScheduledPlanChangeDto(next.Id.Value, next.Name, effectiveAt) : null;
+        return new MySubscriptionDto(
+            SubscriptionDto.From(subscription), PlanDto.From(plan), usage, await workspace.ChargeAsync(subscription, next, cancellationToken), scheduled);
     }
 }
 

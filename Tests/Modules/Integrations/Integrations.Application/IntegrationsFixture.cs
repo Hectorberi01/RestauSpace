@@ -87,7 +87,7 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     public IssueApiCredentialHandler Issue => new(Workspace, this, Clock);
 
-    public RotateApiCredentialHandler RotateKey => new(Workspace, Clock);
+    public RotateApiCredentialHandler RotateKey => new(Workspace, this, Clock);
 
     public RevokeApiCredentialHandler Revoke => new(Workspace, Clock);
 

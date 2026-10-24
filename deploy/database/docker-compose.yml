@@ -66,14 +66,24 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGSSLMODE: require
       RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      KEEP_MIN: ${BACKUP_KEEP_MIN:-3}
       INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
-    entrypoint: ["/bin/sh", "/backup.sh"]
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
+      BACKUP_PING_URL: ${BACKUP_PING_URL:-}
+    # age (chiffrement) et rclone (copie hors du serveur) installés seulement s'ils servent.
+    entrypoint: ["/bin/sh", "-c", "[ -z \"$${BACKUP_AGE_RECIPIENT}$${BACKUP_RCLONE_REMOTE}\" ] || apk add --no-cache age rclone >/dev/null; exec /bin/sh /backup.sh"]
     volumes:
       - ./backup.sh:/backup.sh:ro
       - ${BACKUP_DIR:-./backups}:/backups
+      # Dossier de rclone.conf (remote de BACKUP_RCLONE_REMOTE), si utilisée.
+      - ${BACKUP_RCLONE_DIR:-./rclone}:/root/.config/rclone:ro
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
 # Sous-réseau fixe : pg_hba.conf n'y autorise que la sauvegarde (TLS + mot de passe).
 networks:

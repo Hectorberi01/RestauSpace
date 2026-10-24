@@ -4,8 +4,9 @@ using Identity.Domain.Users;
 namespace Identity.Application.Commands;
 
 /// <summary>
-/// Échange un refresh token contre une nouvelle paire. Le jeton présenté cesse de fonctionner ; le présenter à
-/// nouveau plus de 10 s après est traité comme un vol et révoque toutes les sessions de l'utilisateur.
+/// Échange un refresh token contre une nouvelle paire. Le jeton présenté cesse de fonctionner ; présenter à nouveau
+/// n'importe quel ancien jeton de la famille (plus de 10 s après) est traité comme un vol et révoque toutes les sessions
+/// de l'utilisateur. Une famille ne dure jamais plus que <see cref="IdentitySettings.SessionFamilyLifetime"/>.
 /// </summary>
 /// <param name="TenantId">
 /// Restaurant pour lequel agit le nouvel access token (le client envoie celui qu'il avait sélectionné). Revérifié à
@@ -38,9 +39,19 @@ public sealed class RefreshSessionHandler(
         }
 
         var presented = refreshTokens.Hash(command.RefreshToken);
+        var anchor = RefreshTokenFamily.AnchorOf(command.RefreshToken) ?? command.RefreshToken;
+        var anchorHash = refreshTokens.Hash(anchor);
         var user = await users.FindBySessionTokenAsync(presented, cancellationToken);
         if (user == null)
         {
+            // Ancienne génération déjà effacée : l'ancre de sa famille la reconnaît.
+            var owner = anchorHash == presented ? null : await users.FindBySessionTokenAsync(anchorHash, cancellationToken);
+            if (owner is not null && owner.RevokeAfterFamilyTokenReuse(anchorHash, clock))
+            {
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                throw new UnauthenticatedException(UserErrors.RefreshTokenReplayed);
+            }
+
             throw new UnauthenticatedException(IdentityApplicationErrors.InvalidRefreshToken);
         }
 
@@ -52,15 +63,15 @@ public sealed class RefreshSessionHandler(
             throw new ConcurrencyException(IdentityApplicationErrors.ConcurrentUpdate);
         }
 
-        var next = refreshTokens.Generate();
+        var next = RefreshTokenFamily.Next(refreshTokens, anchor);
         SessionRotationResult result;
         try
         {
-            result = user.RotateSession(presented, next.Hash, settings.SessionLifetime, clock);
+            result = user.RotateSession(presented, next.Hash, settings.SessionLifetime, clock, anchorHash, settings.SessionFamilyLifetime);
         }
         catch (DomainException refused)
         {
-            // Session révoquée ou expirée, compte verrouillé ou désactivé : l'appelant doit se reconnecter.
+            // Session révoquée ou expirée, famille trop ancienne, compte verrouillé ou désactivé : se reconnecter.
             throw new UnauthenticatedException(refused.Error);
         }
 

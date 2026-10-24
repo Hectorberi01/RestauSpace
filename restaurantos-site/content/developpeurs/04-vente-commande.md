@@ -75,7 +75,7 @@ récompense.
 | `meetsMinimum` | `false` : désactivez « Commander » et affichez `minimumOrderAmount` (comparé au total hors frais de livraison). |
 | `canPayAtCounter` / `canPayOnline` | Les choix de paiement à proposer pour ce montant. |
 | `onlinePaymentOptions` | Les prestataires disponibles et leurs moyens (`MobileMoney`, `Card`, `ApplePay`, `GooglePay`, `PayPal`, `BankTransfer`). |
-| `coupon` | Un code refusé ne fait pas échouer le devis : `isValid: false` et `refusalCode` (à traduire, voir [Codes d'erreur](12-reference-erreurs.md#codes-promo)). |
+| `coupon` | Un code refusé ne fait pas échouer le devis : `isValid: false` et `refusalCode: "storefront.checkout.coupon_invalid"`, le même pour tout motif (voir [Codes d'erreur](12-reference-erreurs.md#codes-promo)). |
 | `reward` | La récompense de fidélité appliquée (client connecté). |
 
 Le devis ne vérifie pas que l'établissement est ouvert : utilisez `acceptsOrdersNow` et `serviceModes` de `GET /`.
@@ -154,8 +154,10 @@ Réponse `201` :
   n'expire pas ; traitez-le comme un secret.
 - `status: "Accepted"` : acceptation automatique et paiement au comptoir, la commande part en cuisine.
 - `status: "Received"` + `acceptBeforeUtc` : le restaurant doit l'accepter avant cette heure (sinon elle est annulée).
-- `status: "Received"` + `payBeforeUtc` : paiement en ligne attendu avant cette heure (15 minutes par défaut), sinon la
-  commande est annulée. Enchaînez sur [Paiement en ligne](05-vente-paiement.md).
+- `status: "Received"` + `payBeforeUtc` : paiement en ligne attendu avant cette heure (10 minutes au plus), sinon la
+  commande est annulée et rend son créneau et son code promo. Enchaînez sur [Paiement en ligne](05-vente-paiement.md).
+  Au plus 3 commandes en attente de paiement en ligne par adresse IP et par client : au-delà,
+  `storefront.checkout.too_many_pending_payments` (409).
 
 ### Refus fréquents
 

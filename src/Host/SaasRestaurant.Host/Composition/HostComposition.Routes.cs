@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Audit.Api;
 using Audit.Application;
+using Backups.Api;
 using Billing.Api;
 using Billing.Application;
 using Billing.Application.Abstractions;
@@ -87,6 +88,7 @@ internal static partial class HostComposition
         app.UseCors();
         app.UseAuthentication();
         app.UseApiKeyRestrictions();
+        app.UseTillSessionRestrictions();
         app.UseRequestLogScope();
         app.UseAuthorization();
         app.UseRateLimiter();
@@ -181,6 +183,7 @@ internal static partial class HostComposition
         var printingRoutes = v1.MapPrintingEndpoints();
         printingRoutes.Console.RequireAuthorization(Tenancy.TenantMemberPolicy);
         v1.MapFiscalEndpoints().RequireAuthorization(Tenancy.TenantMemberPolicy);
+        v1.MapBackupsEndpoints().RequireAuthorization(Policies.PlatformAdmin);
         return app;
     }
 }

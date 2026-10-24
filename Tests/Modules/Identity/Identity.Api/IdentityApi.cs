@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Identity.Application.Abstractions;
+using Identity.Application.Commands;
 using Identity.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -115,6 +116,15 @@ public class IdentityApi : IAsyncLifetime, IIdentityNotifier
         await GivenActiveUserAsync(email);
         var tokens = await LoginAsync(email);
         return (email, tokens, WithToken(tokens.GetProperty("accessToken").GetString()!));
+    }
+
+    /// <summary>Session de caisse pour ce compte, comme l'ouvre Staff après un PIN juste (le compte doit être membre).</summary>
+    public async Task<OperatorSessionDto> StartTillSessionAsync(Guid userId, Guid tenantId, Guid tillId, Guid locationId)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<StartOperatorSessionCommand, OperatorSessionDto?>>();
+        return await handler.HandleAsync(new StartOperatorSessionCommand(userId, tenantId, tillId, locationId, "Caisse partagée · Test"))
+            ?? throw new InvalidOperationException("The till session was refused.");
     }
 
     public Task SendEmailVerificationAsync(Email email, string token, CancellationToken cancellationToken = default) =>

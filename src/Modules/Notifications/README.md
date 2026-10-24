@@ -287,6 +287,11 @@ Voir `docs/NOTIFICATIONS-CAHIER.md` et `docs/NOTIFICATIONS-CONFORMITE.md`.
 - `NotificationPermission.Decide(type, canal, destinataire, préférences?, consentement?)` -> `PermissionDecision`
   (`OptedOut`, `NotACustomer`, `ConsentRequired`, `ConsentNotGranted`, `ConsentMismatch`).
 - Types ESSENTIELS (`NotificationTypeDefinition.IsEssential`) : vérification d'email, réinitialisation, OTP.
+- **Envoi anonyme** (`Anonymous` sur `SendNotificationCommand`, `NotificationTrigger`, `RequestOtpCommand`, posé par l'hôte
+  pour le site public) : SMS et WhatsApp seulement vers un numéro du pays de l'établissement (sinon des établissements du
+  restaurant), `PhoneCountries` ; au plus `Notifications:AnonymousSmsPerTenantPerHour` (défaut 100) par restaurant et par
+  heure glissante, comptés en base (`PhoneCountryNotAllowed`, `AnonymousPhoneLimitReached` ; OTP :
+  `notifications.otp.phone_country_not_allowed`, `notifications.otp.phone_limit_reached` en 429).
 
 ## 10. Notification (étape 7)
 
@@ -367,6 +372,10 @@ gardé en mémoire jusqu'à son expiration. Amazon SES : requêtes signées AWS 
 Webhooks non signés par le prestataire (Brevo, Twilio, Infobip, Africa's Talking, Mailjet) : l'URL déclarée chez lui
 porte le mot de passe du compte, `https://restauspace:<webhook_password>@<api>/v1/notifications/webhooks/<CODE>` (ou
 `…/<CODE>/{configurationId}` pour le compte d'un restaurant), comparé à temps constant.
+
+Chaque événement est rangé sous un id qualifié par le compte signataire (`p:` plateforme, `t:{tenant}:` restaurant) : un
+restaurant n'occupe pas l'id d'un autre, et ses rapports ne s'appliquent qu'à SES notifications. Un id sans signataire
+n'est jamais appliqué (`signer_unknown`).
 
 - **SMTP** (MailKit) : corps envoyé en HTML s'il commence par une balise courante, sinon en texte. `Message-ID` =
   id de la tentative, renvoyé comme `ProviderMessageId`. Erreurs traduites par code SMTP (destinataire refusé =

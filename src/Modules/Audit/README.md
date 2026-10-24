@@ -189,12 +189,13 @@ dotnet ef migrations add InitialCreate --project src/Modules/Audit/Audit.Infrast
 - `AuditFeed` (hôte, consommateur d'outbox) : une RÈGLE par événement audité, avec code d'action, type et champ de la
   cible, auteur et LISTE BLANCHE des champs recopiés en métadonnées. Tenant = celui de l'événement. Origine =
   `outbox.{module}.{id du message}`. Instant = celui de l'événement.
-- Événements audités (99) : Identity (comptes, mots de passe, verrouillages, sessions, rejeu de jeton) ; Staff (rôles,
+- Événements audités (121) : Identity (comptes, mots de passe, verrouillages, sessions, rejeu de jeton) ; Staff (rôles,
   permissions, membres) ; Tenants (cycle de vie, réglages) ; Payments (remboursements, capture après annulation,
   prestataires, configurations et identifiants marchands) ; Billing (plans, abonnement) ; Inventory (ajustements,
   pertes, inventaires) ; Customers (anonymisation, consentements) ; Notifications (prestataires, configurations,
   effacement) ; Reporting (export demandé) ; Integrations (clés d'API, endpoints, secrets) ; Reviews (examen et archivage
-  d'un avis, détachement de l'auteur, publication et clôture d'un questionnaire).
+  d'un avis, détachement de l'auteur, publication et clôture d'un questionnaire) ; Backups (demande de sauvegarde, lien de
+  téléchargement, suppression, restauration et son annulation).
 - Jamais recopiés : adresses e-mail, contacts, motifs saisis par un client, références de prestataire, secrets, URL
   complètes. Un test vérifie qu'aucune clé de métadonnée d'une règle n'est jugée sensible (elle serait expurgée).
 - Auteur : le champ `Actor` de l'événement (Integrations), sinon l'utilisateur désigné par la règle (actions de

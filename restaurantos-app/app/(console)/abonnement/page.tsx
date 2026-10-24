@@ -8,7 +8,7 @@ import {useResource} from '@/lib/hooks';
 import {
   cancelAddOn, changeAddOnQuantity, changePlan, featureLabel, isCounted, isMonthly, listAddOns, listPayments, listPlans, loadOnlinePayment,
   loadSubscription, methodName, providerName, pushesToPhone, refreshCheckout, scheduleCancellation, startCheckout, statusLabel, statusTone, subscribe,
-  subscribeAddOn, suspensionLabel, unscheduleCancellation, type Charge, type Checkout, type MyAddOns, type MySubscription, type OnlinePayment, type PaymentOption,
+  subscribeAddOn, suspensionLabel, unscheduleCancellation, unschedulePlanChange, type Charge, type Checkout, type MyAddOns, type MySubscription, type OnlinePayment, type PaymentOption,
   type Plan, type TenantAddOn,
 } from '@/lib/billing';
 import {useConsole} from '@/components/console';
@@ -71,16 +71,19 @@ const addMonths = (iso: string, months: number) => {
 };
 
 function Plans({current, plans, canChange, freeAllowed, onChoose}: {current: MySubscription | null; plans: Plan[]; canChange: boolean; freeAllowed: boolean; onChoose: (plan: Plan) => void}) {
+  const scheduled = current?.scheduledPlan ?? null;
   const codes = [...new Set(plans.flatMap(plan => plan.entitlements.map(item => item.featureCode)))].sort();
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {plans.map(plan => {
         const isCurrent = current?.plan.id === plan.id;
+        const isScheduled = scheduled?.planId === plan.id;
         return (
           <Card key={plan.id} className={cx('flex flex-col p-5', isCurrent && 'border-brand-500 ring-1 ring-brand-500')}>
             <div className="flex items-start justify-between gap-2">
               <p className="text-lg font-semibold">{plan.name}</p>
               {isCurrent && <Badge tone="brand">Plan actuel</Badge>}
+              {isScheduled && <Badge tone="blue">À partir du {day(scheduled.effectiveAtUtc)}</Badge>}
             </div>
             <p className="mt-2"><span className="text-[1.75rem] leading-tight font-bold tracking-tight text-ink-900">{money(plan.price, plan.currencyCode)}</span><span className="text-ink-500"> / {per(plan)}</span></p>
             <ul className="mt-4 flex-1 space-y-1.5 text-sm">
@@ -96,7 +99,7 @@ function Plans({current, plans, canChange, freeAllowed, onChoose}: {current: MyS
               })}
             </ul>
             {plan.price === 0 && <p className="mt-3 text-xs text-ink-500">Un mois, une seule fois, au début de l’abonnement.</p>}
-            {canChange && !isCurrent && (plan.price > 0 || freeAllowed) && (
+            {canChange && !isCurrent && !isScheduled && (plan.price > 0 || freeAllowed) && (
               <Button className="mt-5" variant={current ? 'secondary' : 'primary'} onClick={() => onChoose(plan)}>{current ? 'Passer à ce plan' : 'Choisir ce plan'}</Button>
             )}
           </Card>
@@ -430,6 +433,9 @@ export default function SubscriptionPage() {
   // Le serveur vérifie aussi que c'est le premier abonnement.
   const freeAllowed = !sub || (sub.status === 'Trialing' && new Date(sub.currentPeriodEndUtc) <= addMonths(sub.startedAtUtc, 1));
   const offered = !!sub?.isComplimentary;
+  // Période payée : le changement de plan s'applique à l'échéance.
+  const paidPeriod = sub?.status === 'Active' && !offered;
+  const scheduled = data?.scheduledPlan ?? null;
   const forever = offered && !sub?.complimentaryUntilUtc;
   const refresh = async () => {
     await subscription.reload();
@@ -484,6 +490,20 @@ export default function SubscriptionPage() {
                 }, 'Résiliation annulée : votre abonnement continue.')}>Garder mon abonnement</Button>}
               </div>
             )}
+            {scheduled && (
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+                <CalendarClock className="size-5 shrink-0" aria-hidden="true" />
+                <span className="flex-1">
+                  Passage au plan <strong>{scheduled.planName}</strong> le {day(scheduled.effectiveAtUtc)}. D’ici là, vous gardez le plan {data.plan.name} et ses limites.
+                  {data.nextCharge ? ` Prochaine période : ${money(data.nextCharge.total, data.nextCharge.currencyCode)}.` : ''}
+                  {manage ? ' Pour résilier, annulez d’abord ce changement.' : ''}
+                </span>
+                {manage && <Button size="sm" variant="secondary" busy={busy === 'unschedule'} onClick={() => run('unschedule', async () => {
+                  await unschedulePlanChange();
+                  await refresh();
+                }, `Changement annulé : vous gardez le plan ${data.plan.name}.`)}>Annuler le changement</Button>}
+              </div>
+            )}
             {payRequest > 0 && !payable && !offered && (
               <div className="mt-5"><Alert tone="amber">
                 {!online.data?.available
@@ -508,7 +528,7 @@ export default function SubscriptionPage() {
                   setPaidAt(Date.now());
                 }} />
               )}
-              {manage && !forever && !sub!.cancelAtPeriodEnd && (sub!.status === 'Active' || sub!.status === 'Trialing' || sub!.status === 'PastDue') && (
+              {manage && !forever && !sub!.cancelAtPeriodEnd && !scheduled && (sub!.status === 'Active' || sub!.status === 'Trialing' || sub!.status === 'PastDue') && (
                 <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setCancelling(true)}>Résilier</Button>
               )}
             </div>
@@ -522,6 +542,7 @@ export default function SubscriptionPage() {
         {plans.data.length === 0 ? <p className="text-sm text-ink-500">Aucun plan disponible dans votre devise.</p> : (
           <Plans current={data} plans={plans.data} canChange={canChange && !offered} freeAllowed={freeAllowed} onChoose={setChoosing} />
         )}
+        {paidPeriod && canChange && <p className="text-sm text-ink-500">Votre période est payée jusqu’au {day(sub!.currentPeriodEndUtc)} : un nouveau plan s’applique à cette date.</p>}
         {data && offered && manage && <p className="text-sm text-ink-500">Votre plan est offert : pour en changer, contactez l’équipe RestauSpace.</p>}
         {data && !offered && !canChange && manage && <p className="text-sm text-ink-500">Le plan ne peut changer que pendant l’essai, un abonnement actif ou après la fin de l’essai.</p>}
       </section>
@@ -539,21 +560,31 @@ export default function SubscriptionPage() {
         <>
           <Button variant="secondary" onClick={() => setChoosing(null)}>Annuler</Button>
           <Button busy={busy === 'plan'} onClick={() => choosing && run('plan', async () => {
-            const paying = choosing.price > 0;
+            // Période payée : rien à payer avant l'échéance.
+            const paying = choosing.price > 0 && !paidPeriod;
             if (data) await changePlan(choosing.id);
             else await subscribe(choosing.id);
             setChoosing(null);
             await refresh();
             // Plan payant : ouvre tout de suite le choix du moyen de paiement.
             if (paying) setPayRequest(Date.now());
-          }, data ? 'Plan changé.' : 'Abonnement démarré.')}>{choosing && choosing.price > 0 ? 'Confirmer et payer' : 'Confirmer'}</Button>
+          }, paidPeriod ? `Changement programmé le ${day(sub!.currentPeriodEndUtc)}.` : data ? 'Plan changé.' : 'Abonnement démarré.')}>{paidPeriod ? 'Programmer le changement' : choosing && choosing.price > 0 ? 'Confirmer et payer' : 'Confirmer'}</Button>
         </>
       }>
         {choosing && (
           <div className="space-y-2 text-sm text-ink-700">
             <p><strong>{choosing.name}</strong> : {money(choosing.price, choosing.currencyCode)} / {per(choosing)}.</p>
-            <p>{data ? 'Le nouveau plan et ses limites s’appliquent tout de suite ; le nouveau tarif s’applique à la prochaine échéance.' : 'Votre abonnement démarre aujourd’hui.'}</p>
-            {choosing.price > 0 && <p>Vous choisissez ensuite votre moyen de paiement. Pendant l’essai, le paiement règle la première période après l’essai.</p>}
+            {paidPeriod ? (
+              <>
+                <p>Le plan {choosing.name} s’appliquera le <strong>{day(sub!.currentPeriodEndUtc)}</strong>, à la fin de votre période payée. D’ici là, vous gardez le plan {data!.plan.name} et ses limites.</p>
+                <p>La période suivante sera facturée au tarif du plan {choosing.name}, options comprises. Vous pouvez annuler ce changement jusqu’à l’échéance.</p>
+              </>
+            ) : (
+              <>
+                <p>{data ? 'Le nouveau plan et ses limites s’appliquent tout de suite.' : 'Votre abonnement démarre aujourd’hui.'}</p>
+                {choosing.price > 0 && <p>Vous choisissez ensuite votre moyen de paiement. Pendant l’essai, le paiement règle la première période après l’essai.</p>}
+              </>
+            )}
           </div>
         )}
       </Modal>

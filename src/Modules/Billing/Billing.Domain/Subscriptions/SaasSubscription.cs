@@ -6,6 +6,9 @@ namespace Billing.Domain;
 /// Une OFFRE de la plateforme (<see cref="GrantComplimentary"/>) rend l'abonnement actif sans paiement jusqu'à une date, ou
 /// sans fin (<see cref="UnlimitedEndUtc"/>) : la période courante est alors la période offerte. À son terme, le parcours
 /// normal reprend (impayé, délai de grâce, suspension).
+/// Pendant une période payée, un changement de plan est PROGRAMMÉ (<see cref="ScheduledPlanId"/>) : il s'applique au début
+/// de la période suivante (<see cref="RenewPeriod"/>, <see cref="Activate"/>, <see cref="ApplyScheduledPlan"/>).
+/// Résiliation programmée et changement programmé s'excluent.
 /// </summary>
 public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwned
 {
@@ -53,6 +56,15 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
     /// <summary>Fin de la période dont le restaurant a déjà été prévenu de l'échéance (un préavis par échéance).</summary>
     public DateTimeOffset? EndingNoticeSentForUtc { get; private set; }
+
+    /// <summary>Plan qui remplacera le plan courant à la fin de la période ; null si aucun changement programmé.</summary>
+    public PlanId? ScheduledPlanId { get; private set; }
+
+    /// <summary>Date d'effet du changement programmé : la fin de la période courante.</summary>
+    public DateTimeOffset? ScheduledPlanEffectiveAtUtc => ScheduledPlanId is null ? null : CurrentPeriod.EndUtc;
+
+    /// <summary>Le plan de la prochaine période : le plan programmé s'il y en a un.</summary>
+    public PlanId NextPeriodPlanId => ScheduledPlanId ?? PlanId;
 
     public static SaasSubscription StartTrial(
         TenantId tenantId,
@@ -103,6 +115,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
             SubscriptionErrors.CancellationScheduled);
 
         var previous = Status;
+        ApplyScheduledPlanNow(now);
         Status = SubscriptionStatus.Active;
         CurrentPeriod = paidPeriod;
         IsComplimentary = false;
@@ -110,6 +123,10 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         Raise(new SubscriptionActivated(TenantId, Id, PlanId, previous, paidPeriod, now));
     }
 
+    /// <summary>
+    /// Change de plan. Essai, ou essai expiré : tout de suite. Période payée : programmé pour la fin de la période (le plan
+    /// courant et ses droits restent jusque-là) ; rechoisir le plan courant annule le changement programmé.
+    /// </summary>
     public void ChangePlan(PlanReference newPlan, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(newPlan);
@@ -121,6 +138,13 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
             && !(Status == SubscriptionStatus.Suspended && SuspensionReason == Billing.Domain.SuspensionReason.TrialExpired),
             SubscriptionErrors.PlanChangeNotAllowed);
         DomainException.ThrowIf(IsComplimentary, SubscriptionErrors.Complimentary);
+        var now = clock.UtcNow;
+        if (Status == SubscriptionStatus.Active)
+        {
+            SchedulePlan(newPlan, now);
+            return;
+        }
+
         if (newPlan.PlanId == PlanId)
         {
             return;
@@ -131,7 +155,36 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
         var previous = PlanId;
         PlanId = newPlan.PlanId;
-        Raise(new SubscriptionPlanChanged(TenantId, Id, previous, PlanId, clock.UtcNow));
+        Raise(new SubscriptionPlanChanged(TenantId, Id, previous, PlanId, now));
+    }
+
+    /// <summary>Annule le changement de plan programmé.</summary>
+    public void UnschedulePlanChange(IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+        EnsureNotCancelled();
+        DomainException.ThrowIf(ScheduledPlanId is null, SubscriptionErrors.PlanChangeNotScheduled);
+
+        ClearScheduledPlan(clock.UtcNow);
+    }
+
+    /// <summary>
+    /// Le job d'échéance, une fois la période terminée : le plan programmé devient le plan courant, avant le calcul de la
+    /// période suivante. Faux s'il n'y a rien à appliquer.
+    /// </summary>
+    public bool ApplyScheduledPlan(IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+        EnsureNotCancelled();
+        var now = clock.UtcNow;
+        if (ScheduledPlanId is null)
+        {
+            return false;
+        }
+
+        DomainException.ThrowIf(!CurrentPeriod.HasEndedAt(now), SubscriptionErrors.PeriodNotEnded);
+        ApplyScheduledPlanNow(now);
+        return true;
     }
 
     public void MarkPastDue(IClock clock)
@@ -178,6 +231,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         EnsureNotCancelled();
         DomainException.ThrowIf(CancelAtPeriodEnd, SubscriptionErrors.CancellationAlreadyScheduled);
         DomainException.ThrowIf(IsComplimentaryUnlimited, SubscriptionErrors.Complimentary);
+        DomainException.ThrowIf(ScheduledPlanId is not null, SubscriptionErrors.PlanChangeScheduled);
 
         CancelAtPeriodEnd = true;
         Raise(new SubscriptionCancellationScheduled(TenantId, Id, CurrentPeriod.EndUtc, clock.UtcNow));
@@ -227,6 +281,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         DomainException.ThrowIf(nextPeriod.StartUtc != CurrentPeriod.EndUtc, SubscriptionErrors.PeriodNotContiguous);
         DomainException.ThrowIf(!periodHasEnded, SubscriptionErrors.PeriodNotEnded);
 
+        ApplyScheduledPlanNow(now);
         CurrentPeriod = nextPeriod;
         IsComplimentary = false;
         Raise(new SubscriptionPeriodRenewed(TenantId, Id, PlanId, nextPeriod, now));
@@ -235,7 +290,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
     /// <summary>
     /// La plateforme offre <paramref name="plan"/> à partir de maintenant, jusqu'à <paramref name="untilUtc"/> ou sans fin
     /// (null). Depuis tout statut vivant : un abonnement impayé ou suspendu est rétabli. Une résiliation programmée est
-    /// retirée (c'est une décision de la plateforme). Une nouvelle offre remplace la précédente.
+    /// retirée (c'est une décision de la plateforme), comme un changement de plan programmé. Une nouvelle offre remplace la précédente.
     /// </summary>
     public void GrantComplimentary(PlanReference plan, DateTimeOffset? untilUtc, IClock clock)
     {
@@ -251,6 +306,11 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
         var previous = Status;
         var previousPlan = PlanId;
+        if (ScheduledPlanId is not null)
+        {
+            ClearScheduledPlan(now);
+        }
+
         PlanId = plan.PlanId;
         Status = SubscriptionStatus.Active;
         CurrentPeriod = Period.Create(now, end);
@@ -309,9 +369,56 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         return true;
     }
 
+    private void SchedulePlan(PlanReference newPlan, DateTimeOffset now)
+    {
+        if (newPlan.PlanId == PlanId)
+        {
+            if (ScheduledPlanId is not null)
+            {
+                ClearScheduledPlan(now);
+            }
+
+            return;
+        }
+
+        if (newPlan.PlanId == ScheduledPlanId)
+        {
+            return;
+        }
+
+        DomainException.ThrowIf(newPlan.IsAddOn, SubscriptionErrors.PlanIsAddOn);
+        DomainException.ThrowIf(!newPlan.IsActive, SubscriptionErrors.PlanArchived);
+        DomainException.ThrowIf(CancelAtPeriodEnd, SubscriptionErrors.CancellationScheduled);
+
+        ScheduledPlanId = newPlan.PlanId;
+        Raise(new SubscriptionPlanChangeScheduled(TenantId, Id, PlanId, newPlan.PlanId, CurrentPeriod.EndUtc, now));
+    }
+
+    private void ClearScheduledPlan(DateTimeOffset now)
+    {
+        var scheduled = ScheduledPlanId!.Value;
+        ScheduledPlanId = null;
+        Raise(new SubscriptionPlanChangeUnscheduled(TenantId, Id, scheduled, now));
+    }
+
+    // Une nouvelle période commence : le plan programmé devient le plan courant.
+    private void ApplyScheduledPlanNow(DateTimeOffset now)
+    {
+        if (ScheduledPlanId is not { } next)
+        {
+            return;
+        }
+
+        var previous = PlanId;
+        PlanId = next;
+        ScheduledPlanId = null;
+        Raise(new SubscriptionPlanChanged(TenantId, Id, previous, next, now));
+    }
+
     private void CancelNow(CancellationReason reason, DateTimeOffset now)
     {
         IsComplimentary = false;
+        ScheduledPlanId = null;
         Status = SubscriptionStatus.Cancelled;
         CancelledAtUtc = now;
         Raise(new SubscriptionCancelled(TenantId, Id, PlanId, reason, now));

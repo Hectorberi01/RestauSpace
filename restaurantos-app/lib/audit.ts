@@ -144,6 +144,8 @@ const actions: Record<string, string> = {
   'billing.subscription.trial_started': 'Essai démarré',
   'billing.subscription.activated': 'Abonnement activé',
   'billing.subscription.plan_changed': 'Plan changé',
+  'billing.subscription.plan_change_scheduled': 'Changement de plan programmé',
+  'billing.subscription.plan_change_unscheduled': 'Changement de plan annulé',
   'billing.subscription.past_due': 'Abonnement en retard de paiement',
   'billing.subscription.suspended': 'Abonnement suspendu',
   'billing.subscription.cancelled': 'Abonnement résilié',

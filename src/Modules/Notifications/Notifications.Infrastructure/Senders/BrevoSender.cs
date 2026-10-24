@@ -53,7 +53,7 @@ internal sealed class BrevoSenderFactory(HttpClient http, NotificationChannel ch
             ["subject"] = request.Content.Subject ?? string.Empty,
             ["headers"] = new JsonObject { ["X-Mailin-custom"] = request.DeliveryId.Value.ToString("N") },
         };
-        payload[ProviderSupport.LooksLikeHtml(request.Content.Body) ? "htmlContent" : "textContent"] = request.Content.Body;
+        payload[request.Content.IsHtml ? "htmlContent" : "textContent"] = request.Content.Body;
         return payload;
     }
 
