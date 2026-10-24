@@ -141,9 +141,12 @@ public sealed class BillingModelTests : IDisposable
     [Fact]
     public void A_subscribed_plan_is_never_deleted()
     {
-        var planKey = Model.FindEntityType(typeof(SaasSubscription))!.GetForeignKeys()
-            .Single(key => key.PrincipalEntityType.ClrType == typeof(Plan));
+        // Plan actuel et plan programmé (changement à l'échéance) : aucun ne supprime l'abonnement.
+        var planKeys = Model.FindEntityType(typeof(SaasSubscription))!.GetForeignKeys()
+            .Where(key => key.PrincipalEntityType.ClrType == typeof(Plan))
+            .ToList();
 
-        Assert.Equal(DeleteBehavior.Restrict, planKey.DeleteBehavior);
+        Assert.Equal(2, planKeys.Count);
+        Assert.All(planKeys, key => Assert.Equal(DeleteBehavior.Restrict, key.DeleteBehavior));
     }
 }
