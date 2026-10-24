@@ -8,11 +8,11 @@ import {ButtonLink, CallToAction, Highlight, Pill, Section} from '@/components/s
 import {HeroDevices, ModuleIcon} from '@/components/visual';
 import {homeModules, modules} from '@/content/features';
 import {stats, testimonials} from '@/content/proof';
-import {price, quota, tiers, trialDays} from '@/content/plans';
+import {price, quota, tiers, trial} from '@/content/plans';
 
 const highlights = [
   {icon: LayoutGrid, title: `${modules.length} modules`, count: true, text: 'Tous inclus, dans chaque plan.'},
-  {icon: Rocket, title: `${trialDays} jours d’essai`, count: true, text: 'En service réel, avant de payer.'},
+  {icon: Rocket, title: `${trial} d’essai`, count: true, text: 'En service réel, avant de payer.'},
   {icon: ShieldCheck, title: 'Données protégées', count: false, text: 'Chaque restaurant isolé, droits par employé.'},
   {icon: Headset, title: 'Accompagnement', count: false, text: 'Une équipe qui vous répond, du démarrage au quotidien.'},
 ];
@@ -20,7 +20,7 @@ const highlights = [
 const steps = [
   {title: 'Demandez une démo', text: 'Nous découvrons votre façon de travailler et vous montrons RestauSpace.'},
   {title: 'Configurez votre restaurant', text: 'Menu, tables, équipe et moyens de paiement, avec notre aide.'},
-  {title: 'Recevez vos commandes', text: `Vous travaillez en conditions réelles ${trialDays} jours avant de payer.`},
+  {title: 'Recevez vos commandes', text: `Vous travaillez en conditions réelles pendant ${trial} avant de payer.`},
 ];
 
 function Proof() {
@@ -88,7 +88,7 @@ export default function Home() {
               </Link>
             </div>
             <ul style={{'--rise-delay': '320ms'} as CSSProperties} className="animate-rise mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-700">
-              {[`${trialDays} jours d’essai`, 'Rien à installer', 'Tous les modules inclus'].map(item => (
+              {[`${trial} d’essai`, 'Rien à installer', 'Tous les modules inclus'].map(item => (
                 <li key={item} className="flex items-center gap-2"><CircleCheck className="size-5 fill-brand-600 text-white" aria-hidden="true" />{item}</li>
               ))}
             </ul>

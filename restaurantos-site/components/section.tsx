@@ -77,7 +77,7 @@ export function PageHero({eyebrow, title, intro}: {eyebrow: string; title: React
   );
 }
 
-export function CallToAction({title = 'Prêt à simplifier la gestion de votre restaurant ?', intro = 'Une démonstration avec votre propre menu, puis 14 jours d’essai en service réel.'}: {title?: string; intro?: string}) {
+export function CallToAction({title = 'Prêt à simplifier la gestion de votre restaurant ?', intro = 'Une démonstration avec votre propre menu, puis un mois d’essai en service réel.'}: {title?: string; intro?: string}) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-r from-brand-700 via-brand-600 to-violet-600">
       <div className="pointer-events-none absolute -right-24 -top-24 size-80 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />

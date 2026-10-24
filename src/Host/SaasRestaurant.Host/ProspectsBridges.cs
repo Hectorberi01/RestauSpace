@@ -25,7 +25,7 @@ internal sealed class DemoRequestAlertFlow(IServiceProvider services, DemoReques
 
         if (string.IsNullOrWhiteSpace(settings.NotificationEmail))
         {
-            logger.LogInformation("Demo request received ({MessageId}); no Sales:DemoRequestNotificationEmail configured.", message.Id);
+            logger.LogWarning("Demo request received ({MessageId}); no Sales:DemoRequestNotificationEmail configured.", message.Id);
             return;
         }
 

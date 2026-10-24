@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {ArrowRight, CircleCheck, Play} from 'lucide-react';
 import {CountUp} from '@/components/count-up';
 import {CallToAction, Highlight, Pill} from '@/components/section';
-import {tiers, trialDays} from '@/content/plans';
+import {tiers} from '@/content/plans';
 import {BrowserFrame, Capture, ModuleIcon, PhoneFrame} from '@/components/visual';
 import {filters, modules, type Module} from '@/content/features';
 import {ModuleFilter} from './module-filter';
@@ -58,7 +58,7 @@ export default function Features() {
               Voir les modules en situation : la visite guidée
             </Link>
             <dl className="mt-8 grid max-w-md grid-cols-3 gap-4 border-t border-slate-200 pt-6">
-              {[[`${modules.length}`, 'modules inclus'], [`${tiers('fr').length}`, 'plans au choix'], [`${trialDays}`, 'jours d’essai']].map(([value, label]) => (
+              {[[`${modules.length}`, 'modules inclus'], [`${tiers('fr').length}`, 'plans au choix'], ['1', 'mois d’essai']].map(([value, label]) => (
                 <div key={label} className="flex flex-col-reverse">
                   <dt className="mt-0.5 text-sm text-ink-500">{label}</dt>
                   <dd className="text-3xl font-bold tracking-tight text-ink-900"><CountUp value={value} /></dd>

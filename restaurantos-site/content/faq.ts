@@ -1,4 +1,4 @@
-import {trialDays} from './plans';
+import {trial} from './plans';
 
 export interface Question {
   q: string;
@@ -20,7 +20,7 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Comment commencer ?',
-        a: `Choisissez votre plan sur la page Tarifs et créez votre compte en deux minutes : votre restaurant est prêt dès la confirmation de votre email, et vous profitez de ${trialDays} jours d’essai avant de payer quoi que ce soit, en ligne depuis la console. Vous préférez être accompagné ? Demandez une démonstration.`,
+        a: `Choisissez votre plan sur la page Tarifs et créez votre compte en deux minutes : votre restaurant est prêt dès la confirmation de votre email, et vous profitez de ${trial} d’essai avant de payer quoi que ce soit, en ligne depuis la console. Vous préférez être accompagné ? Demandez une démonstration.`,
       },
       {
         q: 'Faut-il installer un logiciel ?',

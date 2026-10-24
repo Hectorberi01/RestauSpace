@@ -5,7 +5,7 @@ import {ArrowRight, CalendarCheck, CircleHelp, Code2, Mail, MapPin, MessageCircl
 import {Accordion} from '@/components/accordion';
 import {ButtonLink, CallToAction, Highlight, Pill} from '@/components/section';
 import {faq} from '@/content/faq';
-import {markets, trialDays} from '@/content/plans';
+import {markets, trial} from '@/content/plans';
 import {site} from '@/content/site';
 import {FormSkeleton} from '@/components/skeleton';
 import {ContactForm} from './contact-form';
@@ -34,7 +34,7 @@ function channels(): Channel[] {
     !!phoneBenin && {icon: Phone, tone: 'bg-emerald-50 text-emerald-600 ring-emerald-100', title: 'Par téléphone', text: 'Bénin et zone UEMOA', action: phoneBenin, href: tel(phoneBenin)},
     !!phoneFrance && {icon: Phone, tone: 'bg-emerald-50 text-emerald-600 ring-emerald-100', title: 'Par téléphone', text: 'France', action: phoneFrance, href: tel(phoneFrance)},
     !!whatsapp && {icon: MessageCircle, tone: 'bg-sky-50 text-sky-600 ring-sky-100', title: 'Sur WhatsApp', text: 'Écrivez-nous directement', action: 'Ouvrir WhatsApp', href: `https://wa.me/${whatsapp.replace(/\D/g, '')}`, external: true},
-    {icon: CalendarCheck, tone: 'bg-orange-50 text-orange-600 ring-orange-100', title: 'Demander une démo', text: `Puis ${trialDays} jours d’essai`, action: 'Remplir le formulaire', href: '#formulaire'},
+    {icon: CalendarCheck, tone: 'bg-orange-50 text-orange-600 ring-orange-100', title: 'Demander une démo', text: `Puis ${trial} d’essai`, action: 'Remplir le formulaire', href: '#formulaire'},
     {icon: CircleHelp, tone: 'bg-sky-50 text-sky-600 ring-sky-100', title: 'Questions fréquentes', text: 'Les réponses courantes', action: 'Voir la FAQ', href: '/faq'},
     {icon: Code2, tone: 'bg-pink-50 text-pink-600 ring-pink-100', title: 'Intégration et API', text: 'Pour vos développeurs', action: 'Espace développeurs', href: '/developpeurs'},
   ];
@@ -44,7 +44,7 @@ function channels(): Channel[] {
 const steps = [
   'Nous vous recontactons pour répondre à votre question ou fixer la démonstration.',
   'Nous créons votre compte et configurons votre restaurant avec vous.',
-  `Vous testez ${trialDays} jours, puis vous choisissez votre plan.`,
+  `Vous testez pendant ${trial}, puis vous choisissez votre plan.`,
 ];
 
 const featured = ['Comment commencer ?', 'Faut-il installer un logiciel ?', 'Puis-je importer mon menu existant ?', 'Quelle différence entre les plans ?', 'Dans quelle devise suis-je facturé ?'];
@@ -157,7 +157,7 @@ export default function Contact() {
         </div>
       </section>
 
-      <CallToAction title="Prêt à digitaliser votre restaurant ?" intro="Parlez-nous de votre projet : une démonstration avec votre menu, puis 14 jours d’essai en service réel." />
+      <CallToAction title="Prêt à digitaliser votre restaurant ?" intro="Parlez-nous de votre projet : une démonstration avec votre menu, puis un mois d’essai en service réel." />
     </>
   );
 }

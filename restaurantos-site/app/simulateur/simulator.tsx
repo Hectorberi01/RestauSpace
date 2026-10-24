@@ -5,7 +5,7 @@ import {useTween} from '@/lib/use-tween';
 import Link from 'next/link';
 import {site} from '@/content/site';
 import {ArrowRight, Check, Minus, Sparkles, X} from 'lucide-react';
-import {markets, price, tiers, trialDays, type Market, type Tier} from '@/content/plans';
+import {markets, price, tiers, trial, type Market, type Tier} from '@/content/plans';
 
 interface Need {
   code: string;
@@ -113,7 +113,7 @@ export function Simulator() {
               )}
               {limiting.length > 0 && <p className="mt-4 text-sm text-brand-100">Choisi pour : {limiting.join(', ')}.</p>}
               <Link href={`${site.signupUrl}?plan=${encodeURIComponent(yearly && chosen.yearly ? chosen.yearly.name : chosen.name)}&pays=${market}`} className="btn-motion mt-6 flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-brand-700 shadow-lg shadow-black/10 hover:bg-brand-50">
-                {chosen.monthly.price > 0 ? `Essayer ${trialDays} jours` : 'Commencer'} <ArrowRight className="size-4" aria-hidden="true" />
+                {chosen.monthly.price > 0 ? `Essayer ${trial}` : 'Commencer'} <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </>
           ) : (

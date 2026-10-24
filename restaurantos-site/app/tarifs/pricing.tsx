@@ -6,7 +6,7 @@ import {ArrowRight, Check, Crown, Gift, Layers, Minus, Send, Settings2, Store, U
 import {AnimatedPrice} from '@/components/animated-price';
 import {Segmented} from '@/components/segmented';
 import {featureGroups} from '@/content/features';
-import {addOns, markets, price, quota, quotaRows, tiers, trialDays, type Market, type Tier} from '@/content/plans';
+import {addOns, markets, price, quota, quotaRows, tiers, trial, type Market, type Tier} from '@/content/plans';
 
 const planIcons: Record<string, {icon: LucideIcon; tone: string}> = {
   Découverte: {icon: Send, tone: 'bg-sky-50 text-sky-600 ring-sky-100'},
@@ -49,7 +49,7 @@ export function Pricing() {
           <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">2 mois offerts</span>
         </div>
       </div>
-      <p className="mt-4 text-center text-sm text-ink-500 sm:text-left">{markets[market].taxNote} {trialDays} jours d’essai sur chaque plan. Cliquez sur un plan pour le repérer dans le comparatif.</p>
+      <p className="mt-4 text-center text-sm text-ink-500 sm:text-left">{markets[market].taxNote} {trial} d’essai sur chaque plan. Cliquez sur un plan pour le repérer dans le comparatif.</p>
 
       <div key={market} role="radiogroup" aria-label="Plans" className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {list.map((tier, index) => {
@@ -107,7 +107,7 @@ export function Pricing() {
                 {free ? 'Commencer gratuitement' : `Choisir ${tier.name}`}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
-              {!free && <p className="mt-2 text-center text-xs text-ink-500">{trialDays} jours d’essai gratuit</p>}
+              {!free && <p className="mt-2 text-center text-xs text-ink-500">{trial} d’essai gratuit</p>}
             </div>
           );
         })}
@@ -117,7 +117,7 @@ export function Pricing() {
         <div className="flex items-center gap-4">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white text-brand-600 shadow-md shadow-brand-900/10 ring-1 ring-brand-100"><Gift className="size-6" aria-hidden="true" /></span>
           <div>
-            <p className="font-semibold text-ink-900">{trialDays} jours d’essai gratuit sur tous les plans</p>
+            <p className="font-semibold text-ink-900">{trial} d’essai gratuit sur tous les plans</p>
             <p className="text-sm text-ink-600">Vous travaillez en conditions réelles avant de payer quoi que ce soit.</p>
           </div>
         </div>

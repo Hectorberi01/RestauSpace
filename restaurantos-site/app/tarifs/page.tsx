@@ -6,12 +6,12 @@ import {ButtonLink, Highlight, Pill} from '@/components/section';
 import {Capture} from '@/components/visual';
 import {modules} from '@/content/features';
 import {faq} from '@/content/faq';
-import {price, tiers, trialDays} from '@/content/plans';
+import {price, tiers, trial} from '@/content/plans';
 import {Pricing} from './pricing';
 
 export const metadata: Metadata = {
   title: 'Tarifs',
-  description: 'Quatre plans en euros HT ou en francs CFA, tous les modules inclus, 14 jours d’essai.',
+  description: 'Quatre plans en euros HT ou en francs CFA, tous les modules inclus, un mois d’essai.',
   alternates: {canonical: '/tarifs'},
 };
 
@@ -44,7 +44,7 @@ export default function Prices() {
               Des plans simples, adaptés à chaque étape de votre activité. Ils ne diffèrent que par les volumes : établissements, équipe, commandes et messages.
             </p>
             <ul className="animate-rise mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-700 [--rise-delay:240ms]">
-              {[`${trialDays} jours d’essai gratuit`, 'Changement de plan à tout moment'].map(item => (
+              {[`${trial} d’essai gratuit`, 'Changement de plan à tout moment'].map(item => (
                 <li key={item} className="flex items-center gap-2"><CircleCheck className="size-5 fill-brand-600 text-white" aria-hidden="true" />{item}</li>
               ))}
             </ul>
@@ -55,7 +55,7 @@ export default function Prices() {
             </div>
             {from && <Tile icon={Tag} value={`${price(from.monthly.price, 'EUR')} HT`} label="par mois, à partir de" className="-left-6 top-10 [--float-delay:-1s]" />}
             <Tile icon={LayoutGrid} value={`${modules.length} modules`} label="inclus dans chaque plan" className="-right-4 top-1/3 [--float-delay:-3s]" />
-            <Tile icon={CalendarCheck} value={`${trialDays} jours`} label="d’essai en service réel" className="bottom-0 left-10 [--float-delay:-4.5s]" />
+            <Tile icon={CalendarCheck} value={trial} label="d’essai en service réel" className="bottom-0 left-10 [--float-delay:-4.5s]" />
           </div>
         </div>
       </section>
@@ -101,7 +101,7 @@ export default function Prices() {
             <div>
               <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20">Prêt à commencer ?</span>
               <h2 className="mt-4 max-w-xl text-3xl font-bold tracking-tight text-white sm:text-[2.2rem] sm:leading-tight">Choisissez le plan qui correspond à votre restaurant</h2>
-              <p className="mt-3 max-w-xl text-brand-100">Testez gratuitement pendant {trialDays} jours, en service réel. Tous les modules sont inclus.</p>
+              <p className="mt-3 max-w-xl text-brand-100">Testez gratuitement pendant {trial}, en service réel. Tous les modules sont inclus.</p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:w-64">
               <ButtonLink href="/contact" demo>Demander une démo</ButtonLink>

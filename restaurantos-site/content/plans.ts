@@ -88,4 +88,5 @@ export function price(amount: number, currency: string): string {
   return new Intl.NumberFormat('fr-FR', {style: 'currency', currency, maximumFractionDigits: amount % 1 ? 2 : 0}).format(amount);
 }
 
-export const trialDays = 14;
+/** Essai gratuit : un mois (comme le plan Découverte), réglage Billing:TrialLength de l'API. */
+export const trial = '1 mois';

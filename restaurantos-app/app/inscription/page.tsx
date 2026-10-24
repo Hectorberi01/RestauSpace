@@ -78,7 +78,7 @@ export default function SignUpPage() {
   const hasYearly = inCurrency.some(plan => plan.billingInterval === 'Yearly');
   const shown = inCurrency.filter(plan => plan.billingInterval === interval || (interval === 'Yearly' && plan.price === 0));
   const plan = inCurrency.find(item => item.id === planId);
-  const trialDays = options?.trialDays ?? 14;
+  const trialDays = options?.trialDays ?? 30;
 
   // Changer de pays ou de rythme garde, si possible, le même plan (même nom de base).
   const pick = (nextCountry: string, nextInterval: 'Monthly' | 'Yearly') => {
@@ -125,7 +125,7 @@ export default function SignUpPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
           <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-brand-900/5 sm:p-7">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"><Sparkles className="size-3.5" aria-hidden="true" />{trialDays} jours d’essai gratuit</p>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"><Sparkles className="size-3.5" aria-hidden="true" />{trialLabel(trialDays)} d’essai gratuit</p>
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">Créez votre restaurant</h1>
             <p className="mt-1 text-sm text-ink-500">Choisissez votre plan : vous ne payez rien pendant l’essai, et vous pouvez en changer à tout moment.</p>
 
@@ -184,7 +184,7 @@ export default function SignUpPage() {
                 )}
 
                 <ul className="space-y-1.5 text-sm text-ink-600">
-                  {[`${trialDays} jours pour tout essayer, sans carte bancaire`, 'Paiement en ligne quand vous le décidez, depuis la console', 'Changement de plan à tout moment'].map(line => (
+                  {[`${trialLabel(trialDays)} pour tout essayer, sans carte bancaire`, 'Paiement en ligne quand vous le décidez, depuis la console', 'Changement de plan à tout moment'].map(line => (
                     <li key={line} className="flex items-center gap-2"><Check className="size-4 shrink-0 text-brand-600" aria-hidden="true" />{line}</li>
                   ))}
                 </ul>
@@ -239,6 +239,11 @@ export default function SignUpPage() {
   );
 }
 
+/** Durée d'essai lisible : environ un mois s'affiche « 1 mois ». */
+function trialLabel(days: number): string {
+  return days >= 28 && days <= 31 ? '1 mois' : `${days} jours`;
+}
+
 function CheckInbox({email, trialDays, free}: {email: string; trialDays: number; free: boolean}) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -263,7 +268,7 @@ function CheckInbox({email, trialDays, free}: {email: string; trialDays: number;
           Votre restaurant est créé. Nous avons envoyé un lien de confirmation à <strong className="break-all text-ink-900">{email}</strong> : ouvrez-le, confirmez avec votre mot de passe, puis connectez-vous.
         </p>
         <p className="mt-3 text-sm text-ink-600">
-          {free ? 'Votre plan gratuit démarre tout de suite, pour un mois. Ensuite, choisissez un plan payant pour continuer.' : `Votre essai de ${trialDays} jours a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
+          {free ? 'Votre plan gratuit démarre tout de suite, pour un mois. Ensuite, choisissez un plan payant pour continuer.' : `Votre essai de ${trialLabel(trialDays)} a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
         </p>
         <div className="mt-6 space-y-3">
           <Link href="/connexion" className="flex h-11 w-full items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Aller à la connexion</Link>

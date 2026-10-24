@@ -4,7 +4,7 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {X} from 'lucide-react';
 import {ContactForm} from '@/app/contact/contact-form';
-import {trialDays} from '@/content/plans';
+import {trial} from '@/content/plans';
 import {FormSkeleton} from './skeleton';
 
 const event = 'restaurantos:demo';
@@ -72,7 +72,7 @@ export function DemoModal() {
       <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-6 py-5 backdrop-blur sm:px-7">
         <div>
           <h2 id="demo-title" className="text-xl font-bold">Demander une démo</h2>
-          <p className="mt-1 text-sm text-ink-500">Nous vous montrons RestauSpace avec votre menu, puis {trialDays} jours d’essai.</p>
+          <p className="mt-1 text-sm text-ink-500">Nous vous montrons RestauSpace avec votre menu, puis {trial} d’essai.</p>
         </div>
         <button type="button" onClick={close} aria-label="Fermer" className="rounded-xl p-2 text-ink-500 transition hover:rotate-90 hover:bg-slate-100 hover:text-ink-900">
           <X className="size-5" aria-hidden="true" />

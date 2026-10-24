@@ -63,8 +63,8 @@ public static class BillingPermissions
 /// <summary>Réglages des cas d'usage (section <c>Billing</c> de l'hôte).</summary>
 public sealed class BillingSettings
 {
-    /// <summary>Durée de l'essai offert quand un restaurant choisit son plan.</summary>
-    public TimeSpan TrialLength { get; set; } = TimeSpan.FromDays(14);
+    /// <summary>Durée de l'essai offert quand un restaurant choisit son plan : un mois, comme le plan Découverte.</summary>
+    public TimeSpan TrialLength { get; set; } = TimeSpan.FromDays(30);
 
     /// <summary>Durée du plan gratuit (Découverte), une seule fois par restaurant : son premier mois.</summary>
     public int FreePlanMonths { get; set; } = 1;
