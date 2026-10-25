@@ -28,8 +28,7 @@ public static class BillingFeatures
     public const string Locations = "locations.count";
     public const string StaffMembers = "staff.count";
 
-    /// <summary>Vente en ligne (options) : commande sur le web, application en marque blanche, bornes (limite = nombre), API serveur.</summary>
-    public const string StorefrontWeb = "storefront.web";
+    /// <summary>Vente en ligne (options) : application en marque blanche, bornes (limite = nombre), API (site du restaurant et clés serveur).</summary>
     public const string StorefrontMobileApp = "storefront.mobile_app";
     public const string StorefrontKiosk = "storefront.kiosk";
     public const string StorefrontApi = PlanFeatures.IntegrationsApi;
@@ -55,7 +54,7 @@ public static class BillingFeatures
         Locations, LocationsExtra, StaffMembers, OrdersMonthly,
         NotificationsEmailMonthly, NotificationsSmsMonthly, NotificationsWhatsAppMonthly, NotificationsPushMonthly, NotificationsInAppMonthly,
         NotificationsOwnAccount, Loyalty, CustomersAdvanced, MarketingCampaigns, MarketingGiftCards, Automations,
-        ReportingAdvanced, ReportingConsolidated, StorefrontWeb, StorefrontMobileApp, StorefrontKiosk, StorefrontApi, IntegrationsWebhooks,
+        ReportingAdvanced, ReportingConsolidated, StorefrontMobileApp, StorefrontKiosk, StorefrontApi, IntegrationsWebhooks,
         SupportPriority,
     ];
 

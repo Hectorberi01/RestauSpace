@@ -70,7 +70,7 @@ Billing ne connaît aujourd'hui qu'**un plan par abonnement**, avec des droits (
 
 | Code | Ouvre | Limite |
 |---|---|---|
-| `storefront.web` | Commande sur le site web (le nôtre ou celui de l'agence) | — |
+| `storefront.api` | Commande sur le site web du restaurant (hébergé par lui ou son agence), et clés d'API. `storefront.web` est retiré (25/10/2026) | — |
 | `storefront.mobile_app` | Application en marque blanche | — |
 | `storefront.kiosk` | Bornes | Nombre de bornes appairées |
 | `storefront.api` | Clés `srk_` pour les serveurs d'agences et de partenaires | — |

@@ -14,7 +14,6 @@ export const Feature = {
   IntegrationsWebhooks: 'integrations.webhooks',
   NotificationsOwnAccount: 'notifications.byok',
   SupportPriority: 'support.priority',
-  StorefrontWeb: 'storefront.web',
   StorefrontMobileApp: 'storefront.mobile_app',
   StorefrontKiosk: 'storefront.kiosk',
   LocationsExtra: 'locations.extra',
@@ -40,14 +39,13 @@ export const loadPlanFeatures = (signal?: AbortSignal) => api<PlanFeatures>('/bi
 export function requiredPlan(code: string): string {
   if (code === Feature.ReportingConsolidated) return 'Multi-sites';
   if (code === Feature.Loyalty || code === Feature.NotificationsOwnAccount) return 'Essentiel';
-  if (code === Feature.StorefrontWeb || code === Feature.StorefrontMobileApp || code === Feature.StorefrontKiosk) return 'Option';
+  if (code === Feature.StorefrontMobileApp || code === Feature.StorefrontKiosk) return 'Option';
   return 'Pro';
 }
 
 /** Option qui donne aussi le droit, quand il y en a une. */
 export function optionFor(code: string): string | null {
   switch (code) {
-    case Feature.StorefrontWeb: return 'Site web';
     case Feature.StorefrontMobileApp: return 'Application mobile';
     case Feature.StorefrontKiosk: return 'Borne';
     case Feature.IntegrationsApi:

@@ -12,7 +12,7 @@ const select = `${field} cursor-pointer appearance-none pr-9`;
 const chevron = <ChevronDown className="pointer-events-none absolute bottom-3 right-3.5 size-4 text-ink-400" aria-hidden="true" />;
 const star = <span className="text-red-500" aria-hidden="true"> *</span>;
 
-const subjects = ['Demande de démonstration', 'Tarifs et abonnement', 'Intégration et API', 'Autre question'];
+const subjects = ['Demande de démonstration', 'Tarifs et abonnement', 'Intégration et API', 'Site sur mesure', 'Autre question'];
 
 const countries: {label: string; dial?: string}[] = [
   {label: 'Bénin', dial: '229'},
@@ -51,7 +51,7 @@ export function ContactForm({initialSubjectIndex}: {initialSubjectIndex?: number
   const params = useSearchParams();
   const initialPlan = params.get('plan') ?? '';
   const initialCountry = params.get('pays') === 'fr' ? 'France' : params.get('pays') === 'bj' ? 'Bénin' : '';
-  const initialSubject = params.get('sujet') === 'api' ? subjects[2] : initialPlan ? subjects[1] : initialSubjectIndex !== undefined ? subjects[initialSubjectIndex] ?? '' : '';
+  const initialSubject = params.get('sujet') === 'api' ? subjects[2] : params.get('sujet') === 'site' ? subjects[3] : initialPlan ? subjects[1] : initialSubjectIndex !== undefined ? subjects[initialSubjectIndex] ?? '' : '';
   const [values, setValues] = useState({name: '', restaurant: '', email: '', phone: '', country: initialCountry, subject: initialSubject, plan: initialPlan, message: '', website: ''});
   const [error, setError] = useState<string>();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');

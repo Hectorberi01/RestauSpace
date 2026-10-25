@@ -47,7 +47,11 @@ export const faq: QuestionGroup[] = [
       },
       {
         q: 'Quelles options puis-je ajouter ?',
-        a: 'Site web, application mobile, borne (prix par borne), API et webhooks, et établissement supplémentaire. L’API et les webhooks sont déjà inclus dans Pro et Multi-sites ; le site web est une option sur tous les plans. L’établissement supplémentaire est disponible à partir de Pro.',
+        a: 'API et webhooks, application mobile, borne (prix par borne) et établissement supplémentaire. L’API, qui permet de brancher votre propre site de commande, est incluse dans Pro et Multi-sites et en option sur Essentiel. L’établissement supplémentaire est disponible à partir de Pro.',
+      },
+      {
+        q: 'Hébergez-vous le site de mon restaurant ?',
+        a: 'Non : votre site reste chez vous (ou chez votre prestataire) et se branche sur l’API RestauSpace avec une clé publique. Carte, prix, horaires, commandes et paiements viennent de la console. Si vous n’avez pas de site, notre équipe peut en réaliser un sur mesure, sur devis.',
       },
       {
         q: 'Les messages à mes clients sont-ils limités ?',

@@ -89,8 +89,8 @@ internal sealed class StorefrontLocationsFromLocations(
 }
 
 /// <summary>
-/// Storefront -> Billing : un canal est ouvert si le droit <c>storefront.web</c>, <c>storefront.mobile_app</c> ou
-/// <c>storefront.kiosk</c> est activé (plan + options) ; sa limite est le nombre de bornes appairées. Fail-closed : un tenant autre que celui du contexte n'a droit à rien.
+/// Storefront -> Billing : un canal est ouvert si son droit est activé (site : <c>storefront.api</c> ; puis
+/// <c>storefront.mobile_app</c>, <c>storefront.kiosk</c>) (plan + options) ; sa limite est le nombre de bornes appairées. Fail-closed : un tenant autre que celui du contexte n'a droit à rien.
 /// </summary>
 internal sealed class StorefrontEntitlementsFromBilling(ITenantContext tenantContext, IQueryHandler<GetFeatureLimitQuery, FeatureLimitDto> limits)
     : IStorefrontEntitlements
@@ -119,7 +119,7 @@ internal sealed class StorefrontEntitlementsFromBilling(ITenantContext tenantCon
 
     private static string? Feature(SalesAppKind channel) => channel switch
     {
-        SalesAppKind.Web => BillingFeatures.StorefrontWeb,
+        SalesAppKind.Web => BillingFeatures.StorefrontApi,
         SalesAppKind.MobileApp => BillingFeatures.StorefrontMobileApp,
         SalesAppKind.Kiosk => BillingFeatures.StorefrontKiosk,
         _ => null,

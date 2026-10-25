@@ -92,7 +92,7 @@ internal static class HumanChecks
 /// vérifié chez le prestataire. Sans application (requête non authentifiée par clé), rien n'est exigé ici.
 /// </summary>
 /// <summary>
-/// Après l'authentification par clé publique : le plan permet-il ce canal (<c>storefront.web</c>, <c>mobile_app</c>,
+/// Après l'authentification par clé publique : le plan permet-il ce canal (site = <c>storefront.api</c>, <c>mobile_app</c>,
 /// <c>kiosk</c>) ? Sinon 403 <c>common.plan.feature_required</c>. Une borne gelée (au-delà de la limite) : 403
 /// <c>common.plan.over_limit</c>.
 /// </summary>
@@ -118,10 +118,10 @@ public sealed class EnsureStorefrontAccessHandler(StorefrontWorkspace workspace,
     }
 }
 
-/// <summary>Codes des droits des canaux de vente (catalogue Billing).</summary>
+/// <summary>Codes des droits des canaux de vente (catalogue Billing). Le site du restaurant passe par l'option API.</summary>
 public static class StorefrontFeatures
 {
-    public const string Web = "storefront.web";
+    public const string Web = PlanFeatures.IntegrationsApi;
     public const string MobileApp = "storefront.mobile_app";
     public const string Kiosk = "storefront.kiosk";
 

@@ -18,7 +18,8 @@ import {Switch} from './shared';
 
 const kinds: SalesAppKind[] = ['Web', 'MobileApp', 'Kiosk'];
 const kindIcon: Record<SalesAppKind, typeof Globe> = {Web: Globe, MobileApp: Smartphone, Kiosk: Monitor};
-const kindFeature: Record<SalesAppKind, string> = {Web: Feature.StorefrontWeb, MobileApp: Feature.StorefrontMobileApp, Kiosk: Feature.StorefrontKiosk};
+// Le site du restaurant passe par l'API (incluse dans Pro, option sur Essentiel).
+const kindFeature: Record<SalesAppKind, string> = {Web: Feature.IntegrationsApi, MobileApp: Feature.StorefrontMobileApp, Kiosk: Feature.StorefrontKiosk};
 const modes: ServiceMode[] = ['DineIn', 'Takeaway', 'Delivery'];
 
 function CopyValue({value, label}: {value: string; label: string}) {
@@ -407,8 +408,8 @@ export function OnlineSales() {
               <span className={cx('grid size-10 shrink-0 place-items-center rounded-xl', on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-ink-500')} aria-hidden="true"><Icon className="size-5" /></span>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}{on ? <Badge tone="green">Disponible</Badge> : <PlanBadge force feature={kindFeature[kind]} />}</p>
-                <p className="text-sm text-ink-500">{on ? kindHint[kind] : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
-                {!on && <Link href={kind === 'Web' ? '/abonnement' : '/abonnement#options'} className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">{kind === 'Web' ? 'Voir les plans' : 'Ajouter cette option'}</Link>}
+                <p className="text-sm text-ink-500">{on ? kindHint[kind] : kind === 'Web' ? 'Votre site se branche sur l’API : incluse dans Pro et Multi-sites, option « API et webhooks » sur Essentiel.' : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
+                {!on && <Link href="/abonnement#options" className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">{kind === 'Web' ? 'Voir le plan Pro ou l’option API' : 'Ajouter cette option'}</Link>}
               </div>
             </Card>
           );

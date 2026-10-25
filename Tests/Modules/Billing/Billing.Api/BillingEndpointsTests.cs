@@ -278,7 +278,7 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
             {
                 new { featureCode = BillingFeatures.Locations, enabled = true, limit = (long?)1 },
                 new { featureCode = BillingFeatures.LocationsExtra, enabled = false, limit = (long?)null },
-                new { featureCode = BillingFeatures.StorefrontWeb, enabled = true, limit = (long?)null },
+                new { featureCode = BillingFeatures.StorefrontMobileApp, enabled = true, limit = (long?)null },
             },
         }));
         async Task<Guid> AddOnAsync(string name, string feature, long? limit) =>
@@ -291,7 +291,7 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
                 kind = "AddOn",
                 entitlements = new[] { new { featureCode = feature, enabled = true, limit } },
             }));
-        var site = await AddOnAsync("Site web", BillingFeatures.StorefrontWeb, null);
+        var site = await AddOnAsync("Application mobile", BillingFeatures.StorefrontMobileApp, null);
         var extra = await AddOnAsync("Établissement supplémentaire", BillingFeatures.Locations, 1);
         var client = api.ActingFor(api.NewTenant());
 
@@ -311,7 +311,7 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
         var features = after.GetProperty("features").EnumerateArray().ToDictionary(feature => feature.GetProperty("code").GetString()!);
         Assert.Equal(BillingFeatures.All.Count, features.Count);
         Assert.Equal(1, features[BillingFeatures.Locations].GetProperty("limit").GetInt64());
-        Assert.True(features[BillingFeatures.StorefrontWeb].GetProperty("enabled").GetBoolean());
+        Assert.True(features[BillingFeatures.StorefrontMobileApp].GetProperty("enabled").GetBoolean());
         Assert.False(features[BillingFeatures.Loyalty].GetProperty("enabled").GetBoolean());
     }
 }

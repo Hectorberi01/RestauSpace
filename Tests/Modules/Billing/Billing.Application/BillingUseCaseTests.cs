@@ -34,15 +34,15 @@ public sealed class BillingUseCaseTests
     public async Task An_add_on_adds_its_entitlements_to_the_plan_multiplied_by_its_quantity()
     {
         await ActiveAsync();
-        var online = await AddOnAsync("Vente en ligne", new EntitlementInput(BillingFeatures.StorefrontWeb, true), new EntitlementInput(BillingFeatures.StorefrontMobileApp, true));
+        var online = await AddOnAsync("Vente en ligne", new EntitlementInput(BillingFeatures.StorefrontMobileApp, true));
         var kiosk = await AddOnAsync("Borne", new EntitlementInput(BillingFeatures.StorefrontKiosk, true, 1));
-        var before = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontWeb));
+        var before = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontMobileApp));
 
         await _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, online));
         var kioskId = await _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, kiosk, 2));
         var twice = await Assert.ThrowsAsync<DomainException>(() => _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, online)));
         await _fixture.ChangeAddOnQuantity.HandleAsync(new ChangeTenantAddOnQuantityCommand(_fixture.TenantA.Value, kioskId, 3));
-        var web = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontWeb));
+        var web = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontMobileApp));
         var kiosks = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontKiosk));
         var api = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontApi));
         var mine = await _fixture.ListMyAddOns.HandleAsync(new ListMyAddOnsQuery());
@@ -63,7 +63,7 @@ public sealed class BillingUseCaseTests
     [Fact]
     public async Task An_add_on_is_never_a_subscription_plan_needs_a_subscription_and_stops_when_cancelled()
     {
-        var online = await AddOnAsync("Vente en ligne", new EntitlementInput(BillingFeatures.StorefrontWeb, true));
+        var online = await AddOnAsync("Vente en ligne", new EntitlementInput(BillingFeatures.StorefrontMobileApp, true));
         var asPlan = await Assert.ThrowsAsync<DomainException>(() => _fixture.Start.HandleAsync(new StartSubscriptionCommand(online)));
         var noSubscription = await Assert.ThrowsAsync<DomainException>(() =>
             _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, online)));
@@ -76,7 +76,7 @@ public sealed class BillingUseCaseTests
         var otherTenant = await Assert.ThrowsAsync<NotFoundException>(() =>
             _fixture.CancelAddOn.HandleAsync(new CancelTenantAddOnCommand(_fixture.TenantB.Value, id)));
         await _fixture.CancelAddOn.HandleAsync(new CancelTenantAddOnCommand(_fixture.TenantA.Value, id));
-        var after = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontWeb));
+        var after = await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontMobileApp));
         var history = await _fixture.ListTenantAddOns.HandleAsync(new ListTenantAddOnsQuery(_fixture.TenantA.Value));
 
         Assert.Equal(SubscriptionErrors.PlanIsAddOn, asPlan.Error);

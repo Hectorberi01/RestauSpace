@@ -52,7 +52,7 @@ public sealed class ComplimentaryTests
     {
         var plan = await _fixture.PlanAsync();
         var site = await _fixture.CreatePlan.HandleAsync(new CreatePlanCommand(
-            "Site web", 5m, "EUR", BillingInterval.Monthly, [new EntitlementInput(BillingFeatures.StorefrontWeb, true)], PlanKind.AddOn));
+            "Application mobile", 5m, "EUR", BillingInterval.Monthly, [new EntitlementInput(BillingFeatures.StorefrontMobileApp, true)], PlanKind.AddOn));
 
         var id = await GrantAsync(plan, null);
         var subscription = _fixture.SubscriptionById(id);

@@ -11,7 +11,7 @@ public sealed class AddOnSubscriptionTests
     private Task<Guid> AddOnAsync(string name, decimal price, BillingInterval interval, params EntitlementInput[] entitlements) =>
         _fixture.CreatePlan.HandleAsync(new CreatePlanCommand(name, price, "EUR", interval, entitlements, PlanKind.AddOn));
 
-    private Task<Guid> SiteAsync() => AddOnAsync("Site web", 5m, BillingInterval.Monthly, new EntitlementInput(BillingFeatures.StorefrontWeb, true));
+    private Task<Guid> OnlineAsync() => AddOnAsync("Vente en ligne", 5m, BillingInterval.Monthly, new EntitlementInput(BillingFeatures.StorefrontMobileApp, true));
 
     private Task<Guid> KioskAsync() => AddOnAsync("Borne", 12m, BillingInterval.Monthly, new EntitlementInput(BillingFeatures.StorefrontKiosk, true, 1));
 
@@ -25,17 +25,17 @@ public sealed class AddOnSubscriptionTests
     public async Task A_restaurant_subscribes_an_add_on_and_gets_its_rights_at_once()
     {
         await TrialAsync();
-        var site = await SiteAsync();
+        var site = await OnlineAsync();
         var kiosk = await KioskAsync();
 
         await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(site));
         var kiosks = await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(kiosk, 2));
         await _fixture.ChangeMyAddOnQuantity.HandleAsync(new ChangeMyAddOnQuantityCommand(kiosks, 3));
 
-        Assert.True((await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontWeb))).Enabled);
+        Assert.True((await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontMobileApp))).Enabled);
         Assert.Equal(3, (await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontKiosk))).Limit);
         var mine = await _fixture.GetMine.HandleAsync(new GetMySubscriptionQuery());
-        Assert.Equal(["Essentiel", "Borne", "Site web"], mine.NextCharge!.Lines.Select(line => line.Label));
+        Assert.Equal(["Essentiel", "Borne", "Vente en ligne"], mine.NextCharge!.Lines.Select(line => line.Label));
         Assert.Equal((29m + 36m + 5m, 70m), (mine.NextCharge.Total, mine.NextCharge.MonthlyTotal));
         Assert.Equal((3, 12m, 36m), (mine.NextCharge.Lines[1].Quantity, mine.NextCharge.Lines[1].UnitAmount, mine.NextCharge.Lines[1].Amount));
     }
@@ -60,7 +60,7 @@ public sealed class AddOnSubscriptionTests
     public async Task A_monthly_add_on_on_a_yearly_plan_is_billed_for_twelve_months()
     {
         var subscription = await TrialAsync(290m, BillingInterval.Yearly);
-        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await OnlineAsync()));
 
         var charge = await _fixture.GetCharge.HandleAsync(new GetSubscriptionChargeQuery(subscription));
 
@@ -71,7 +71,7 @@ public sealed class AddOnSubscriptionTests
     [Fact]
     public async Task Add_ons_are_changed_only_during_the_trial_or_a_paid_period()
     {
-        var site = await SiteAsync();
+        var site = await OnlineAsync();
         var none = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(site)));
         var subscription = await TrialAsync();
         _fixture.SubscriptionById(subscription).Suspend(SuspensionReason.PolicyViolation, _fixture.Clock);
@@ -86,7 +86,7 @@ public sealed class AddOnSubscriptionTests
     public async Task A_restaurant_cancels_its_own_add_on_only()
     {
         await TrialAsync();
-        var mine = await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+        var mine = await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await OnlineAsync()));
         _fixture.CurrentTenantId = _fixture.TenantB;
 
         var other = await Assert.ThrowsAsync<NotFoundException>(() => _fixture.CancelMyAddOn.HandleAsync(new CancelMyAddOnCommand(mine)));
@@ -94,7 +94,7 @@ public sealed class AddOnSubscriptionTests
         await _fixture.CancelMyAddOn.HandleAsync(new CancelMyAddOnCommand(mine));
 
         Assert.Equal(BillingApplicationErrors.AddOnNotFound, other.Error);
-        Assert.False((await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontWeb))).Enabled);
+        Assert.False((await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontMobileApp))).Enabled);
         Assert.Empty((await _fixture.ListMyAddOns.HandleAsync(new ListMyAddOnsQuery())).Active);
     }
 
@@ -102,7 +102,7 @@ public sealed class AddOnSubscriptionTests
     public async Task A_suspended_restaurant_cannot_subscribe()
     {
         await TrialAsync();
-        var site = await SiteAsync();
+        var site = await OnlineAsync();
         _fixture.Writable[_fixture.TenantA] = false;
 
         var refused = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(site)));
@@ -114,7 +114,7 @@ public sealed class AddOnSubscriptionTests
     public async Task Cancelling_the_subscription_cancels_its_add_ons()
     {
         var subscription = await TrialAsync();
-        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await OnlineAsync()));
 
         await _fixture.AdminCancel.HandleAsync(new AdminCancelSubscriptionCommand(subscription));
 
@@ -125,7 +125,7 @@ public sealed class AddOnSubscriptionTests
     public async Task A_scheduled_cancellation_cancels_the_add_ons_at_the_end_of_the_period()
     {
         var subscription = await TrialAsync();
-        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await OnlineAsync()));
         await _fixture.ScheduleCancellation.HandleAsync(new ScheduleSubscriptionCancellationCommand());
         _fixture.Clock.Advance(TimeSpan.FromDays(30));
 
@@ -139,7 +139,7 @@ public sealed class AddOnSubscriptionTests
     public async Task The_platform_lists_the_active_add_ons_of_every_restaurant()
     {
         await TrialAsync();
-        var site = await SiteAsync();
+        var site = await OnlineAsync();
         var kiosk = await KioskAsync();
         await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(site));
         var cancelled = await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(kiosk, 2));
@@ -152,7 +152,7 @@ public sealed class AddOnSubscriptionTests
         var all = await _fixture.ListActiveAddOns.HandleAsync(new ListActiveAddOnsQuery());
 
         Assert.Equal(
-            [(_fixture.TenantA.Value, "Site web", 1), (_fixture.TenantB.Value, "Borne", 3)],
+            [(_fixture.TenantA.Value, "Vente en ligne", 1), (_fixture.TenantB.Value, "Borne", 3)],
             all.Select(addOn => (addOn.TenantId, addOn.AddOn.Name, addOn.Quantity)).OrderBy(item => item.Item2 == "Borne"));
     }
 
@@ -188,13 +188,13 @@ public sealed class AddOnSubscriptionTests
     public async Task An_add_on_already_included_in_the_plan_is_refused()
     {
         await TrialOnAsync(
-            new EntitlementInput(BillingFeatures.StorefrontWeb, true),
+            new EntitlementInput(BillingFeatures.StorefrontMobileApp, true),
             new EntitlementInput(BillingFeatures.StorefrontApi, true),
             new EntitlementInput(BillingFeatures.IntegrationsWebhooks, true));
         var api = await AddOnAsync(
             "API et webhooks", 39m, BillingInterval.Monthly,
             new EntitlementInput(BillingFeatures.StorefrontApi, true), new EntitlementInput(BillingFeatures.IntegrationsWebhooks, true));
-        var web = await SiteAsync();
+        var web = await OnlineAsync();
 
         var site = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(web)));
         var both = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(api)));
@@ -221,9 +221,9 @@ public sealed class AddOnSubscriptionTests
     [Fact]
     public async Task The_platform_follows_the_same_add_on_rules()
     {
-        await TrialOnAsync(new EntitlementInput(BillingFeatures.Locations, true, 1), new EntitlementInput(BillingFeatures.StorefrontWeb, true));
+        await TrialOnAsync(new EntitlementInput(BillingFeatures.Locations, true, 1), new EntitlementInput(BillingFeatures.StorefrontMobileApp, true));
         var extra = await ExtraLocationAsync();
-        var site = await SiteAsync();
+        var site = await OnlineAsync();
         _fixture.CurrentTenantId = null;
 
         var notAvailable = await Assert.ThrowsAsync<DomainException>(
@@ -257,7 +257,7 @@ public sealed class AddOnSubscriptionTests
             new EntitlementInput(BillingFeatures.LocationsExtra, true),
             new EntitlementInput(BillingFeatures.Loyalty, true));
         await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await ExtraLocationAsync()));
-        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await OnlineAsync()));
 
         var features = await _fixture.GetMyFeatures.HandleAsync(new GetMyFeaturesQuery());
         var byCode = features.Features.ToDictionary(feature => feature.Code);
@@ -266,7 +266,7 @@ public sealed class AddOnSubscriptionTests
         Assert.Equal(started + _fixture.Settings.TrialLength, features.TrialEndsAtUtc);
         Assert.Equal(BillingFeatures.All.Count, features.Features.Count);
         Assert.Equal((true, (long?)3), (byCode[BillingFeatures.Locations].Enabled, byCode[BillingFeatures.Locations].Limit));
-        Assert.Equal((true, (long?)null), (byCode[BillingFeatures.StorefrontWeb].Enabled, byCode[BillingFeatures.StorefrontWeb].Limit));
+        Assert.Equal((true, (long?)null), (byCode[BillingFeatures.StorefrontMobileApp].Enabled, byCode[BillingFeatures.StorefrontMobileApp].Limit));
         Assert.True(byCode[BillingFeatures.Loyalty].Enabled);
         Assert.False(byCode[BillingFeatures.MarketingCampaigns].Enabled);
     }

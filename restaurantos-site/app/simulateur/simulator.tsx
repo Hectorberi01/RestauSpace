@@ -27,9 +27,8 @@ const initial: Record<string, number> = {'locations.count': 0, 'staff.count': 3,
 
 /** Besoins oui/non : le code du droit, et l'option qui peut le donner. */
 const wishes = [
-  {code: 'storefront.web', label: 'Site de commande en ligne', hint: 'Vos clients commandent et paient sur votre site'},
+  {code: 'storefront.api', label: 'Site de commande ou API', hint: 'Commande en ligne sur votre propre site, ou relier vos outils'},
   {code: 'marketing.campaigns', label: 'Campagnes marketing', hint: 'Emails, SMS et WhatsApp à vos clients'},
-  {code: 'storefront.api', label: 'API et webhooks', hint: 'Relier votre caisse, votre comptabilité ou vos outils'},
 ] as const;
 
 type Wish = (typeof wishes)[number]['code'];

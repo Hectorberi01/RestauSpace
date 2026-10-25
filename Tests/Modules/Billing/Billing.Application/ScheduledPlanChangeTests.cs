@@ -52,7 +52,7 @@ public sealed class ScheduledPlanChangeTests
         var (_, id) = await PaidAsync();
         var pro = await ProAsync();
         var online = await _fixture.CreatePlan.HandleAsync(new CreatePlanCommand(
-            "Vente en ligne", 15m, "EUR", BillingInterval.Monthly, [new EntitlementInput(BillingFeatures.StorefrontWeb, true)], PlanKind.AddOn));
+            "Vente en ligne", 15m, "EUR", BillingInterval.Monthly, [new EntitlementInput(BillingFeatures.StorefrontMobileApp, true)], PlanKind.AddOn));
         await _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, online));
         await _fixture.ChangePlan.HandleAsync(new ChangeSubscriptionPlanCommand(pro));
         var end = _fixture.SubscriptionById(id).CurrentPeriod.EndUtc;

@@ -6,7 +6,7 @@ Date : 12 octobre 2026. Suite de `API-COMMANDE-AUDIT.md` et `API-COMMANDE-DECISI
 
 | Domaine | Ajout |
 |---|---|
-| **Billing** | Plans de type **Option** (`PlanKind.AddOn`) et **options souscrites** par restaurant (`TenantAddOn`, quantité). Droits effectifs = plan + options, les limites étant multipliées par la quantité. Droits `storefront.web`, `storefront.mobile_app`, `storefront.kiosk` (limite = nombre de bornes) et `storefront.api` |
+| **Billing** | Plans de type **Option** (`PlanKind.AddOn`) et **options souscrites** par restaurant (`TenantAddOn`, quantité). Droits effectifs = plan + options, les limites étant multipliées par la quantité. Droits `storefront.mobile_app`, `storefront.kiosk` (limite = nombre de bornes) et `storefront.api` (site web du restaurant et clés d'API ; `storefront.web` retiré le 25/10/2026) |
 | **Orders** | Canal de la commande (`Counter`, `QrCode`, `Web`, `MobileApp`, `Kiosk`, `Api`), application source et heure programmée (`ScheduledForUtc`, au plus 14 jours à l'avance). Le canal est posé par le serveur : `Api` pour une clé `srk_`, `Counter` pour le personnel |
 | **Storefront** (nouveau module) | Applications de vente (site, application, borne) avec clé publique `pk_live_…` dont seule l'empreinte est gardée, origines autorisées, établissements servis, pages de retour de paiement. Réglages de vente en ligne par établissement : pause, modes, préparation, minimum, règles par canal (paiements, plafond au comptoir, acceptation), délais d'acceptation manuelle et d'expiration des impayés |
 | **Hôte** | Schéma d'authentification `StorefrontKey` (en-tête `X-Storefront-Key`), jamais schéma par défaut. CORS et limite de débit propres aux routes `/v1/storefront`. Document OpenAPI `storefront` toujours publié |
@@ -32,7 +32,7 @@ Date : 12 octobre 2026. Suite de `API-COMMANDE-AUDIT.md` et `API-COMMANDE-DECISI
    - les migrations s'appliquent ;
    - les rôles Owner et Manager existants reçoivent `storefront.view` et `storefront.manage`.
 4. **Dans le super-admin** :
-   - créez une option, par exemple « Vente en ligne » de type **Option** avec les droits `storefront.web` et `storefront.mobile_app`, et « Borne » avec `storefront.kiosk=1` ;
+   - créez une option, par exemple « Vente en ligne » de type **Option** avec les droits `storefront.api` et `storefront.mobile_app`, et « Borne » avec `storefront.kiosk=1` ;
    - ajoutez-la à un restaurant abonné.
 5. **Dans la console**, ouvrez **Paramètres › Vente en ligne** :
    - créez l'application ;

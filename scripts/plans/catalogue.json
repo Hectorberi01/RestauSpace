@@ -92,11 +92,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -211,11 +206,6 @@
         },
         {
           "featureCode": "reporting.consolidated",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "storefront.web",
           "enabled": false,
           "limit": null
         },
@@ -338,11 +328,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -457,11 +442,6 @@
         },
         {
           "featureCode": "reporting.consolidated",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "storefront.web",
           "enabled": false,
           "limit": null
         },
@@ -584,11 +564,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -707,11 +682,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -747,10 +717,21 @@
       "entitlements": [
         {
           "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
           "enabled": true,
           "limit": null
         }
-      ]
+      ],
+      "archived": true
     },
     {
       "name": "Application mobile",
@@ -905,11 +886,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -1024,11 +1000,6 @@
         },
         {
           "featureCode": "reporting.consolidated",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "storefront.web",
           "enabled": false,
           "limit": null
         },
@@ -1151,11 +1122,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -1270,11 +1236,6 @@
         },
         {
           "featureCode": "reporting.consolidated",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "storefront.web",
           "enabled": false,
           "limit": null
         },
@@ -1397,11 +1358,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -1520,11 +1476,6 @@
           "limit": null
         },
         {
-          "featureCode": "storefront.web",
-          "enabled": false,
-          "limit": null
-        },
-        {
           "featureCode": "storefront.mobile_app",
           "enabled": false,
           "limit": null
@@ -1560,10 +1511,21 @@
       "entitlements": [
         {
           "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
           "enabled": true,
           "limit": null
         }
-      ]
+      ],
+      "archived": true
     },
     {
       "name": "Application mobile",

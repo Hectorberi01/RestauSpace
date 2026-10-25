@@ -18,7 +18,7 @@ const createFields:Field[]=[
   {key:'currencyCode',label:'Devise (ISO 4217)'},
   {key:'billingInterval',label:'Facturation',type:'select',options:['Mensuelle','Annuelle']},
   {key:'kind',label:'Type',type:'select',options:['Plan de base','Option']},
-  {key:'entitlements',label:'Droits, un par ligne : code ou code=limite (ex. orders.monthly=1000, storefront.web, storefront.kiosk=1)',type:'textarea',required:false},
+  {key:'entitlements',label:'Droits, un par ligne : code ou code=limite (ex. orders.monthly=1000, storefront.api, storefront.kiosk=1)',type:'textarea',required:false},
 ];
 
 const entitlementFields:Field[]=[

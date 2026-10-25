@@ -194,10 +194,9 @@ const features: Record<string, string> = {
   automations: 'Automatisations (rapports planifiés, campagnes programmées)',
   'reporting.advanced': 'Exports, comptabilité et rapprochement',
   'reporting.consolidated': 'Rapports tous établissements',
-  'storefront.web': 'Commande en ligne : site web',
   'storefront.mobile_app': 'Commande en ligne : application mobile',
   'storefront.kiosk': 'Bornes de commande',
-  'storefront.api': 'API et clés d’API',
+  'storefront.api': 'API : votre site de commande et vos clés d’API',
   'integrations.webhooks': 'Webhooks',
   'support.priority': 'Support prioritaire',
 };
@@ -209,7 +208,7 @@ export const comparedLimits = [
 ];
 export const comparedFeatures = [
   'loyalty', 'customers.advanced', 'marketing.campaigns', 'marketing.gift_cards', 'automations', 'reporting.advanced', 'reporting.consolidated',
-  'storefront.web', 'storefront.mobile_app', 'storefront.kiosk', 'storefront.api', 'integrations.webhooks', 'notifications.byok', 'support.priority',
+  'storefront.mobile_app', 'storefront.kiosk', 'storefront.api', 'integrations.webhooks', 'notifications.byok', 'support.priority',
 ];
 
 export const featureLabel = (code: string) => features[code] ?? code;

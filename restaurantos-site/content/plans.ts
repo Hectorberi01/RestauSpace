@@ -15,6 +15,8 @@ export interface CataloguePlan {
   currencyCode: string;
   billingInterval: Interval;
   kind?: 'Base' | 'AddOn';
+  /** Plus vendu (ex. ancienne option Site web) : absent du site. */
+  archived?: boolean;
   entitlements: CatalogueEntitlement[];
 }
 
@@ -41,11 +43,11 @@ const audiences: Record<string, string> = {
 
 const highlights: Record<string, string[]> = {
   Essentiel: ['Commandes, caisse, cuisine et réservations', 'Carte, salle, stock et équipe', 'Programme de fidélité'],
-  Pro: ['Tout Essentiel, plus :', 'Campagnes, cartes cadeaux et automatisations', 'API et webhooks inclus', 'Support prioritaire'],
+  Pro: ['Tout Essentiel, plus :', 'Campagnes, cartes cadeaux et automatisations', 'API incluse : votre site de commande et vos outils', 'Support prioritaire'],
   'Multi-sites': ['Tout Pro, plus :', '5 établissements, extensibles', 'Rapports consolidés de tous vos établissements'],
 };
 
-const plans = (catalogue as {plans: CataloguePlan[]}).plans;
+const plans = (catalogue as {plans: CataloguePlan[]}).plans.filter(p => !p.archived);
 
 /** Plans de base mensuels d'un marché, du moins cher au plus cher. */
 export function tiers(market: Market): Tier[] {
@@ -147,10 +149,9 @@ export const compareSections: CompareSection[] = [
       {code: 'automations', label: 'Automatisations', hint: 'rapports planifiés, campagnes programmées', cell: feature('automations')},
       {code: 'reporting.advanced', label: 'Rapports avancés', hint: 'exports comptables, rapprochement', cell: feature('reporting.advanced')},
       {code: 'reporting.consolidated', label: 'Rapports consolidés', hint: 'tous établissements', cell: feature('reporting.consolidated')},
-      {code: 'storefront.web', label: 'Site de commande en ligne', cell: feature('storefront.web')},
       {code: 'storefront.mobile_app', label: 'Application mobile à votre marque', cell: feature('storefront.mobile_app')},
       {code: 'storefront.kiosk', label: 'Borne de commande', cell: feature('storefront.kiosk', 'En option, par borne')},
-      {code: 'storefront.api', label: 'API d’intégration et clés d’API', cell: feature('storefront.api')},
+      {code: 'storefront.api', label: 'API de vente en ligne', hint: 'votre site de commande, clés d’API', cell: feature('storefront.api')},
       {code: 'integrations.webhooks', label: 'Webhooks', cell: feature('integrations.webhooks')},
       {
         code: 'locations.extra',
@@ -165,10 +166,9 @@ export const compareSections: CompareSection[] = [
 // Options
 
 const addOnDescriptions: Record<string, string> = {
-  'Site web': 'Commande en ligne sur votre site, avec paiement',
   'Application mobile': 'Votre application de commande à votre marque',
   Borne: 'Prise de commande sur place, prix par borne',
-  'API et webhooks': 'Clés d’API et webhooks pour relier votre caisse ou vos outils',
+  'API et webhooks': 'Commande en ligne sur votre propre site, clés d’API et webhooks pour vos outils',
   'Établissement supplémentaire': 'Une adresse de plus sur le même compte, prix par établissement',
 };
 

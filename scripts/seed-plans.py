@@ -5,6 +5,8 @@ Passer par l'API garde les règles du domaine (validation, devise, droits), l'ou
 Rejouable : un plan actif de même nom, même devise et même intervalle n'est pas recréé ; avec --update, son prix
 et ses droits sont alignés sur le fichier. Avec --archive-missing, les plans actifs absents du fichier sont archivés :
 ils ne sont plus vendus, mais les abonnements et options en cours les gardent (renouvellement et paiement compris).
+Un plan marqué "archived": true dans le fichier n'est jamais créé : avec --update, ses droits sont alignés puis il est
+archivé (ex. l'ancienne option Site web, qui donne désormais l'API à ses souscripteurs, à leur prix).
 
 Usage :
     python3 scripts/seed-plans.py                      # crée ce qui manque
@@ -143,6 +145,16 @@ def main() -> int:
         for plan in wanted:
             current = by_key.get(key(plan))
             try:
+                if plan.get("archived"):
+                    if current is None:
+                        print(f"  · archivé      {label(plan)}")
+                        unchanged += 1
+                        continue
+                    if not args.update:
+                        print(f"  ~ à archiver   {label(plan)} : relancer avec --update")
+                        unchanged += 1
+                        continue
+
                 if current is None:
                     if args.dry_run:
                         print(f"  + à créer      {label(plan)}")
@@ -160,7 +172,19 @@ def main() -> int:
                     if have.get(code) != value:
                         changes.append(("entitlement", {"featureCode": code, "enabled": value[0], "limit": value[1]}))
 
-                if not changes:
+                if plan.get("archived"):
+                    # Aligner les droits AVANT d'archiver : un plan archivé ne change plus.
+                    if args.dry_run:
+                        print(f"  - à archiver   {label(plan)} : {len(changes)} droit(s) à aligner avant")
+                    else:
+                        for change, value in changes:
+                            if change == "price":
+                                continue  # les souscripteurs gardent leur prix
+                            api.call("PUT", f'/admin/billing/plans/{current["id"]}/entitlements', value)
+                        api.call("POST", f'/admin/billing/plans/{current["id"]}/archive')
+                        print(f"  - archivé      {label(plan)} : {len(changes)} droit(s) alignés avant")
+                    archived += 1
+                elif not changes:
                     print(f"  = à jour       {label(plan)}")
                     unchanged += 1
                 elif not args.update:
