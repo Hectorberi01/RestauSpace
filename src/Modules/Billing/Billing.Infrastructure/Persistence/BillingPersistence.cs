@@ -26,11 +26,11 @@ internal sealed class PlanRepository(BillingDbContext context) : IPlanRepository
     public void Add(Plan plan) => context.Plans.Add(plan);
 }
 
-internal sealed class SubscriptionRepository(BillingDbContext context) : ISubscriptionRepository, ILiveSubscriptionChecker
+internal sealed class SubscriptionRepository(BillingDbContext context, ITenantContext tenantContext) : ISubscriptionRepository, ILiveSubscriptionChecker
 {
-    // Tenant explicite : aussi appelé par la plateforme (options d'un restaurant), sans tenant dans le jeton.
+    // Restaurant : filtre de son contexte (un autre restaurant ne voit rien). Plateforme (sans tenant) : le tenant donné.
     public Task<SaasSubscription?> FindLiveAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
-        context.Subscriptions.IgnoreQueryFilters().SingleOrDefaultAsync(
+        (tenantContext.CurrentTenantId is null ? context.Subscriptions.IgnoreQueryFilters() : context.Subscriptions).SingleOrDefaultAsync(
             subscription => subscription.TenantId == tenantId && subscription.Status != SubscriptionStatus.Cancelled, cancellationToken);
 
     public Task<SaasSubscription?> FindAsync(TenantId tenantId, SubscriptionId id, CancellationToken cancellationToken = default) =>
