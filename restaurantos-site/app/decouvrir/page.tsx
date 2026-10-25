@@ -19,7 +19,7 @@ const scripts: {id: string; title: string; intro: string; steps: [string, string
       ['commandes', 'La commande arrive avec toutes les autres'],
       ['cuisine', 'La cuisine prépare, poste par poste'],
       ['salle', 'La salle suit l’état de chaque table'],
-      ['caisse', 'Vous encaissez comme le client le souhaite'],
+      ['caisse', 'Le paiement est rattaché à la commande'],
     ],
   },
   {

@@ -17,13 +17,13 @@ const quote = '/contact?sujet=site';
 
 const included = [
   {icon: RefreshCw, title: 'Carte toujours à jour', text: 'Plats, prix, photos, ruptures et horaires viennent de votre console : rien à ressaisir sur le site.'},
-  {icon: CreditCard, title: 'Commande et paiement', text: 'Sur place, à emporter ou en livraison, payé au comptoir ou en ligne (Mobile Money, carte) selon vos réglages.'},
+  {icon: CreditCard, title: 'Commande et paiement', text: 'Sur place, à emporter ou en livraison, payé sur place ou en ligne par carte bancaire, selon vos réglages.'},
   {icon: CalendarCheck, title: 'Réservation de table', text: 'Vos clients choisissent l’heure et le nombre de couverts, avec acompte si vous le demandez.'},
   {icon: Smartphone, title: 'Pensé pour le téléphone', text: 'La plupart de vos clients commandent depuis leur téléphone : le site est conçu d’abord pour eux.'},
-  {icon: Globe, title: 'Votre nom de domaine', text: 'Le site est à votre nom, sur votre adresse (par exemple www.votre-restaurant.bj).'},
+  {icon: Globe, title: 'Votre nom de domaine', text: 'Le site est à votre nom, sur votre adresse (par exemple www.votre-restaurant.fr).'},
   {icon: Server, title: 'Hébergement chez vous', text: 'Un site statique, simple à héberger : nous vous conseillons un hébergeur et faisons la mise en ligne.'},
   {icon: Search, title: 'Bases du référencement', text: 'Titres, description, mentions légales et page de confidentialité préparés pour votre restaurant.'},
-  {icon: Code2, title: 'Branché sur RestauSpace', text: 'Commandes, paiements et réservations arrivent dans votre console, comme celles de la caisse.'},
+  {icon: Code2, title: 'Branché sur RestauSpace', text: 'Commandes, paiements et réservations arrivent dans votre console, avec celles prises en salle.'},
 ];
 
 const steps = [
@@ -99,11 +99,11 @@ export default function CustomSite() {
         </ol>
       </Section>
 
-      <Section id="exemple" eyebrow="Exemple" title={<>Un exemple de <Highlight>réalisation possible</Highlight></>} intro="Maquette d’un maquis fictif : accueil sur ordinateur, carte et panier sur téléphone. Votre site est conçu à votre image.">
+      <Section id="exemple" eyebrow="Exemple" title={<>Un exemple de <Highlight>réalisation possible</Highlight></>} intro="Maquette d’un restaurant fictif : accueil sur ordinateur, carte et panier sur téléphone. Votre site est conçu à votre image.">
         <figure>
           <div className="overflow-hidden rounded-3xl shadow-2xl shadow-brand-900/10 ring-1 ring-black/5">
             <div className="relative aspect-[5/3]">
-              <Image src="/site-sur-mesure/exemple-maquis.webp" alt="Maquette d’un site de maquis : plats mis en avant, réservation, horaires et carte sur téléphone" fill sizes="(min-width: 1280px) 1200px, 100vw" className="object-cover" />
+              <Image src="/site-sur-mesure/exemple-maquis.webp" alt="Maquette d’un site de restaurant : plats mis en avant, réservation, horaires et carte sur téléphone" fill sizes="(min-width: 1280px) 1200px, 100vw" className="object-cover" />
             </div>
           </div>
           <figcaption className="mt-3 text-center text-sm text-ink-500">Maquette d’exemple : restaurant fictif.</figcaption>

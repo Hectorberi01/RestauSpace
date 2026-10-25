@@ -31,6 +31,8 @@ export interface Module {
   link?: {href: string; label: string};
   /** Ce qui dépend du plan, en une ligne. */
   plans?: string;
+  /** Précision affichée sous la liste (par exemple une règle propre à un pays). */
+  note?: string;
   group: 'service' | 'carte' | 'clients' | 'gestion';
 }
 
@@ -284,15 +286,15 @@ export const modules: Module[] = [
     title: 'Encaissement',
     filter: 'Autres',
     badge: 'Incontournable',
-    short: 'Caisse tactile, mobile money et paiement en ligne.',
-    summary: 'Encaissez comme vos clients veulent payer, et retrouvez chaque mouvement de caisse.',
+    short: 'Paiement en ligne, au comptoir et suivi des encaissements.',
+    summary: 'Vos clients paient comme ils le souhaitent, et chaque paiement est rattaché à sa commande.',
     points: [
-      'Caisse tactile, utilisable même sans connexion',
-      'Espèces, carte, mobile money et titres-restaurant',
-      'Paiement en ligne par vos prestataires',
-      'Ouverture, mouvements et clôture de caisse, tickets Z',
+      'Paiement en ligne par vos prestataires : carte, Apple Pay, Google Pay',
+      'Paiements au comptoir notés sur la commande : espèces, carte, titres-restaurant',
       'Remboursements partiels ou complets, toujours tracés',
+      'Au Bénin et en zone UEMOA : caisse tactile, Mobile Money, clôture et tickets Z',
     ],
+    note: 'En France, gardez votre caisse certifiée NF525 pour l’encaissement : RestauSpace s’utilise à côté, pour la commande en ligne, la cuisine, les réservations, le stock et l’équipe.',
     visual: {src: '/captures/caisse.webp', focus: '50% 30%', zoom: 1.14},
     thumb: {src: '/captures/caisse.webp', focus: '50% 35%', zoom: 1.8},
     group: 'gestion',

@@ -31,6 +31,7 @@ function ModuleCard({module}: {module: Module}) {
           <li key={point} className="flex gap-2.5 text-sm text-ink-800"><CircleCheck className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />{point}</li>
         ))}
       </ul>
+      {module.note && <p className="mt-4 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-ink-600 ring-1 ring-slate-200">{module.note}</p>}
       {module.link && (
         <Link href={module.link.href} className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-600">
           {module.link.label} <ArrowRight className="size-4" aria-hidden="true" />
