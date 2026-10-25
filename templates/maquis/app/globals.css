@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/* Couleurs du thème : posées sur <html> depuis site.config.json (app/layout.tsx). */
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-dark: var(--dark);
+  --color-cream: var(--background);
+  --color-sand: #f3e3c8;
+  --color-ink: #2a1a12;
+  --color-muted: #6f5e51;
+  --color-line: #ead6bb;
+  --color-leaf: #2f6b3f;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--top, 0px) + 12px);
+}
+
+body {
+  @apply bg-cream font-sans text-ink antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

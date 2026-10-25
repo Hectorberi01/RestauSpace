@@ -395,6 +395,9 @@ public interface IStorefrontPayments
 
     /// <summary>Rembourse tout ce qui a été encaissé sur la commande.</summary>
     Task RefundAllAsync(TenantId tenantId, OrderId orderId, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>Démo publique : le paiement simulé est validé (restaurant de démonstration seulement).</summary>
+    Task CaptureDemoAsync(TenantId tenantId, string reference, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
 // ---- Bornes et ticket client (phase 6)

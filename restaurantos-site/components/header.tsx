@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {
-  ArrowRight, BarChart3, ChevronDown, CircleHelp, Code2, Home, LayoutGrid, LogIn, Mail, Menu, Play, Settings2, Tag, UtensilsCrossed, X, type LucideIcon,
+  ArrowRight, BarChart3, ChevronDown, CircleHelp, Code2, Home, LayoutGrid, LayoutTemplate, LogIn, Mail, Menu, Play, Settings2, Tag, UtensilsCrossed, X, type LucideIcon,
 } from 'lucide-react';
 import {modules} from '@/content/features';
 import {featureMenu, nav, site} from '@/content/site';
@@ -12,7 +12,7 @@ import {Brand} from './brand';
 import {DemoLink} from './demo-modal';
 import {ModuleIcon} from './icon';
 
-const navIcons: Record<string, LucideIcon> = {'/': Home, '/fonctionnalites': LayoutGrid, '/tarifs': Tag, '/faq': CircleHelp, '/developpeurs': Code2, '/contact': Mail};
+const navIcons: Record<string, LucideIcon> = {'/': Home, '/fonctionnalites': LayoutGrid, '/tarifs': Tag, '/modeles': LayoutTemplate, '/faq': CircleHelp, '/developpeurs': Code2, '/contact': Mail};
 const groupIcons: Record<(typeof featureMenu)[number]['icon'], LucideIcon> = {service: UtensilsCrossed, gestion: Settings2, croissance: BarChart3};
 const groups = featureMenu.map(group => ({...group, items: group.modules.flatMap(id => modules.filter(module => module.id === id))}));
 
@@ -98,7 +98,7 @@ export function Header() {
                     aria-controls={menuId}
                     onClick={() => setMega(value => !value)}
                     onMouseEnter={openMega}
-                    className={`inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${mega ? 'bg-brand-50 text-brand-700' : isActive ? 'text-brand-700 hover:bg-slate-100/70' : 'text-ink-600 hover:bg-slate-100/70 hover:text-ink-900'}`}
+                    className={`inline-flex items-center gap-1 rounded-xl px-2 py-2 text-sm font-medium lg:px-3 transition-colors ${mega ? 'bg-brand-50 text-brand-700' : isActive ? 'text-brand-700 hover:bg-slate-100/70' : 'text-ink-600 hover:bg-slate-100/70 hover:text-ink-900'}`}
                   >
                     {item.label}
                     <ChevronDown className={`size-4 transition-transform duration-300 ${mega ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -114,7 +114,7 @@ export function Header() {
                   href={item.href}
                   onMouseEnter={leaveMega}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-slate-100/70 ${isActive ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900'}`}
+                  className={`rounded-xl px-2 py-2 text-sm font-medium lg:px-3 transition-colors hover:bg-slate-100/70 ${item.href === '/' ? 'max-xl:hidden' : ''} ${isActive ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900'}`}
                 >
                   {item.label}
                 </Link>
@@ -127,10 +127,10 @@ export function Header() {
             />
           </nav>
           <div className="hidden items-center gap-2 lg:flex">
-            <a href={site.consoleUrl} className="btn-motion rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-ink-800 hover:border-slate-300 hover:bg-slate-50">
+            <a href={site.consoleUrl} className="btn-motion hidden whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-ink-800 hover:border-slate-300 hover:bg-slate-50 xl:block">
               Se connecter
             </a>
-            <DemoLink className="btn-motion group inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/30">
+            <DemoLink className="btn-motion group inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/30">
               Demander une démo <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </DemoLink>
           </div>

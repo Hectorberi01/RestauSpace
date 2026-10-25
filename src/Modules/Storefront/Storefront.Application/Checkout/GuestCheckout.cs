@@ -606,6 +606,35 @@ public sealed class StartGuestPaymentHandler(
 }
 
 /// <summary>
+/// Démo publique des modèles : le visiteur valide le paiement simulé ; la suite (commande prise en charge) est celle d'un
+/// vrai paiement. Restaurant de démonstration seulement (403 sinon).
+/// </summary>
+public sealed record ConfirmDemoPaymentCommand(string? Reference) : ICommand
+{
+    public override string ToString() => "ConfirmDemoPaymentCommand (***)";
+}
+
+public sealed class ConfirmDemoPaymentHandler(StorefrontWorkspace workspace, IStorefrontPayments payments, IDemoTenants? demo = null)
+    : ICommandHandler<ConfirmDemoPaymentCommand>
+{
+    public const string NotDemoCode = "storefront.demo.only";
+
+    public async Task HandleAsync(ConfirmDemoPaymentCommand command, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var tenant = workspace.CurrentTenant;
+        if (demo is null || !demo.IsDemo(tenant))
+        {
+            throw new ForbiddenException(new DomainError(NotDemoCode, "Simulated payments only exist in the demonstration."));
+        }
+
+        var reference = command.Reference?.Trim() ?? string.Empty;
+        DomainException.ThrowIf(reference.Length is 0 or > 200, new DomainError("storefront.demo.reference_invalid", "Unknown payment reference."));
+        await payments.CaptureDemoAsync(tenant, reference, cancellationToken);
+    }
+}
+
+/// <summary>
 /// Réaction à un encaissement (par l'outbox, pour le tenant du message) : une commande en ligne qui attendait son
 /// paiement et n'a plus rien à payer est prise en charge (acceptée en automatique, mise en attente d'acceptation en
 /// manuel). Sans effet pour toute autre commande, et rejouable.

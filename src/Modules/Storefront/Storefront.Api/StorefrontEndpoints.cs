@@ -468,6 +468,13 @@ public static class StorefrontEndpoints
             .RequireIdempotencyKey()
             .WithSummary("Démarre (ou reprend) le paiement en ligne de la commande ; renvoie la page du prestataire où envoyer le client.");
 
+        storefront.MapPost("/demo/payments/{reference}/capture", async (string reference, ICommandHandler<ConfirmDemoPaymentCommand> handler, CancellationToken ct) =>
+        {
+            await handler.HandleAsync(new ConfirmDemoPaymentCommand(reference), ct);
+            return TypedResults.NoContent();
+        })
+        .WithSummary("Démo publique des modèles : valide le paiement simulé (restaurant de démonstration seulement, 403 sinon).");
+
         storefront.MapPost("/customer/code", async (
             CustomerCodeRequest request, HttpContext http, ICommandHandler<RequestCustomerCodeCommand, CustomerCodeSentDto> handler, CancellationToken ct) =>
         {

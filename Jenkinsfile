@@ -93,6 +93,17 @@ pipeline {
         stage('Back-office') {
           steps { dir('restaurantos-super-admin') { script { front() } } }
         }
+        stage('Modèles') {
+          // Modèles de sites (npm, site statique) : typecheck ; l'image des démos les construit en livraison.
+          steps {
+            dir('templates/maquis') {
+              withEnv(["PATH+NODE=${env.JENKINS_HOME}/tools/node-v${env.NODE_VERSION}/bin"]) {
+                sh 'npm ci --no-audit --no-fund'
+                sh 'npx tsc --noEmit'
+              }
+            }
+          }
+        }
       }
     }
 

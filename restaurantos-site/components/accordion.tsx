@@ -1,9 +1,10 @@
 'use client';
 import {useId, useState} from 'react';
-import {Plus} from 'lucide-react';
+import Link from 'next/link';
+import {ArrowRight, Plus} from 'lucide-react';
 
 /** Questions dépliables : la hauteur de la réponse s'anime, son texte reste dans la page pour les moteurs de recherche. */
-export function Accordion({items, variant = 'cards', defaultOpen = null}: {items: {q: string; a: string}[]; variant?: 'cards' | 'list'; defaultOpen?: number | null}) {
+export function Accordion({items, variant = 'cards', defaultOpen = null}: {items: {q: string; a: string; link?: {href: string; label: string}}[]; variant?: 'cards' | 'list'; defaultOpen?: number | null}) {
   const [open, setOpen] = useState<number | null>(defaultOpen);
   const id = useId();
   return (
@@ -35,6 +36,11 @@ export function Accordion({items, variant = 'cards', defaultOpen = null}: {items
             >
               <div className="overflow-hidden" inert={!expanded}>
                 <p className={`px-5 pb-4 leading-relaxed text-ink-600 ${variant === 'cards' ? 'text-sm' : ''}`}>{item.a}</p>
+                {item.link && (
+                  <Link href={item.link.href} className={`-mt-1 inline-flex items-center gap-1.5 px-5 pb-4 font-semibold text-brand-700 hover:underline ${variant === 'cards' ? 'text-sm' : ''}`}>
+                    {item.link.label} <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                )}
               </div>
             </div>
           </li>

@@ -5,6 +5,7 @@ import {ArrowRight, CheckCircle2, ChevronDown, Loader2, Send} from 'lucide-react
 import {toast} from '@/components/toast';
 import {site} from '@/content/site';
 import {tiers} from '@/content/plans';
+import {templateBySlug} from '@/content/templates';
 
 const field = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100';
 const label = 'text-[0.8rem] font-medium text-ink-700';
@@ -12,7 +13,10 @@ const select = `${field} cursor-pointer appearance-none pr-9`;
 const chevron = <ChevronDown className="pointer-events-none absolute bottom-3 right-3.5 size-4 text-ink-400" aria-hidden="true" />;
 const star = <span className="text-red-500" aria-hidden="true"> *</span>;
 
-const subjects = ['Demande de démonstration', 'Tarifs et abonnement', 'Intégration et API', 'Site sur mesure', 'Autre question'];
+const subjects = ['Demande de démonstration', 'Tarifs et abonnement', 'Intégration et API', 'Modèle de site', 'Site sur mesure', 'Autre question'];
+
+/** Sujet prérempli par `?sujet=` dans l'adresse. */
+const subjectParams: Record<string, string> = {api: 'Intégration et API', modele: 'Modèle de site', site: 'Site sur mesure'};
 
 const countries: {label: string; dial?: string}[] = [
   {label: 'Bénin', dial: '229'},
@@ -51,8 +55,10 @@ export function ContactForm({initialSubjectIndex}: {initialSubjectIndex?: number
   const params = useSearchParams();
   const initialPlan = params.get('plan') ?? '';
   const initialCountry = params.get('pays') === 'fr' ? 'France' : params.get('pays') === 'bj' ? 'Bénin' : '';
-  const initialSubject = params.get('sujet') === 'api' ? subjects[2] : params.get('sujet') === 'site' ? subjects[3] : initialPlan ? subjects[1] : initialSubjectIndex !== undefined ? subjects[initialSubjectIndex] ?? '' : '';
-  const [values, setValues] = useState({name: '', restaurant: '', email: '', phone: '', country: initialCountry, subject: initialSubject, plan: initialPlan, message: '', website: ''});
+  const initialSubject = subjectParams[params.get('sujet') ?? ''] ?? (initialPlan ? subjects[1] : initialSubjectIndex !== undefined ? subjects[initialSubjectIndex] ?? '' : '');
+  const template = params.get('sujet') === 'modele' ? templateBySlug(params.get('modele') ?? '') : undefined;
+  const initialMessage = template ? `Le modèle « ${template.name} » m’intéresse.` : '';
+  const [values, setValues] = useState({name: '', restaurant: '', email: '', phone: '', country: initialCountry, subject: initialSubject, plan: initialPlan, message: initialMessage, website: ''});
   const [error, setError] = useState<string>();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const set = (key: keyof typeof values) => (e: {target: {value: string}}) => setValues(v => ({...v, [key]: e.target.value}));

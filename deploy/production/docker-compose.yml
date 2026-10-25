@@ -131,6 +131,18 @@ services:
       traefik.http.middlewares.rs-www-to-apex.redirectregex.permanent: "true"
       traefik.http.services.rs-site.loadbalancer.server.port: "3000"
 
+  # Démos des modèles de sites (fichiers statiques) : demo.<domaine>/<modèle>/.
+  demo:
+    <<: [*restart, *logging]
+    image: ${IMAGE_REGISTRY:-}restauspace-demo:${RELEASE:-latest}
+    networks: [edge]
+    labels:
+      <<: *traefik
+      traefik.http.routers.rs-demo.rule: Host(`demo.${DOMAIN}`)
+      traefik.http.routers.rs-demo.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.rs-demo.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.services.rs-demo.loadbalancer.server.port: "8080"
+
   admin:
     <<: [*restart, *logging]
     image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}

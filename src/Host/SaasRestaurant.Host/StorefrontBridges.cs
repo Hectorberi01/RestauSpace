@@ -665,7 +665,8 @@ internal sealed class StorefrontPaymentsFromPayments(
     ICommandHandler<StartOnlinePaymentCommand, OnlinePaymentStarted> start,
     ICommandHandler<RetryPaymentCommand, OnlinePaymentStarted> retry,
     ICommandHandler<CancelPaymentCommand> cancel,
-    ICommandHandler<RequestRefundCommand, Guid> refund) : IStorefrontPayments
+    ICommandHandler<RequestRefundCommand, Guid> refund,
+    ICommandHandler<CaptureSandboxPaymentCommand> captureDemo) : IStorefrontPayments
 {
     public const string ReplacedReason = "Nouvel essai du client";
 
@@ -741,6 +742,12 @@ internal sealed class StorefrontPaymentsFromPayments(
         {
             await refund.HandleAsync(new RequestRefundCommand(payment.Id, reason), cancellationToken);
         }
+    }
+
+    public Task CaptureDemoAsync(TenantId tenantId, string reference, CancellationToken cancellationToken = default)
+    {
+        EnsureContext(tenantId);
+        return captureDemo.HandleAsync(new CaptureSandboxPaymentCommand(reference), cancellationToken);
     }
 
     private void EnsureContext(TenantId tenantId)

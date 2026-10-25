@@ -80,4 +80,10 @@ public static class PaymentsApplicationErrors
 
     public static readonly DomainError ItemAlreadyPaid =
         new("payments.items.already_paid", "Some of these units are already paid by another payment.", DomainErrorKind.Conflict);
+
+    public static readonly DomainError SandboxNotAllowed =
+        new("payments.sandbox.not_allowed", "The simulated payment provider is reserved for demonstration restaurants.");
+
+    public static readonly DomainError DemoOnly =
+        new("payments.demo.only", "Simulated payments can only be confirmed for a demonstration restaurant.");
 }

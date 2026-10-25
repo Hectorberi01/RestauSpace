@@ -1,0 +1,17 @@
+{
+  "apiUrl": "https://api.restauspace.com",
+  "publishableKey": "pk_live_à_remplacer",
+  "demo": false,
+  "theme": {"primary": "#b4441a", "accent": "#f4b23c", "dark": "#7a2e12", "background": "#fbf3e6"},
+  "texts": {
+    "heroTitle": "La cuisine de Cotonou,",
+    "heroAccent": "comme à la maison.",
+    "heroText": "Commandez en quelques secondes, à emporter ou livré chez vous, et payez comme vous voulez.",
+    "featuredTitle": "Nos incontournables",
+    "featuredText": "Les plats du moment, à commander en quelques secondes."
+  },
+  "sections": ["hero", "featured", "booking", "hours", "reviews"],
+  "featured": {"section": null, "count": 4},
+  "links": {"instagram": null, "facebook": null, "whatsapp": null},
+  "legal": {"company": null, "registration": null, "address": null, "publicationDirector": null, "host": null}
+}
