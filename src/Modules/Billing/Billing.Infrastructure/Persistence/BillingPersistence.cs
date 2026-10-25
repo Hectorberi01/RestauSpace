@@ -28,8 +28,9 @@ internal sealed class PlanRepository(BillingDbContext context) : IPlanRepository
 
 internal sealed class SubscriptionRepository(BillingDbContext context) : ISubscriptionRepository, ILiveSubscriptionChecker
 {
+    // Tenant explicite : aussi appelé par la plateforme (options d'un restaurant), sans tenant dans le jeton.
     public Task<SaasSubscription?> FindLiveAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
-        context.Subscriptions.SingleOrDefaultAsync(
+        context.Subscriptions.IgnoreQueryFilters().SingleOrDefaultAsync(
             subscription => subscription.TenantId == tenantId && subscription.Status != SubscriptionStatus.Cancelled, cancellationToken);
 
     public Task<SaasSubscription?> FindAsync(TenantId tenantId, SubscriptionId id, CancellationToken cancellationToken = default) =>
