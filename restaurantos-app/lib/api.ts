@@ -610,6 +610,7 @@ const messages: Record<string, string> = {
   'billing.add_on.archived': 'Cette option n’est plus proposée.',
   'billing.add_on.quantity_invalid': 'Quantité invalide (1 à 1 000).',
   'billing.add_on.cancelled': 'Cette option a été résiliée.',
+  'billing.add_on.complimentary': 'Cette option vous est offerte par RestauSpace : contactez l’équipe pour la modifier.',
   'promotions.coupon_code.required': 'Le code est obligatoire.',
   'promotions.coupon_code.length_invalid': 'Un code fait 3 à 32 caractères.',
   'promotions.coupon_code.characters_invalid': 'Un code n’accepte que des lettres, des chiffres et « - ».',

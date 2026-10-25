@@ -257,6 +257,14 @@ public static class DependencyInjection
             "Bonjour, {{subscription.reason}} {{subscription.plan}} de {{restaurant.name}} se termine le {{subscription.endDate}}. Pour continuer sans interruption, réglez la période suivante en ligne : {{subscription.url}} Sans paiement, l'accès sera suspendu après le délai de grâce."),
         (NotificationTypes.StaffSubscriptionEnding.Key, NotificationChannel.Email, "en", "{{restaurant.name}}: your subscription is ending",
             "Hello, {{subscription.reason}} {{subscription.plan}} for {{restaurant.name}} ends on {{subscription.endDate}}. To keep going, pay for the next period online: {{subscription.url}} Without payment, access will be suspended after the grace period."),
+        (NotificationTypes.StaffSubscriptionOffer.Key, NotificationChannel.InApp, "fr", "Offre RestauSpace",
+            "{{offer.subject}} {{offer.detail}}."),
+        (NotificationTypes.StaffSubscriptionOffer.Key, NotificationChannel.InApp, "en", "RestauSpace offer",
+            "{{offer.subject}} {{offer.detail}}."),
+        (NotificationTypes.StaffSubscriptionOffer.Key, NotificationChannel.Email, "fr", "{{restaurant.name}} : une offre RestauSpace",
+            "Bonjour, {{offer.subject}} {{offer.detail}}. Le détail est dans votre console, page Abonnement : {{subscription.url}}"),
+        (NotificationTypes.StaffSubscriptionOffer.Key, NotificationChannel.Email, "en", "{{restaurant.name}}: a RestauSpace offer",
+            "Hello, {{offer.subject}} {{offer.detail}}. See the details in your console, Subscription page: {{subscription.url}}"),
     ];
 
     private static readonly (NotificationChannel Channel, string Language, string? Subject, string Body)[] BuiltInWebhookTemplates =

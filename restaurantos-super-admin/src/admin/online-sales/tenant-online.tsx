@@ -1,6 +1,8 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {Globe,Smartphone,MonitorSmartphone,PauseCircle,CalendarDays,ChevronDown,Check,Layers,ShoppingCart,Wallet,Store} from 'lucide-react';
+import {Globe,Smartphone,MonitorSmartphone,PauseCircle,CalendarDays,ChevronDown,Check,Layers,ShoppingCart,Wallet,Store,Gift} from 'lucide-react';
+import {Button} from '@/components/ui/button';
+import {AddOnOfferDialog,addOnOfferText} from '../shared/complimentary';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
 import {StatusBadge,LoadingSkeleton} from '../../components/ui/shared';
 import {describe} from '../../services/api/client';
@@ -34,16 +36,20 @@ function Delta({now,before}:{now:number;before:number|null}){
 const optionIcon=(o:TenantAddOnDto)=>o.addOn.entitlements.some(e=>e.enabled&&e.featureCode.includes('kiosk'))?MonitorSmartphone:o.addOn.entitlements.some(e=>e.enabled&&e.featureCode.includes('app'))?Smartphone:Globe;
 
 /** La vente en ligne d'un restaurant : période, aperçu, options, commandes par canal, applications, bornes, établissements. Aucun secret. */
-export function TenantOnlineSales({tenantId,from,to}:{tenantId:string;from?:string;to?:string}){
+/** Option de vente en ligne : elle donne un droit storefront.* (site via l'API, application, borne). */
+const isOnline=(p:{entitlements:{enabled:boolean;featureCode:string}[]})=>p.entitlements.some(e=>e.enabled&&e.featureCode.startsWith('storefront.'));
+
+export function TenantOnlineSales({tenantId,from,to,currency}:{tenantId:string;from?:string;to?:string;currency?:string}){
   const [days,setDays]=useState(30);
   const [data,setData]=useState<OnlineSalesTenantDetail|null>(null);
   const [previous,setPrevious]=useState<OnlineSalesTenantDetail|null>(null);
   const [error,setError]=useState<string>();
   const [options,setOptions]=useState<TenantAddOnDto[]|null>(null);
+  const [version,setVersion]=useState(0);
   const fixed=!!from&&!!to;
   const end=to??isoDay(new Date());
   const start=from??shiftDay(end,-(days-1));
-  useEffect(()=>{let active=true;addOnsApi.list(tenantId).then(list=>{if(active)setOptions(list.filter(x=>x.status==='Active'&&x.addOn.entitlements.some(e=>e.enabled&&e.featureCode.startsWith('storefront.'))))}).catch(()=>{if(active)setOptions([])});return()=>{active=false}},[tenantId]);
+  useEffect(()=>{let active=true;addOnsApi.list(tenantId).then(list=>{if(active)setOptions(list.filter(x=>x.status==='Active'&&isOnline(x.addOn)))}).catch(()=>{if(active)setOptions([])});return()=>{active=false}},[tenantId,version]);
   useEffect(()=>{
     let active=true;setData(null);setPrevious(null);setError(undefined);
     const length=Math.round((new Date(`${end}T00:00:00`).getTime()-new Date(`${start}T00:00:00`).getTime())/86400000)+1;
@@ -62,7 +68,9 @@ export function TenantOnlineSales({tenantId,from,to}:{tenantId:string;from?:stri
       <small>Dernière commande : {data.lastOrderAtUtc?dateTime(data.lastOrderAtUtc):'aucune'} · {number(data.activeCustomerSessions)} client(s) connecté(s), {number(data.customerSignIns)} connexion(s) sur la période</small>
     </div>
   </div>;
-  const subscribed=<section className="online-block"><h4><Layers size={16}/>Options de vente en ligne</h4>{options===null?<LoadingSkeleton/>:options.length?<div className="online-list">{options.map(o=>{const Icon=optionIcon(o);return <div key={o.id} className="online-row"><span className="online-row-icon"><Icon size={16}/></span><strong>{o.addOn.name}{o.quantity>1?` × ${o.quantity}`:''}</strong><span className="online-row-meta">{money(o.addOn.price*o.quantity,o.addOn.currencyCode)} / {o.addOn.billingInterval==='Yearly'?'an':'mois'}</span><StatusBadge value="Actif"/></div>})}</div>:<p className="muted">Aucune option souscrite. Elles s’ajoutent dans l’onglet Abonnement, ou par le restaurant depuis sa console.</p>}</section>;
+  const reload=()=>setVersion(v=>v+1);
+  const offer=<AddOnOfferDialog tenantId={tenantId} currency={currency} only={isOnline} exclude={(options??[]).map(o=>o.addOn.id)} onDone={reload}><Button variant="outline" size="sm"><Gift size={14}/>Offrir une option</Button></AddOnOfferDialog>;
+  const subscribed=<section className="online-block"><div className="online-block-head"><h4><Layers size={16}/>Options de vente en ligne</h4>{offer}</div>{options===null?<LoadingSkeleton/>:options.length?<div className="online-list">{options.map(o=>{const Icon=optionIcon(o);return <div key={o.id} className="online-row"><span className="online-row-icon"><Icon size={16}/></span><strong>{o.addOn.name}{o.quantity>1?` × ${o.quantity}`:''}</strong><span className="online-row-meta">{o.isComplimentary?addOnOfferText(o):`${money(o.addOn.price*o.quantity,o.addOn.currencyCode)} / ${o.addOn.billingInterval==='Yearly'?'an':'mois'}`}</span><StatusBadge value={o.isComplimentary?'Offert':'Actif'}/>{!o.isComplimentary&&<AddOnOfferDialog tenantId={tenantId} currency={currency} addOn={o} onDone={reload}><button className="text-link"><Gift size={14}/> Offrir</button></AddOnOfferDialog>}</div>})}</div>:<p className="muted">Aucune option souscrite. Offrez-en une ici, ajoutez-la dans l’onglet Abonnement, ou laissez le restaurant la souscrire depuis sa console.</p>}</section>;
   if(!data.apps.length)return <div className="online-tab">{period}{subscribed}<section className="online-block"><h4><Globe size={16}/>Applications de vente</h4><p className="muted">Aucune application de vente : ce restaurant ne vend pas en ligne.</p></section></div>;
   return <div className="online-tab">
     {period}

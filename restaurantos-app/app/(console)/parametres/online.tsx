@@ -12,6 +12,7 @@ import {useResource} from '@/lib/hooks';
 import {useConsole} from '@/components/console';
 import {PlanBadge} from '@/components/plan';
 import {Feature} from '@/lib/plan';
+import {addOnOfferText, listAddOns} from '@/lib/billing';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cx, useAction} from '@/components/ui';
 import {KioskDevices} from './kiosks';
 import {Switch} from './shared';
@@ -388,6 +389,11 @@ export function OnlineSales() {
   const [dialog, setDialog] = useState<{app?: SalesApp; kind: SalesAppKind} | null>(null);
   const [issued, setIssued] = useState<{name: string; key: string; kind?: SalesAppKind} | null>(null);
   const data = useResource(signal => allowed ? loadOnlineSales(signal) : Promise.resolve(null), [allowed]);
+  const addOns = useResource(signal => (can('billing.view') ? listAddOns(signal).catch(() => null) : Promise.resolve(null)), []);
+  // L'option offerte qui ouvre ce canal, s'il y en a une.
+  const offerFor = (kind: SalesAppKind) =>
+    addOns.data?.active.find(item => item.isComplimentary && item.addOn.entitlements.some(right => right.enabled && right.featureCode === kindFeature[kind]));
+  const offerDay = (iso: string) => new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}).format(new Date(iso));
 
   if (!allowed) return <Empty icon={<Globe className="size-8" />} title="Vente en ligne non disponible">Réservé aux membres qui gèrent la vente en ligne.</Empty>;
   if (data.error) return <Alert>{data.error}</Alert>;
@@ -403,12 +409,14 @@ export function OnlineSales() {
         {kinds.map(kind => {
           const Icon = kindIcon[kind];
           const on = accessOf(overview, kind);
+          const offer = offerFor(kind);
           return (
             <Card key={kind} className="flex gap-3 p-4">
               <span className={cx('grid size-10 shrink-0 place-items-center rounded-xl', on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-ink-500')} aria-hidden="true"><Icon className="size-5" /></span>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}{on ? <Badge tone="green">Disponible</Badge> : <PlanBadge force feature={kindFeature[kind]} />}</p>
+                <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}{on ? (offer ? <Badge tone="brand">Offerte</Badge> : <Badge tone="green">Disponible</Badge>) : <PlanBadge force feature={kindFeature[kind]} />}</p>
                 <p className="text-sm text-ink-500">{on ? kindHint[kind] : kind === 'Web' ? 'Votre site se branche sur l’API : incluse dans Pro et Multi-sites, option « API et webhooks » sur Essentiel.' : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
+                {on && offer && <p className="mt-1 text-xs font-medium text-brand-700">{addOnOfferText(offer, offerDay)}.</p>}
                 {!on && <Link href="/abonnement#options" className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">{kind === 'Web' ? 'Voir le plan Pro ou l’option API' : 'Ajouter cette option'}</Link>}
               </div>
             </Card>

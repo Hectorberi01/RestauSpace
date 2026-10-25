@@ -31,7 +31,7 @@ const typeNames:Record<string,string>={
   'marketing.customer_reactivation':'Relance client','marketing.special_event':'Événement spécial','account.password_reset':'Mot de passe oublié','account.verify_email':'Confirmation d’adresse',
   'account.welcome':'Bienvenue','security.otp':'Code de vérification','staff.low_stock':'Stock bas (équipe)','staff.new_reservation':'Nouvelle réservation (équipe)','staff.new_review':'Nouvel avis (équipe)',
   'staff.order_cancelled':'Commande annulée (équipe)','staff.payment_failed':'Paiement échoué (équipe)','staff.report_ready':'Rapport prêt (équipe)','staff.schedule_published':'Planning publié (équipe)',
-  'staff.shift_swap':'Échange de service (équipe)','staff.subscription_ending':'Fin d’essai ou d’offre (équipe)','staff.webhook_disabled':'Webhook désactivé (équipe)',
+  'staff.shift_swap':'Échange de service (équipe)','staff.subscription_ending':'Fin d’essai ou d’offre (équipe)','staff.subscription_offer':'Offre de la plateforme (équipe)','staff.webhook_disabled':'Webhook désactivé (équipe)',
 };
 export const typeLabel=(key:string)=>typeNames[key]??key;
 

@@ -228,6 +228,7 @@ public enum SubscriptionDueOutcome
     PastDue = 4,
     SuspendedForNonPayment = 5,
     RenewedFree = 6,
+    RenewedComplimentary = 7,
 }
 
 /// <summary>
@@ -261,6 +262,12 @@ public sealed class ProcessDueSubscriptionHandler(BillingWorkspace workspace, IC
             subscription.RenewPeriod(subscription.CurrentPeriod, clock);
             await workspace.CancelAddOnsAsync(subscription.TenantId, clock, cancellationToken);
             outcome = SubscriptionDueOutcome.Cancelled;
+        }
+        else if (subscription is { Status: SubscriptionStatus.Active, IsComplimentary: true, ComplimentaryRenewalMonths: not null })
+        {
+            // Offre renouvelable : elle repart pour sa durée.
+            subscription.RenewComplimentary(clock);
+            outcome = SubscriptionDueOutcome.RenewedComplimentary;
         }
         else if (subscription.Status == SubscriptionStatus.Active
             && await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken) is { } plan

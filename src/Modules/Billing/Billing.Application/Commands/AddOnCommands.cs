@@ -78,7 +78,10 @@ public sealed class ChangeMyAddOnQuantityHandler(BillingWorkspace workspace, ICl
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         await TenantAddOns.RequireOpenSubscriptionAsync(workspace, cancellationToken);
-        (await TenantAddOns.LoadMineAsync(workspace, command.AddOnId, cancellationToken)).ChangeQuantity(command.Quantity, clock);
+        var addOn = await TenantAddOns.LoadMineAsync(workspace, command.AddOnId, cancellationToken);
+        // Une option offerte ne change que par la plateforme.
+        DomainException.ThrowIf(addOn.IsComplimentary, BillingApplicationErrors.AddOnComplimentary);
+        addOn.ChangeQuantity(command.Quantity, clock);
         await workspace.SaveAsync(cancellationToken);
     }
 }
@@ -100,7 +103,7 @@ public sealed class CancelMyAddOnHandler(BillingWorkspace workspace, IClock cloc
 internal static class TenantAddOns
 {
     public static async Task<Guid> ActivateAsync(
-        BillingWorkspace workspace, TenantId tenant, Guid planId, int quantity, IClock clock, CancellationToken cancellationToken)
+        BillingWorkspace workspace, TenantId tenant, Guid planId, int quantity, IClock clock, CancellationToken cancellationToken, AddOnOffer? offer = null)
     {
         var plan = await workspace.LoadPlanAsync(planId, cancellationToken);
         await workspace.EnsurePlanCurrencyAsync(tenant, plan, cancellationToken);
@@ -111,6 +114,11 @@ internal static class TenantAddOns
             quantity,
             await workspace.AddOns.FindActiveAsync(tenant, plan.Id, cancellationToken) is null,
             clock);
+        if (offer is not null)
+        {
+            addOn.GrantComplimentary(offer, clock);
+        }
+
         workspace.AddOns.Add(addOn);
         await workspace.SaveAsync(cancellationToken);
         return addOn.Id.Value;

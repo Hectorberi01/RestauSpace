@@ -76,6 +76,25 @@ export interface TenantAddOnDto {
   status: 'Active' | 'Cancelled';
   activatedAtUtc: string;
   cancelledAtUtc: string | null;
+  /** Option offerte par la plateforme : rien à payer pendant l'offre. */
+  isComplimentary?: boolean;
+  /** Fin de l'offre ; null quand elle est sans limite. */
+  complimentaryUntilUtc?: string | null;
+  /** Renouvellement automatique de l'offre, en mois. */
+  complimentaryRenewalMonths?: number | null;
+  /** À la fin de l'offre : arrêt, ou option payante. */
+  afterComplimentary?: AddOnAfterOffer | null;
+}
+
+export type AddOnAfterOffer = 'Cancel' | 'Bill';
+
+/** Offre d'une option : jusqu'à une date (ISO) ou sans fin (null), renouvellement en mois, puis arrêt ou facturation. */
+export interface AddOnOffer {
+  planId: string;
+  quantity: number;
+  untilUtc: string | null;
+  renewalMonths: number | null;
+  then: AddOnAfterOffer;
 }
 
 export interface ChargeLine {
@@ -112,6 +131,8 @@ export interface SubscriptionDto {
   isComplimentary?: boolean;
   /** Fin de l'offre ; null quand elle est sans limite. */
   complimentaryUntilUtc?: string | null;
+  /** Renouvellement automatique de l'offre, en mois. */
+  complimentaryRenewalMonths?: number | null;
   /** Plan programmé par le restaurant pour la fin de la période payée. */
   scheduledPlanId?: string | null;
   scheduledPlanEffectiveAtUtc?: string | null;
@@ -218,6 +239,9 @@ export const addOns = {
   activate: (tenantId: string, planId: string, quantity: number) => post<Created>(`/admin/billing/tenants/${tenantId}/add-ons`, {planId, quantity}),
   changeQuantity: (tenantId: string, id: string, quantity: number) => put(`/admin/billing/tenants/${tenantId}/add-ons/${id}/quantity`, {quantity}),
   cancel: (tenantId: string, id: string) => post(`/admin/billing/tenants/${tenantId}/add-ons/${id}/cancel`),
+  /** Offre une option (ajoutée, ou offre remplacée si elle est déjà active). */
+  offer: (tenantId: string, offer: AddOnOffer) => post<Created>(`/admin/billing/tenants/${tenantId}/add-ons/offer`, offer),
+  endOffer: (tenantId: string, id: string) => post(`/admin/billing/tenants/${tenantId}/add-ons/${id}/offer/end`),
 };
 
 export const subscriptions = {
@@ -231,8 +255,8 @@ export const subscriptions = {
   cancel: (id: string) => post(`/admin/billing/subscriptions/${id}/cancel`),
   charge: (id: string) => api<SubscriptionCharge>(`/admin/billing/subscriptions/${id}/charge`),
   /** Offre le plan au restaurant jusqu'à une date (ISO) ou sans fin (null). */
-  grantComplimentary: (tenantId: string, planId: string, untilUtc: string | null) =>
-    post<Created>(`/admin/billing/tenants/${tenantId}/complimentary`, {planId, untilUtc}),
+  grantComplimentary: (tenantId: string, planId: string, untilUtc: string | null, renewalMonths: number | null = null) =>
+    post<Created>(`/admin/billing/tenants/${tenantId}/complimentary`, {planId, untilUtc, renewalMonths}),
   endComplimentary: (id: string) => post(`/admin/billing/subscriptions/${id}/complimentary/end`),
 };
 

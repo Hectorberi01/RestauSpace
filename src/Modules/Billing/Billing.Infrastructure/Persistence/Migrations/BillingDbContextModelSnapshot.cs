@@ -131,6 +131,10 @@ namespace Billing.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelled_at_utc");
 
+                    b.Property<int?>("ComplimentaryRenewalMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("complimentary_renewal_months");
+
                     b.Property<DateTimeOffset?>("EndingNoticeSentForUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ending_notice_sent_for_utc");
@@ -208,6 +212,8 @@ namespace Billing.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_subscriptions_cancelled_at", "(status = 5) = (cancelled_at_utc IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_subscriptions_complimentary", "NOT is_complimentary OR status = 2");
+
+                            t.HasCheckConstraint("ck_subscriptions_complimentary_renewal_months", "complimentary_renewal_months IS NULL OR (is_complimentary AND complimentary_renewal_months BETWEEN 1 AND 12)");
 
                             t.HasCheckConstraint("ck_subscriptions_period", "current_period_start_utc < current_period_end_utc");
 
@@ -429,9 +435,21 @@ namespace Billing.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("activated_at_utc");
 
+                    b.Property<int?>("AfterComplimentary")
+                        .HasColumnType("integer")
+                        .HasColumnName("after_complimentary");
+
                     b.Property<DateTimeOffset?>("CancelledAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelled_at_utc");
+
+                    b.Property<int?>("ComplimentaryRenewalMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("complimentary_renewal_months");
+
+                    b.Property<DateTimeOffset?>("ComplimentaryUntilUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("complimentary_until_utc");
 
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uuid")
@@ -457,6 +475,10 @@ namespace Billing.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ComplimentaryUntilUtc")
+                        .HasDatabaseName("ix_tenant_add_ons_complimentary_until_utc")
+                        .HasFilter("complimentary_until_utc IS NOT NULL AND status = 1");
+
                     b.HasIndex("PlanId")
                         .HasDatabaseName("ix_tenant_add_ons_plan_id");
 
@@ -467,6 +489,10 @@ namespace Billing.Infrastructure.Persistence.Migrations
 
                     b.ToTable("tenant_add_ons", "billing", t =>
                         {
+                            t.HasCheckConstraint("ck_tenant_add_ons_after_complimentary", "after_complimentary IS NULL OR after_complimentary IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_tenant_add_ons_complimentary_renewal_months", "complimentary_renewal_months IS NULL OR complimentary_renewal_months BETWEEN 1 AND 12");
+
                             t.HasCheckConstraint("ck_tenant_add_ons_quantity", "quantity BETWEEN 1 AND 1000");
                         });
                 });

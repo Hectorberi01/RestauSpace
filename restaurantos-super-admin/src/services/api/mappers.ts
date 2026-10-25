@@ -91,6 +91,7 @@ export function subscriptionRecord(
     status: subscription.isComplimentary ? 'Offert' : subscriptionStatus[subscription.status] ?? subscription.status,
     complimentary: !!subscription.isComplimentary,
     complimentaryUntil: subscription.complimentaryUntilUtc ?? '',
+    complimentaryRenewal: subscription.complimentaryRenewalMonths ?? 0,
     apiStatus: subscription.status,
     date: subscription.startedAtUtc,
     periodStart: subscription.currentPeriodStartUtc,

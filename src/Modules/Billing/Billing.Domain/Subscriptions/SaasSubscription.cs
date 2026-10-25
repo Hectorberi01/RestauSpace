@@ -15,6 +15,8 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
     /// <summary>Fin de la période d'une offre sans limite de durée : elle n'arrive jamais à échéance.</summary>
     public static readonly DateTimeOffset UnlimitedEndUtc = new(9999, 12, 31, 0, 0, 0, TimeSpan.Zero);
 
+    public const int MaxComplimentaryRenewalMonths = 12;
+
     /// <summary>Fenêtre du préavis de fin d'essai ou d'offre.</summary>
     public static readonly TimeSpan EndingNoticeWindow = TimeSpan.FromDays(7);
 
@@ -53,6 +55,9 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
     /// <summary>Offre sans limite de durée.</summary>
     public bool IsComplimentaryUnlimited => IsComplimentary && CurrentPeriod.EndUtc >= UnlimitedEndUtc;
+
+    /// <summary>Renouvellement automatique de l'offre, en mois ; null : l'offre se termine à sa date.</summary>
+    public int? ComplimentaryRenewalMonths { get; private set; }
 
     /// <summary>Fin de la période dont le restaurant a déjà été prévenu de l'échéance (un préavis par échéance).</summary>
     public DateTimeOffset? EndingNoticeSentForUtc { get; private set; }
@@ -118,7 +123,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         ApplyScheduledPlanNow(now);
         Status = SubscriptionStatus.Active;
         CurrentPeriod = paidPeriod;
-        IsComplimentary = false;
+        ClearComplimentary();
         SuspensionReason = null;
         Raise(new SubscriptionActivated(TenantId, Id, PlanId, previous, paidPeriod, now));
     }
@@ -194,7 +199,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         DomainException.ThrowIf(Status != SubscriptionStatus.Active, SubscriptionErrors.NotActive);
         DomainException.ThrowIf(IsComplimentaryUnlimited, SubscriptionErrors.Complimentary);
 
-        IsComplimentary = false;
+        ClearComplimentary();
         Status = SubscriptionStatus.PastDue;
         Raise(new SubscriptionPastDue(TenantId, Id, CurrentPeriod, clock.UtcNow));
     }
@@ -219,7 +224,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
             SubscriptionErrors.TrialNotExpired);
 
         var previous = Status;
-        IsComplimentary = false;
+        ClearComplimentary();
         Status = SubscriptionStatus.Suspended;
         SuspensionReason = reason;
         Raise(new SubscriptionSuspended(TenantId, Id, previous, reason, now));
@@ -283,7 +288,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
         ApplyScheduledPlanNow(now);
         CurrentPeriod = nextPeriod;
-        IsComplimentary = false;
+        ClearComplimentary();
         Raise(new SubscriptionPeriodRenewed(TenantId, Id, PlanId, nextPeriod, now));
     }
 
@@ -292,7 +297,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
     /// (null). Depuis tout statut vivant : un abonnement impayé ou suspendu est rétabli. Une résiliation programmée est
     /// retirée (c'est une décision de la plateforme), comme un changement de plan programmé. Une nouvelle offre remplace la précédente.
     /// </summary>
-    public void GrantComplimentary(PlanReference plan, DateTimeOffset? untilUtc, IClock clock)
+    public void GrantComplimentary(PlanReference plan, DateTimeOffset? untilUtc, IClock clock, int? renewalMonths = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(clock);
@@ -303,6 +308,10 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         var now = clock.UtcNow;
         var end = untilUtc?.ToUniversalTime() ?? UnlimitedEndUtc;
         DomainException.ThrowIf(end <= now || end > UnlimitedEndUtc, SubscriptionErrors.ComplimentaryEndInvalid);
+        // Renouvellement : seulement pour une offre limitée, de 1 à 12 mois.
+        DomainException.ThrowIf(
+            renewalMonths is { } months && (untilUtc is null || months is < 1 or > MaxComplimentaryRenewalMonths),
+            SubscriptionErrors.ComplimentaryRenewalInvalid);
 
         var previous = Status;
         var previousPlan = PlanId;
@@ -315,6 +324,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         Status = SubscriptionStatus.Active;
         CurrentPeriod = Period.Create(now, end);
         IsComplimentary = true;
+        ComplimentaryRenewalMonths = renewalMonths;
         CancelAtPeriodEnd = false;
         SuspensionReason = null;
         EndingNoticeSentForUtc = null;
@@ -323,7 +333,7 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
             Raise(new SubscriptionPlanChanged(TenantId, Id, previousPlan, PlanId, now));
         }
 
-        Raise(new SubscriptionComplimentaryGranted(TenantId, Id, PlanId, untilUtc is null ? null : end, now));
+        Raise(new SubscriptionComplimentaryGranted(TenantId, Id, PlanId, untilUtc is null ? null : end, now, renewalMonths));
         Raise(new SubscriptionActivated(TenantId, Id, PlanId, previous, CurrentPeriod, now));
     }
 
@@ -339,8 +349,33 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
         var now = clock.UtcNow;
         CurrentPeriod = Period.Create(CurrentPeriod.StartUtc, now > CurrentPeriod.StartUtc ? now : CurrentPeriod.StartUtc.AddTicks(1));
-        IsComplimentary = false;
-        Raise(new SubscriptionComplimentaryEnded(TenantId, Id, now));
+        ClearComplimentary();
+        Raise(new SubscriptionComplimentaryEnded(TenantId, Id, now, PlanId));
+    }
+
+    /// <summary>
+    /// Le job, une fois la période offerte échue : l'offre renouvelable repart pour sa durée (jusqu'à dépasser maintenant).
+    /// </summary>
+    public void RenewComplimentary(IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+        EnsureNotCancelled();
+        DomainException.ThrowIf(!IsComplimentary || ComplimentaryRenewalMonths is null, SubscriptionErrors.NotComplimentary);
+        var months = ComplimentaryRenewalMonths!.Value;
+        var now = clock.UtcNow;
+        DomainException.ThrowIf(!CurrentPeriod.HasEndedAt(now), SubscriptionErrors.PeriodNotEnded);
+
+        var end = CurrentPeriod.EndUtc;
+        var start = end;
+        while (end <= now)
+        {
+            start = end;
+            end = end.AddMonths(months);
+        }
+
+        CurrentPeriod = Period.Create(start, end);
+        EndingNoticeSentForUtc = null;
+        Raise(new SubscriptionComplimentaryRenewed(TenantId, Id, PlanId, end, now));
     }
 
     /// <summary>
@@ -353,7 +388,8 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
         ArgumentNullException.ThrowIfNull(clock);
         var now = clock.UtcNow;
         var end = CurrentPeriod.EndUtc;
-        var ending = Status is SubscriptionStatus.Trialing || (Status == SubscriptionStatus.Active && IsComplimentary && !IsComplimentaryUnlimited);
+        var ending = Status is SubscriptionStatus.Trialing
+            || (Status == SubscriptionStatus.Active && IsComplimentary && !IsComplimentaryUnlimited && ComplimentaryRenewalMonths is null);
         if (!ending || CancelAtPeriodEnd || EndingNoticeSentForUtc == end || CurrentPeriod.HasEndedAt(now) || end - now > EndingNoticeWindow)
         {
             return false;
@@ -417,11 +453,17 @@ public sealed class SaasSubscription : AggregateRoot<SubscriptionId>, ITenantOwn
 
     private void CancelNow(CancellationReason reason, DateTimeOffset now)
     {
-        IsComplimentary = false;
+        ClearComplimentary();
         ScheduledPlanId = null;
         Status = SubscriptionStatus.Cancelled;
         CancelledAtUtc = now;
         Raise(new SubscriptionCancelled(TenantId, Id, PlanId, reason, now));
+    }
+
+    private void ClearComplimentary()
+    {
+        IsComplimentary = false;
+        ComplimentaryRenewalMonths = null;
     }
 
     private void EnsureNotCancelled() =>

@@ -37,7 +37,12 @@ public sealed record AdminStartSubscriptionRequest(Guid PlanId, int? TrialDays =
 public sealed record SuspendSubscriptionRequest(SuspensionReason Reason);
 
 /// <param name="UntilUtc">Fin de l'offre ; absent ou null : sans fin.</param>
-public sealed record GrantComplimentaryRequest(Guid PlanId, DateTimeOffset? UntilUtc = null);
+/// <param name="RenewalMonths">Renouvellement automatique de l'offre (1 à 12 mois) ; null : aucun.</param>
+public sealed record GrantComplimentaryRequest(Guid PlanId, DateTimeOffset? UntilUtc = null, int? RenewalMonths = null);
+
+/// <param name="Then">À la fin de l'offre : <c>Cancel</c> (arrêt) ou <c>Bill</c> (payante à la période suivante).</param>
+public sealed record OfferAddOnRequest(
+    Guid PlanId, int? Quantity = null, DateTimeOffset? UntilUtc = null, int? RenewalMonths = null, AddOnAfterOffer Then = AddOnAfterOffer.Cancel);
 
 /// <param name="Providers">Codes des prestataires proposés, dans l'ordre ; vide : retour au réglage de l'hôte.</param>
 /// <param name="Provider">Ancienne forme, un seul prestataire (ignorée si <paramref name="Providers"/> est donné).</param>

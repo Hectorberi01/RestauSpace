@@ -289,6 +289,18 @@ internal sealed class TenantAddOnRepository(BillingDbContext context) : ITenantA
             .Take(take)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<(TenantId TenantId, TenantAddOnId Id)>> ListComplimentaryEndedAsync(
+        DateTimeOffset nowUtc, int take, CancellationToken cancellationToken = default)
+    {
+        var rows = await context.TenantAddOns.IgnoreQueryFilters().AsNoTracking()
+            .Where(addOn => addOn.Status == TenantAddOnStatus.Active && addOn.ComplimentaryUntilUtc != null && addOn.ComplimentaryUntilUtc <= nowUtc)
+            .OrderBy(addOn => addOn.ComplimentaryUntilUtc)
+            .Take(take)
+            .Select(addOn => new { addOn.TenantId, addOn.Id })
+            .ToListAsync(cancellationToken);
+        return rows.Select(row => (row.TenantId, row.Id)).ToList();
+    }
+
     public void Add(TenantAddOn addOn) => context.TenantAddOns.Add(addOn);
 }
 

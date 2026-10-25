@@ -46,6 +46,11 @@ public interface ITenantAddOnRepository
     /// </summary>
     Task<IReadOnlyList<TenantAddOn>> ListActiveForPlatformAsync(int skip, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>Job SEULEMENT : les options actives dont l'offre est échue, tous tenants confondus.</summary>
+    Task<IReadOnlyList<(TenantId TenantId, TenantAddOnId Id)>> ListComplimentaryEndedAsync(
+        DateTimeOffset nowUtc, int take, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<(TenantId, TenantAddOnId)>>([]);
+
     void Add(TenantAddOn addOn);
 }
 

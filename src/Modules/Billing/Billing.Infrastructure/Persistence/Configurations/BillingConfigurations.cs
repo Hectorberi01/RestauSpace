@@ -75,6 +75,9 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<SaasS
             table.HasCheckConstraint("ck_subscriptions_status", Checks.In<SubscriptionStatus>("status"));
             table.HasCheckConstraint("ck_subscriptions_suspension_reason", Checks.NullOrIn<SuspensionReason>("suspension_reason"));
             table.HasCheckConstraint("ck_subscriptions_period", "current_period_start_utc < current_period_end_utc");
+            table.HasCheckConstraint(
+                "ck_subscriptions_complimentary_renewal_months",
+                $"complimentary_renewal_months IS NULL OR (is_complimentary AND complimentary_renewal_months BETWEEN 1 AND {SaasSubscription.MaxComplimentaryRenewalMonths})");
             // Seul un abonnement résilié porte une date de résiliation, et il en porte toujours une.
             table.HasCheckConstraint("ck_subscriptions_cancelled_at", "(status = " + cancelled + ") = (cancelled_at_utc IS NOT NULL)");
             // Un motif de suspension n'existe que sur un abonnement suspendu (ou résilié après suspension).
@@ -94,6 +97,7 @@ internal sealed class SubscriptionConfiguration : IEntityTypeConfiguration<SaasS
         builder.Property(subscription => subscription.CancelledAtUtc).HasColumnName("cancelled_at_utc");
         builder.Property(subscription => subscription.IsComplimentary).HasColumnName("is_complimentary").HasDefaultValue(false);
         builder.Property(subscription => subscription.EndingNoticeSentForUtc).HasColumnName("ending_notice_sent_for_utc");
+        builder.Property(subscription => subscription.ComplimentaryRenewalMonths).HasColumnName("complimentary_renewal_months");
         // Changement de plan programmé pour la fin de la période (date d'effet = fin de période, non stockée).
         builder.Property(subscription => subscription.ScheduledPlanId).HasColumnName("scheduled_plan_id").HasConversion(BillingConverters.PlanKey);
         builder.Ignore(subscription => subscription.ScheduledPlanEffectiveAtUtc);
@@ -231,6 +235,10 @@ internal sealed class TenantAddOnConfiguration : IEntityTypeConfiguration<Tenant
         builder.ToTable("tenant_add_ons", table =>
         {
             table.HasCheckConstraint("ck_tenant_add_ons_quantity", $"quantity BETWEEN 1 AND {TenantAddOn.MaxQuantity}");
+            table.HasCheckConstraint("ck_tenant_add_ons_after_complimentary", Checks.NullOrIn<AddOnAfterOffer>("after_complimentary"));
+            table.HasCheckConstraint(
+                "ck_tenant_add_ons_complimentary_renewal_months",
+                $"complimentary_renewal_months IS NULL OR complimentary_renewal_months BETWEEN 1 AND {AddOnOffer.MaxRenewalMonths}");
         });
 
         builder.HasKey(addOn => addOn.Id);
@@ -241,16 +249,26 @@ internal sealed class TenantAddOnConfiguration : IEntityTypeConfiguration<Tenant
         builder.Property(addOn => addOn.Status).HasColumnName("status");
         builder.Property(addOn => addOn.ActivatedAtUtc).HasColumnName("activated_at_utc");
         builder.Property(addOn => addOn.CancelledAtUtc).HasColumnName("cancelled_at_utc");
+        // Offre de la plateforme (fin, renouvellement en mois, suite) ; null hors offre.
+        builder.Property(addOn => addOn.ComplimentaryUntilUtc).HasColumnName("complimentary_until_utc");
+        builder.Property(addOn => addOn.ComplimentaryRenewalMonths).HasColumnName("complimentary_renewal_months");
+        builder.Property(addOn => addOn.AfterComplimentary).HasColumnName("after_complimentary");
 
         builder.HasIndex(addOn => new { addOn.TenantId, addOn.PlanId })
             .IsUnique()
             .HasFilter($"status = {(int)TenantAddOnStatus.Active}")
             .HasDatabaseName(ActiveIndex);
         builder.HasIndex(addOn => addOn.PlanId).HasDatabaseName("ix_tenant_add_ons_plan_id");
+        // Job des offres échues.
+        builder.HasIndex(addOn => addOn.ComplimentaryUntilUtc)
+            .HasFilter($"complimentary_until_utc IS NOT NULL AND status = {(int)TenantAddOnStatus.Active}")
+            .HasDatabaseName("ix_tenant_add_ons_complimentary_until_utc");
 
         builder.Property<uint>("Version").IsRowVersion();
 
         builder.Ignore(addOn => addOn.IsActive);
+        builder.Ignore(addOn => addOn.IsComplimentary);
+        builder.Ignore(addOn => addOn.IsComplimentaryUnlimited);
         builder.Ignore(addOn => addOn.DomainEvents);
     }
 }

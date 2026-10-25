@@ -225,6 +225,9 @@
 .online-period small{font-size:12px;color:#64748B}
 .online-block h4{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:15px;font-weight:650;color:#0F172A}
 .online-block h4 svg{color:#5B3DF5}
+.online-block-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.online-block-head h4{margin:0}
+.online-row .text-link{justify-self:end}
 .online-block>.muted{font-size:13px;margin:0}
 .online-kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .online-kpis .mini-stat{padding:14px 16px}

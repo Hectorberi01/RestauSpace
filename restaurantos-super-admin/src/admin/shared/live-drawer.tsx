@@ -14,7 +14,7 @@ import {monthly,shortId,subscriptionStatus} from '../../services/api/mappers';
 import {activityLabel} from '../../services/api/profile';
 import {money,date,dateTime} from '../../utils/format';
 import {can,reasonFromLabel,subscriptionReasons,subscriptions,tenantReasons,tenants,users} from './live-actions';
-import {ComplimentaryDialog} from './complimentary';
+import {AddOnOfferDialog,ComplimentaryDialog,addOnOfferText,offerText} from './complimentary';
 import {TenantActivity} from './tenant-activity';
 import type {RecordItem} from '../../types';
 
@@ -84,17 +84,25 @@ function TenantAddOns({tenantId,currency}:{tenantId:string;currency?:string}){
     {error?<p className="login-error">{error}</p>:!rows?<LoadingSkeleton/>:<div className="feature-list">
       {active.length===0&&<p className="muted">Aucune option.</p>}
       {active.map(x=><div key={x.id} className="addon-row">
-        <p><Check size={15}/>{x.addOn.name} · {money(x.addOn.price,x.addOn.currencyCode)} / {x.addOn.billingInterval==='Yearly'?'an':'mois'}{x.quantity>1?` × ${x.quantity}`:''}</p>
+        <p>{x.isComplimentary?<Gift size={15}/>:<Check size={15}/>}{x.addOn.name} · {x.isComplimentary?'Offerte':`${money(x.addOn.price,x.addOn.currencyCode)} / ${x.addOn.billingInterval==='Yearly'?'an':'mois'}`}{x.quantity>1?` × ${x.quantity}`:''}</p>
+        {x.isComplimentary&&<small className="muted">{addOnOfferText(x)}</small>}
         <span className="addon-actions">
+          <AddOnOfferDialog tenantId={tenantId} currency={currency} addOn={x} onDone={()=>setVersion(v=>v+1)}><button className="text-link"><Gift size={14}/> {x.isComplimentary?'Modifier l’offre':'Offrir'}</button></AddOnOfferDialog>
+          {x.isComplimentary&&<ConfirmDialog title={`Mettre fin à l’offre : ${x.addOn.name} ?`} description={x.afterComplimentary==='Bill'?'L’offre s’arrête maintenant : l’option reste active et sera facturée avec la période suivante.':'L’offre s’arrête maintenant : l’option est arrêtée et ses droits cessent aussitôt.'} onConfirm={()=>void act('Offre terminée',()=>addOnsApi.endOffer(tenantId,x.id))}><button className="text-link"><XCircle size={14}/> Fin de l’offre</button></ConfirmDialog>}
           <FormDialog title={`Quantité : ${x.addOn.name}`} fields={[{key:'quantity',label:'Quantité (ex. nombre de bornes)',type:'number',min:1}]} initial={{quantity:x.quantity}} onSave={v=>void act('Quantité modifiée',()=>addOnsApi.changeQuantity(tenantId,x.id,Number(v.quantity)))}><button className="text-link"><Edit size={14}/> Quantité</button></FormDialog>
           <ConfirmDialog title={`Retirer l’option ${x.addOn.name} ?`} description="Les droits de l’option cessent aussitôt. La résiliation est définitive." onConfirm={()=>void act('Option retirée',()=>addOnsApi.cancel(tenantId,x.id))}><button className="text-link"><XCircle size={14}/> Retirer</button></ConfirmDialog>
         </span>
       </div>)}
     </div>}
     {offered.length===0&&rows&&<p className="muted">{raw.plans.some(p=>p.kind==='AddOn'&&p.status==='Active')?`Aucune autre option active${currency?` en ${currency}`:''} au catalogue.`:'Aucune option au catalogue : créez-en une dans Plans & Fonctionnalités (type « Option »).'}</p>}
-    {offered.length>0&&<FormDialog title="Ajouter une option" fields={[{key:'plan',label:'Option',type:'select',options:offered.map(planOption)},{key:'quantity',label:'Quantité (ex. nombre de bornes)',type:'number',min:1,required:false}]} initial={{quantity:1}} onSave={v=>{const p=offered.find(x=>planOption(x)===v.plan);if(p)void act('Option ajoutée',()=>addOnsApi.activate(tenantId,p.id,Number(v.quantity)>0?Number(v.quantity):1))}}><Button variant="outline"><Plus size={15}/>Ajouter une option</Button></FormDialog>}
+    {offered.length>0&&<div className="inline-actions"><AddOnOfferDialog tenantId={tenantId} currency={currency} exclude={active.map(x=>x.addOn.id)} onDone={()=>setVersion(v=>v+1)}><Button variant="outline"><Gift size={15}/>Offrir une option</Button></AddOnOfferDialog>
+    <FormDialog title="Ajouter une option" fields={[{key:'plan',label:'Option',type:'select',options:offered.map(planOption)},{key:'quantity',label:'Quantité (ex. nombre de bornes)',type:'number',min:1,required:false}]} initial={{quantity:1}} onSave={v=>{const p=offered.find(x=>planOption(x)===v.plan);if(p)void act('Option ajoutée',()=>addOnsApi.activate(tenantId,p.id,Number(v.quantity)>0?Number(v.quantity):1))}}><Button variant="outline"><Plus size={15}/>Ajouter une option</Button></FormDialog></div>}
   </>;
 }
+
+/** Renouvellement : fin de période, offre renouvelée tous les N mois, ou automatique. */
+const renewalLabel=(s:{cancelAtPeriodEnd:boolean;isComplimentary?:boolean;complimentaryUntilUtc?:string|null;complimentaryRenewalMonths?:number|null})=>
+  s.cancelAtPeriodEnd?'Fin de période':s.isComplimentary&&!s.complimentaryUntilUtc?'Sans échéance':s.isComplimentary&&s.complimentaryRenewalMonths?`Offre renouvelée tous les ${s.complimentaryRenewalMonths} mois`:s.isComplimentary?'Fin de l’offre, puis paiement':'Automatique';
 
 const planOption=(p:{name:string;price:number;currencyCode:string;billingInterval:string})=>`${p.name} · ${money(p.price,p.currencyCode)} / ${p.billingInterval==='Yearly'?'an':'mois'}`;
 
@@ -129,7 +137,7 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
 
   const rename=(trigger:ReactNode)=><FormDialog title="Renommer le restaurant" fields={[{key:'name',label:'Nom'}]} initial={{name:r.name}} onSave={v=>void run('Restaurant renommé',()=>tenants.rename(r.id,String(v.name).trim()),touches.subscriptions)}>{trigger}</FormDialog>;
   const changePlan=current&&live&&current.isComplimentary
-    ?<ComplimentaryDialog tenantId={r.id} currentPlanId={current.planId} until={current.complimentaryUntilUtc??undefined}><Button variant="outline" size="sm" className="hero-button"><Edit size={14}/>Modifier le plan</Button></ComplimentaryDialog>
+    ?<ComplimentaryDialog tenantId={r.id} currentPlanId={current.planId} until={current.complimentaryUntilUtc??undefined} renewal={current.complimentaryRenewalMonths}><Button variant="outline" size="sm" className="hero-button"><Edit size={14}/>Modifier le plan</Button></ComplimentaryDialog>
     :<Button variant="outline" size="sm" className="hero-button" onClick={()=>setTab('Abonnement')}><Edit size={14}/>Gérer l’abonnement</Button>;
 
   const details=error?<p className="login-error">{error}</p>:!tenant?<LoadingSkeleton/>:<>
@@ -145,7 +153,7 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
       </div>
       <div className="plan-hero-strip">
         <div><span className="strip-icon"><CalendarDays size={16}/></span><span><small>{current.status==='Trialing'?'Essai':'Période en cours'}</small><strong>{current.isComplimentary&&!current.complimentaryUntilUtc?`Depuis le ${date(current.currentPeriodStartUtc)}`:`${date(current.currentPeriodStartUtc)} → ${date(current.currentPeriodEndUtc)}`}</strong>{current.status==='Trialing'&&<em>{daysLeft(current.currentPeriodEndUtc)}</em>}</span></div>
-        <div><span className="strip-icon"><Power size={16}/></span><span><small>Renouvellement</small><span className={`status ${current.cancelAtPeriodEnd?'amber':'green'}`}>{current.cancelAtPeriodEnd?'Fin de période':'Automatique'}</span></span></div>
+        <div><span className="strip-icon"><Power size={16}/></span><span><small>Renouvellement</small><span className={`status ${current.cancelAtPeriodEnd?'amber':'green'}`}>{renewalLabel(current)}</span></span></div>
         {current.scheduledPlanId&&<div><span className="strip-icon"><CalendarDays size={16}/></span><span><small>Plan suivant</small><strong>{raw.plans.find(p=>p.id===current.scheduledPlanId)?.name??shortId(current.scheduledPlanId)}</strong><em>dès le {date(current.scheduledPlanEffectiveAtUtc??current.currentPeriodEndUtc)}</em></span></div>}
       </div>
     </div>:<div className="plan-hero empty">
@@ -158,7 +166,7 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
       </div>}
     </div>}
 
-    {current&&live&&current.isComplimentary&&<div className="drawer-banner"><Gift size={17}/>Plan offert par la plateforme {current.complimentaryUntilUtc?`jusqu’au ${date(current.complimentaryUntilUtc)}`:'sans limite de durée'}.</div>}
+    {current&&live&&current.isComplimentary&&<div className="drawer-banner"><Gift size={17}/>Plan offert par la plateforme {offerText(current.complimentaryUntilUtc,current.complimentaryRenewalMonths)}.</div>}
     {tenant.suspendedAtUtc&&r.apiStatus==='Suspended'&&<div className="drawer-banner warn"><Pause size={17}/>Suspendu le {dateTime(tenant.suspendedAtUtc)}{tenant.suspensionReason?` · ${tenantReasons[tenant.suspensionReason]}`:''}.</div>}
     {tenant.closedAtUtc&&<div className="drawer-banner danger"><XCircle size={17}/>Fermé le {dateTime(tenant.closedAtUtc)}.</div>}
 
@@ -192,11 +200,12 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
   </>;
 
   const subscriptionTab=current?<>
-    <div className="subscription-highlight"><span>ABONNEMENT {plan?.name??shortId(current.planId)}</span><strong>{plan?money(monthly(plan),plan.currencyCode):'—'}<small>/ mois</small></strong><StatusBadge value={subscriptionStatus[current.status]}/></div>
-    {current.isComplimentary&&<p className="notice">Plan offert par la plateforme {current.complimentaryUntilUtc?`jusqu’au ${date(current.complimentaryUntilUtc)}`:'sans limite de durée'}.</p>}
-    <Info items={[['Période en cours',current.isComplimentary&&!current.complimentaryUntilUtc?`Depuis le ${date(current.currentPeriodStartUtc)}`:`${date(current.currentPeriodStartUtc)} → ${date(current.currentPeriodEndUtc)}`],['Renouvellement',current.cancelAtPeriodEnd?'Fin de période':'Automatique'],['Changement de plan',current.scheduledPlanId?`${raw.plans.find(p=>p.id===current.scheduledPlanId)?.name??shortId(current.scheduledPlanId)} le ${date(current.scheduledPlanEffectiveAtUtc??current.currentPeriodEndUtc)}`:''],['Début',dateTime(current.startedAtUtc)],['Résiliation',current.cancelledAtUtc?dateTime(current.cancelledAtUtc):'']]}/>
+    <div className="subscription-highlight"><span>ABONNEMENT {plan?.name??shortId(current.planId)}</span><strong>{current.isComplimentary&&live?'Offert':plan?money(monthly(plan),plan.currencyCode):'—'}{!(current.isComplimentary&&live)&&<small>/ mois</small>}</strong><StatusBadge value={current.isComplimentary&&live?'Offert':subscriptionStatus[current.status]}/></div>
+    {current.isComplimentary&&live&&<p className="notice">Plan offert par la plateforme {offerText(current.complimentaryUntilUtc,current.complimentaryRenewalMonths)}{plan?` (au lieu de ${money(monthly(plan),plan.currencyCode)} / mois)`:''}.</p>}
+    <Info items={[['Période en cours',current.isComplimentary&&!current.complimentaryUntilUtc?`Depuis le ${date(current.currentPeriodStartUtc)}`:`${date(current.currentPeriodStartUtc)} → ${date(current.currentPeriodEndUtc)}`],['Renouvellement',renewalLabel(current)],['Changement de plan',current.scheduledPlanId?`${raw.plans.find(p=>p.id===current.scheduledPlanId)?.name??shortId(current.scheduledPlanId)} le ${date(current.scheduledPlanEffectiveAtUtc??current.currentPeriodEndUtc)}`:''],['Début',dateTime(current.startedAtUtc)],['Résiliation',current.cancelledAtUtc?dateTime(current.cancelledAtUtc):'']]}/>
     <h3>Paiements</h3><PaymentHistory subscriptionId={current.id}/>
-    {live&&<div className="inline-actions"><ComplimentaryDialog tenantId={r.id} currentPlanId={current.planId} until={current.complimentaryUntilUtc??undefined}><Button variant="outline"><Gift size={15}/>{current.isComplimentary?'Modifier l’offre':'Offrir le plan'}</Button></ComplimentaryDialog>{can.recordPayment({id:current.id,name:r.name,status:subscriptionStatus[current.status],apiStatus:current.status,complimentary:!!current.isComplimentary})&&<ConfirmDialog title="Enregistrer un paiement ?" description="Le paiement de la période est enregistré : l’abonnement passe ou reste actif et la période est prolongée." danger={false} onConfirm={()=>void run('Paiement enregistré',()=>subscriptions.recordPayment(current.id),touches.subscriptions)}><Button variant="outline"><Receipt size={15}/>Enregistrer un paiement</Button></ConfirmDialog>}</div>}
+    {live&&tenant&&<section className="drawer-card"><TenantAddOns tenantId={r.id} currency={tenant.defaultCurrencyCode}/></section>}
+    {live&&<div className="inline-actions"><ComplimentaryDialog tenantId={r.id} currentPlanId={current.planId} until={current.complimentaryUntilUtc??undefined} renewal={current.complimentaryRenewalMonths}><Button variant="outline"><Gift size={15}/>{current.isComplimentary?'Modifier l’offre':'Offrir le plan'}</Button></ComplimentaryDialog>{current.isComplimentary&&<ConfirmDialog title="Mettre fin à l’offre ?" description="L’offre s’arrête maintenant : le restaurant doit régler la période suivante (délai de grâce de 7 jours, puis suspension)." onConfirm={()=>void run('Offre terminée',()=>subscriptions.endComplimentary(current.id),touches.subscriptions)}><Button variant="outline"><XCircle size={15}/>Mettre fin à l’offre</Button></ConfirmDialog>}{can.recordPayment({id:current.id,name:r.name,status:subscriptionStatus[current.status],apiStatus:current.status,complimentary:!!current.isComplimentary})&&<ConfirmDialog title="Enregistrer un paiement ?" description="Le paiement de la période est enregistré : l’abonnement passe ou reste actif et la période est prolongée." danger={false} onConfirm={()=>void run('Paiement enregistré',()=>subscriptions.recordPayment(current.id),touches.subscriptions)}><Button variant="outline"><Receipt size={15}/>Enregistrer un paiement</Button></ConfirmDialog>}</div>}
   </>:<p className="muted">Aucun abonnement : démarrez-en un, ou offrez un plan, depuis l’onglet Détails.</p>;
 
   const menu=<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon-sm" aria-label="Plus d’actions"><MoreHorizontal size={17}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
@@ -211,7 +220,7 @@ function RestaurantDrawer({r,onClose}:{r:RecordItem;onClose:()=>void}){
     meta={tenant&&<div className="drawer-meta"><span><Coins size={14}/>{tenant.defaultCurrencyCode}</span><span><Globe size={14}/>{tenant.timeZoneId}</span><span><CalendarDays size={14}/>Créé le {date(tenant.createdAtUtc)}</span></div>}
     menu={menu}>
     <IconTabs tab={tab} setTab={setTab}/>
-    {tab==='Activité'?<TenantActivity tenantId={r.id}/>:tab==='Vente en ligne'?<TenantOnlineSales tenantId={r.id}/>:tab==='Abonnement'?subscriptionTab:details}
+    {tab==='Activité'?<TenantActivity tenantId={r.id}/>:tab==='Vente en ligne'?<TenantOnlineSales tenantId={r.id} currency={tenant?.defaultCurrencyCode}/>:tab==='Abonnement'?subscriptionTab:details}
     <div className="drawer-actions">
       {r.apiStatus!=='Closed'&&rename(<Button><Edit size={15}/>Renommer</Button>)}
       {r.apiStatus!=='Closed'&&<FormDialog title="Ajouter un propriétaire" fields={[{key:'email',label:'Email du propriétaire',type:'email'}]} description="Le compte est invité s’il n’existe pas encore." onSave={v=>void run('Propriétaire ajouté',()=>tenants.addOwner(r.id,String(v.email).trim()),['restaurants','users','audit-logs'])}><Button variant="outline"><UserPlus size={15}/>Ajouter un propriétaire</Button></FormDialog>}
@@ -229,13 +238,13 @@ function SubscriptionDetail({r}:{r:RecordItem}){
   const reasons=Object.values(subscriptionReasons);
   return <>
     <div className="subscription-highlight"><span>ABONNEMENT {String(r.plan)}</span><strong>{r.complimentary?'Offert':plan?money(monthly(plan),plan.currencyCode):'—'}{!r.complimentary&&<small>/ mois</small>}</strong><StatusBadge value={r.status}/></div>
-    <Info items={[['Restaurant',r.name],['ID',<code key="id">{r.id}</code>],['Offre de la plateforme',r.complimentary?(r.complimentaryUntil?`Jusqu’au ${date(r.complimentaryUntil)}`:'Sans limite de durée'):''],['Période en cours',`${date(r.periodStart)} → ${date(r.end)}`],['Renouvellement',r.renewal?'Automatique':'Fin de période'],['Facturation',plan?(plan.billingInterval==='Yearly'?`Annuelle (${money(plan.price,plan.currencyCode)})`:'Mensuelle'):''],['Début',dateTime(r.date)],['Motif de suspension',r.suspensionReason?subscriptionReasons[r.suspensionReason as keyof typeof subscriptionReasons]:''],['Résiliation',r.cancelledAt?dateTime(r.cancelledAt):'']]}/>
+    <Info items={[['Restaurant',r.name],['ID',<code key="id">{r.id}</code>],['Offre de la plateforme',r.complimentary?offerText(r.complimentaryUntil?String(r.complimentaryUntil):null,Number(r.complimentaryRenewal)||null):''],['Période en cours',`${date(r.periodStart)} → ${date(r.end)}`],['Renouvellement',r.renewal?'Automatique':'Fin de période'],['Facturation',plan?(plan.billingInterval==='Yearly'?`Annuelle (${money(plan.price,plan.currencyCode)})`:'Mensuelle'):''],['Début',dateTime(r.date)],['Motif de suspension',r.suspensionReason?subscriptionReasons[r.suspensionReason as keyof typeof subscriptionReasons]:''],['Résiliation',r.cancelledAt?dateTime(r.cancelledAt):'']]}/>
     {plan&&<><h3>Droits du plan</h3><div className="feature-list">{plan.entitlements.length?plan.entitlements.map(e=><p key={e.featureCode}>{e.enabled?<Check size={15}/>:<X size={15}/>}{e.featureCode}{e.enabled&&e.limit!==null?` (${e.limit})`:''}</p>):<p>Aucun droit défini.</p>}</div></>}
     {r.apiStatus!=='Cancelled'&&<><h3>Prochaine échéance</h3><NextCharge subscriptionId={r.id}/></>}
     <h3>Paiements</h3><PaymentHistory subscriptionId={r.id}/>
     <h3>Activité</h3><Activity id={r.id}/>
     <div className="drawer-actions">
-      {can.grantComplimentary(r)&&<ComplimentaryDialog tenantId={String(r.tenantId)} currentPlanId={String(r.planId)} until={r.complimentary&&r.complimentaryUntil?String(r.complimentaryUntil):undefined}><Button variant={r.complimentary?'outline':'default'}><Gift size={15}/>{r.complimentary?'Modifier l’offre':'Offrir le plan'}</Button></ComplimentaryDialog>}
+      {can.grantComplimentary(r)&&<ComplimentaryDialog tenantId={String(r.tenantId)} currentPlanId={String(r.planId)} until={r.complimentary&&r.complimentaryUntil?String(r.complimentaryUntil):undefined} renewal={Number(r.complimentaryRenewal)||null}><Button variant={r.complimentary?'outline':'default'}><Gift size={15}/>{r.complimentary?'Modifier l’offre':'Offrir le plan'}</Button></ComplimentaryDialog>}
       {can.endComplimentary(r)&&<ConfirmDialog title="Mettre fin à l’offre ?" description="L’offre s’arrête maintenant : le restaurant doit régler la période suivante (délai de grâce de 7 jours, puis suspension)." onConfirm={()=>void run('Offre terminée',()=>subscriptions.endComplimentary(r.id),touches.subscriptions)}><Button variant="outline"><XCircle size={15}/>Mettre fin à l’offre</Button></ConfirmDialog>}
       {can.recordPayment(r)&&<ConfirmDialog title="Enregistrer un paiement ?" description="Le paiement de la période est enregistré : l’abonnement passe ou reste actif et la période est prolongée." danger={false} onConfirm={()=>void run('Paiement enregistré',()=>subscriptions.recordPayment(r.id),touches.subscriptions)}><Button><Receipt size={15}/>Enregistrer un paiement</Button></ConfirmDialog>}
       {can.markPastDue(r)&&<ConfirmDialog title="Marquer en retard de paiement ?" description="L’abonnement passe en impayé ; il reste facturé." onConfirm={()=>void run('Abonnement marqué en retard',()=>subscriptions.markPastDue(r.id),touches.subscriptions)}><Button variant="outline"><Clock size={15}/>Marquer en retard</Button></ConfirmDialog>}

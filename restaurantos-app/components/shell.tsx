@@ -3,11 +3,12 @@ import {useEffect, useRef, useState, type ReactNode} from 'react';
 import Link from 'next/link';
 import {usePathname, useRouter} from 'next/navigation';
 import {
-  BarChart3, Bell, Boxes, ChevronsUpDown, MapPin, Mails, Building2, Contact, CreditCard, Megaphone, MessageSquareText, Plug, ScrollText, Users, CalendarClock, CalendarDays, ChefHat, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, Crown, Truck, LayoutDashboard, LogOut,
+  BarChart3, Bell, Boxes, ChevronsUpDown, MapPin, Mails, Building2, Contact, CreditCard, Megaphone, MessageSquareText, Plug, ScrollText, Users, CalendarClock, CalendarDays, ChefHat, ChevronDown, ChevronsLeft, ChevronsRight, ClipboardList, Crown, Gift, Truck, LayoutDashboard, LogOut,
   Menu as MenuIcon, Repeat, Settings, Store, UserRound, UtensilsCrossed, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import {api, logout, leaveTenant, type Page} from '@/lib/api';
 import {money} from '@/lib/format';
+import {addOnOfferText, listAddOns, loadSubscription} from '@/lib/billing';
 import {useResource} from '@/lib/hooks';
 import {ConnectionStatus} from './connection';
 import {GlobalSearch} from './search';
@@ -73,7 +74,7 @@ function initials(name: string) {
 }
 
 interface Subscription {
-  subscription: {status: string; currentPeriodEndUtc: string} | null;
+  subscription: {status: string; currentPeriodEndUtc: string; isComplimentary?: boolean; complimentaryUntilUtc?: string | null} | null;
   plan: {name: string; price: number; currencyCode: string; billingInterval: 'Monthly' | 'Yearly'} | null;
 }
 
@@ -90,20 +91,77 @@ function PlanCard({collapsed}: {collapsed: boolean}) {
   const paying = !!data.plan && data.plan.price > 0;
   const price = data.plan && paying ? `${money(data.plan.price, data.plan.currencyCode)} / ${data.plan.billingInterval === 'Yearly' ? 'an' : 'mois'}` : null;
   const trialEnd = trial && data.subscription ? new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'short'}).format(new Date(data.subscription.currentPeriodEndUtc)) : null;
+  const offered = !!data.subscription?.isComplimentary;
+  const offerEnd = data.subscription?.complimentaryUntilUtc;
   return (
     <Link href={trialEnd && paying && can('billing.manage') ? '/abonnement?payer=1' : '/abonnement'} className="mx-3 mb-3 block rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4 transition hover:border-amber-200">
       <div className="flex items-center gap-3">
         <span className="grid size-10 place-items-center rounded-xl bg-white text-amber-500 shadow-sm"><Crown className="size-5" aria-hidden="true" /></span>
         <div className="min-w-0">
-          <p className="text-xs text-ink-500">{trialEnd ? `Essai gratuit jusqu’au ${trialEnd}` : data.plan ? 'Plan actuel' : 'Abonnement'}</p>
+          <p className="text-xs text-ink-500">{offered ? 'Offert par RestauSpace' : trialEnd ? `Essai gratuit jusqu’au ${trialEnd}` : data.plan ? 'Plan actuel' : 'Abonnement'}</p>
           <p className="truncate font-bold text-ink-900">{data.plan?.name ?? 'Choisir un plan'}</p>
-          {price && <p className="text-sm text-ink-600">{trialEnd ? `puis ${price}` : price}</p>}
+          {offered
+            ? <p className="text-sm text-ink-600">{offerEnd ? `jusqu’au ${new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'}).format(new Date(offerEnd))}` : 'sans limite de durée'}</p>
+            : price && <p className="text-sm text-ink-600">{trialEnd ? `puis ${price}` : price}</p>}
         </div>
       </div>
       {trialEnd && paying && can('billing.manage') && (
         <span className="mt-3 flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 shadow-sm">Payer maintenant</span>
       )}
     </Link>
+  );
+}
+
+const OFFER_BANNER_KEY = 'restauspace.offer-banner';
+const longDay = (iso: string) => new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}).format(new Date(iso));
+
+/** Bandeau des offres RestauSpace en cours (plan, options) ; masquable jusqu'au prochain changement d'offre. */
+function OfferBanner() {
+  const {can} = useConsole();
+  const {version} = usePlanFeatures();
+  const allowed = can('billing.view');
+  const {data} = useResource(
+    signal => (allowed ? Promise.all([loadSubscription(signal).catch(() => null), listAddOns(signal).catch(() => null)]) : Promise.resolve(null)),
+    [allowed, version],
+  );
+  const [hidden, setHidden] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setHidden(window.localStorage.getItem(OFFER_BANNER_KEY));
+    } catch {}
+  }, []);
+  if (!data) return null;
+  const [mine, addOns] = data;
+  const lines: string[] = [];
+  const sub = mine?.subscription;
+  if (sub?.isComplimentary && mine) {
+    const renewal = sub.complimentaryRenewalMonths ? `, renouvelé automatiquement tous les ${sub.complimentaryRenewalMonths} mois` : '';
+    lines.push(`Plan ${mine.plan.name} offert ${sub.complimentaryUntilUtc ? `jusqu’au ${longDay(sub.complimentaryUntilUtc)}${renewal}` : 'sans limite de durée'}`);
+  }
+  for (const addOn of addOns?.active ?? []) {
+    const text = addOnOfferText(addOn, longDay);
+    if (text) lines.push(`Option ${addOn.addOn.name} : ${text.charAt(0).toLowerCase()}${text.slice(1)}`);
+  }
+  const signature = lines.join('|');
+  if (!lines.length || hidden === signature) return null;
+  const hide = () => {
+    setHidden(signature);
+    try {
+      window.localStorage.setItem(OFFER_BANNER_KEY, signature);
+    } catch {}
+  };
+  return (
+    <div className="flex items-start gap-3 border-b border-brand-100 bg-brand-50 px-6 py-2 text-sm text-brand-900 print:hidden">
+      <Gift className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
+      <p className="min-w-0 flex-1">
+        <span className="font-semibold">Offert par RestauSpace : </span>
+        {lines.join(' · ')}.{' '}
+        <Link href="/abonnement" className="font-medium text-brand-700 underline-offset-2 hover:underline">Voir l’abonnement</Link>
+      </p>
+      <button type="button" onClick={hide} className="rounded p-0.5 text-brand-700 hover:bg-brand-100" aria-label="Masquer le bandeau">
+        <X className="size-4" />
+      </button>
+    </div>
   );
 }
 
@@ -383,6 +441,7 @@ export function Shell({children}: {children: ReactNode}) {
             Restaurant {tenant.status === 'Suspended' ? 'suspendu' : 'fermé'} : la consultation reste possible, les modifications sont bloquées.
           </div>
         )}
+        <OfferBanner />
         <main id="contenu" className="mx-auto w-full max-w-[1600px] min-w-0 flex-1 px-4 py-6 print:p-0 sm:px-6 lg:px-8 lg:py-8">
           {children}
         </main>

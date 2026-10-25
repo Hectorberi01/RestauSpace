@@ -49,6 +49,9 @@ public static class BillingApplicationErrors
 
     public static readonly DomainError AddOnComplimentaryUnlimited =
         new("billing.add_on.complimentary_unlimited", "The plan is offered without end date: ask the platform to add options.");
+
+    public static readonly DomainError AddOnComplimentary =
+        new("billing.add_on.complimentary", "This add-on is offered by the platform: ask the platform to change it.");
 }
 
 /// <summary>

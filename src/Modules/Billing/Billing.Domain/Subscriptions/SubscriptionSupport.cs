@@ -58,6 +58,8 @@ public static class SubscriptionErrors
     public static readonly DomainError PlanChangeScheduled = new("billing.subscription.plan_change_scheduled", "A plan change is scheduled at the end of the current period: withdraw it before cancelling.");
     public static readonly DomainError PlanChangeNotScheduled = new("billing.subscription.plan_change_not_scheduled", "No plan change is scheduled.");
     public static readonly DomainError ComplimentaryEndInvalid = new("billing.subscription.complimentary_end_invalid", "An offer must end in the future.");
+    public static readonly DomainError ComplimentaryRenewalInvalid = new(
+        "billing.subscription.complimentary_renewal_invalid", "An offer renews every 1 to 12 months, and only when it has an end date.");
 }
 
 public sealed record SubscriptionTrialStarted(
@@ -129,14 +131,21 @@ public sealed record SubscriptionPeriodRenewed(
     DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 
 /// <param name="UntilUtc">Fin de l'offre ; null = sans limite de durée.</param>
+/// <param name="RenewalMonths">Renouvellement automatique, en mois ; null : aucun.</param>
 public sealed record SubscriptionComplimentaryGranted(
     TenantId TenantId,
     SubscriptionId SubscriptionId,
     PlanId PlanId,
     DateTimeOffset? UntilUtc,
-    DateTimeOffset OccurredAtUtc) : DomainEvent(OccurredAtUtc);
+    DateTimeOffset OccurredAtUtc,
+    int? RenewalMonths = null) : DomainEvent(OccurredAtUtc);
 
-public sealed record SubscriptionComplimentaryEnded(TenantId TenantId, SubscriptionId SubscriptionId, DateTimeOffset OccurredAtUtc)
+public sealed record SubscriptionComplimentaryEnded(TenantId TenantId, SubscriptionId SubscriptionId, DateTimeOffset OccurredAtUtc, PlanId? PlanId = null)
+    : DomainEvent(OccurredAtUtc);
+
+/// <summary>L'offre renouvelable repart pour sa durée, jusqu'à <paramref name="UntilUtc"/>.</summary>
+public sealed record SubscriptionComplimentaryRenewed(
+    TenantId TenantId, SubscriptionId SubscriptionId, PlanId PlanId, DateTimeOffset UntilUtc, DateTimeOffset OccurredAtUtc)
     : DomainEvent(OccurredAtUtc);
 
 /// <summary>L'essai, ou l'offre limitée, se termine bientôt : le restaurant est prévenu.</summary>

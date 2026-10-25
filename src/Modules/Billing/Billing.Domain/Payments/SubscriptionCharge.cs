@@ -54,7 +54,8 @@ public sealed class SubscriptionPaymentLine : ValueObject
 /// <summary>
 /// Ce que coûte un abonnement : son plan de base et ses options actives. Une option est facturée sur l'intervalle du
 /// plan de base : une option mensuelle sur un plan annuel compte 12 mois, une option annuelle sur un plan mensuel un
-/// douzième (arrondi à la devise). Une option dans une autre devise que le plan n'est jamais facturée.
+/// douzième (arrondi à la devise). Une option dans une autre devise que le plan n'est jamais facturée ; une option offerte
+/// figure à 0.
 /// </summary>
 public static class SubscriptionCharge
 {
@@ -65,7 +66,9 @@ public static class SubscriptionCharge
         var lines = new List<SubscriptionPaymentLine> { SubscriptionPaymentLine.Of(basePlan, 1, basePlan.Price) };
         foreach (var (addOn, plan) in addOns.Where(item => item.AddOn.IsActive && item.Plan.Price.Currency == basePlan.Price.Currency).OrderBy(item => item.Plan.Name, StringComparer.Ordinal))
         {
-            lines.Add(SubscriptionPaymentLine.Of(plan, addOn.Quantity, plan.Price.Multiply(Months(basePlan.BillingInterval) / (decimal)Months(plan.BillingInterval))));
+            // Option offerte par la plateforme : ligne à 0.
+            var ratio = addOn.IsComplimentary ? 0m : Months(basePlan.BillingInterval) / (decimal)Months(plan.BillingInterval);
+            lines.Add(SubscriptionPaymentLine.Of(plan, addOn.Quantity, plan.Price.Multiply(ratio)));
         }
 
         return lines;
@@ -85,7 +88,7 @@ public static class SubscriptionCharge
         ArgumentNullException.ThrowIfNull(addOns);
         var total = basePlan.Price.Amount / Months(basePlan.BillingInterval);
         total += addOns
-            .Where(item => item.AddOn.IsActive && item.Plan.Price.Currency == basePlan.Price.Currency)
+            .Where(item => item.AddOn.IsActive && !item.AddOn.IsComplimentary && item.Plan.Price.Currency == basePlan.Price.Currency)
             .Sum(item => item.Plan.Price.Amount * item.AddOn.Quantity / Months(item.Plan.BillingInterval));
         return Money.Rounded(total, basePlan.Price.Currency);
     }

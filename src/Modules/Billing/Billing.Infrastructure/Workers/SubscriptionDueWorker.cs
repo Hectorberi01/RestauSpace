@@ -11,7 +11,8 @@ namespace Billing.Infrastructure.Workers;
 /// un (<see cref="ProcessDueSubscriptionCommand"/>), chacun dans son propre scope POUR son tenant
 /// (<see cref="BackgroundTenant"/>). Les suites côté restaurant (suspension, réactivation) partent par l'outbox. Plusieurs
 /// instances peuvent tourner : un conflit de version remet l'abonnement au passage suivant. Journal : ids et compteurs.
-/// Chaque passage relit aussi les règlements en ligne en attente chez le prestataire (<see cref="SettleSubscriptionCheckoutCommand"/>).
+/// Chaque passage traite aussi les options offertes échues et relit les règlements en ligne en attente chez le prestataire
+/// (<see cref="SettleSubscriptionCheckoutCommand"/>).
 /// </summary>
 public sealed class SubscriptionDueWorker(
     IServiceScopeFactory scopes, BillingOptions options, IClock clock, ILogger<SubscriptionDueWorker> logger) : BackgroundService
@@ -83,6 +84,39 @@ public sealed class SubscriptionDueWorker(
         return noticed;
     }
 
+    /// <summary>Un passage sur les options offertes échues (renouvelées, arrêtées ou rendues payantes) ; renvoie leur nombre.</summary>
+    public async Task<int> ProcessAddOnOffersAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<(TenantId TenantId, Billing.Domain.TenantAddOnId Id)> ended;
+        await using (var scope = scopes.CreateAsyncScope())
+        {
+            ended = await scope.ServiceProvider.GetRequiredService<ITenantAddOnRepository>()
+                .ListComplimentaryEndedAsync(clock.UtcNow, options.DueBatchSize, cancellationToken);
+        }
+
+        var changed = 0;
+        foreach (var (tenantId, addOnId) in ended)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<BackgroundTenant>().ActFor(tenantId);
+            try
+            {
+                if (await scope.ServiceProvider.GetRequiredService<ICommandHandler<ProcessAddOnOfferCommand, bool>>()
+                    .HandleAsync(new ProcessAddOnOfferCommand(addOnId.Value), cancellationToken))
+                {
+                    changed++;
+                    logger.LogInformation("Add-on offer {AddOnId} of tenant {TenantId} processed.", addOnId.Value, tenantId.Value);
+                }
+            }
+            catch (Exception exception) when (exception is ConcurrencyException or DomainException)
+            {
+                logger.LogWarning("Add-on offer {AddOnId} postponed: {Error}.", addOnId.Value, exception.GetType().Name);
+            }
+        }
+
+        return changed;
+    }
+
     /// <summary>Un passage sur les règlements en ligne ; renvoie le nombre de règlements clos.</summary>
     public async Task<int> SettleCheckoutsAsync(CancellationToken cancellationToken = default)
     {
@@ -124,6 +158,7 @@ public sealed class SubscriptionDueWorker(
             {
                 await ProcessDueAsync(stoppingToken);
                 await NoticeEndingAsync(stoppingToken);
+                await ProcessAddOnOffersAsync(stoppingToken);
                 await SettleCheckoutsAsync(stoppingToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

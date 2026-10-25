@@ -433,3 +433,27 @@ Migration : `scripts/migrations-abonnements.sh` (`ComplimentaryAndPaymentRoutes`
   (`billing.online_payment.provider_not_offered`).
 - Migration : `scripts/migrations-paiement-multiple.sh` (Billing `SubscriptionPaymentProviders`, colonne ajoutée avec un
   tableau vide par défaut : les choix existants sont gardés).
+
+## 16. Offres renouvelables et options offertes
+
+**Plan offert.** `GrantComplimentary` prend un renouvellement optionnel, de 1 à 12 mois (`complimentary_renewal_months`),
+seulement pour une offre avec une date de fin. À l'échéance, le job appelle `RenewComplimentary` : la période offerte
+repart pour sa durée (résultat `RenewedComplimentary`). Une offre renouvelable n'envoie pas de préavis de fin.
+
+**Option offerte.** `TenantAddOn.GrantComplimentary(AddOnOffer)` : fin (ou sans limite), renouvellement en mois, puis
+`Cancel` (l'option s'arrête) ou `Bill` (elle reste et sera facturée). Colonnes `complimentary_until_utc`,
+`complimentary_renewal_months`, `after_complimentary`. Pendant l'offre, l'option figure à 0 dans la prochaine échéance
+et ne compte pas dans le MRR ; le restaurant ne peut pas changer sa quantité (`billing.add_on.complimentary`).
+
+| Action | Où |
+|---|---|
+| Offrir une option (ajoutée, ou offre remplacée si elle est active) | `POST /admin/billing/tenants/{tenantId}/add-ons/offer` |
+| Mettre fin à l'offre maintenant (applique `Cancel` ou `Bill`) | `POST /admin/billing/tenants/{tenantId}/add-ons/{addOnId}/offer/end` |
+| Offre échue : renouvelée, arrêtée ou rendue payante | Job d'échéance, `ProcessAddOnOfferCommand` |
+
+Limite connue : une option devenue payante en cours de période n'est facturée qu'à la prochaine échéance.
+
+**Information du restaurant.** Les événements `SubscriptionComplimentary{Granted,Renewed,Ended}` et
+`TenantAddOnComplimentary{Granted,Renewed,Ended}` partent par l'outbox. L'hôte (`SubscriptionNoticesFlow`) envoie
+`staff.subscription_offer` dans l'application et par email aux membres qui ont `billing.manage`. La console affiche un
+bandeau tant qu'une offre court, et le badge « Offert » sur le plan, les options et les canaux de vente en ligne.

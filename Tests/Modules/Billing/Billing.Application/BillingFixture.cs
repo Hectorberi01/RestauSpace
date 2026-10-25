@@ -83,6 +83,12 @@ public sealed class BillingFixture
 
     public AdminEndComplimentaryHandler EndOffer => new(Workspace, Clock);
 
+    public AdminOfferAddOnHandler OfferAddOn => new(Workspace, Clock);
+
+    public AdminEndAddOnOfferHandler EndAddOnOffer => new(Workspace, Clock);
+
+    public ProcessAddOnOfferHandler ProcessAddOnOffer => new(Workspace, Clock);
+
     public NoticeSubscriptionEndingHandler NoticeEnding => new(Workspace, Clock);
 
     public GetBillingOverviewHandler Overview => new(Workspace, this, Clock);

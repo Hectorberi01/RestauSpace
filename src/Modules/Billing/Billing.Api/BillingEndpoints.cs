@@ -189,7 +189,7 @@ public static class BillingEndpoints
         // Plan offert au restaurant désigné, pour une période ou sans fin (même règle que la route ci-dessus).
         admin.MapPost("/tenants/{tenantId:guid}/complimentary", async (
             Guid tenantId, GrantComplimentaryRequest request, ICommandHandler<AdminGrantComplimentaryCommand, Guid> handler, CancellationToken ct) =>
-            TypedResults.Ok(new CreatedResponse(await handler.HandleAsync(new AdminGrantComplimentaryCommand(tenantId, request.PlanId, request.UntilUtc), ct))));
+            TypedResults.Ok(new CreatedResponse(await handler.HandleAsync(new AdminGrantComplimentaryCommand(tenantId, request.PlanId, request.UntilUtc, request.RenewalMonths), ct))));
 
         // Les options d'un restaurant, désigné par l'administrateur (même règle que la route ci-dessus).
         var addOns = admin.MapGroup("/tenants/{tenantId:guid}/add-ons");
@@ -210,6 +210,15 @@ public static class BillingEndpoints
 
         addOns.MapPost("/{addOnId:guid}/cancel", (Guid tenantId, Guid addOnId, ICommandHandler<CancelTenantAddOnCommand> handler, CancellationToken ct) =>
             Run(handler.HandleAsync(new CancelTenantAddOnCommand(tenantId, addOnId), ct)));
+
+        // Option offerte : ajoutée, ou offre remplacée si l'option est déjà active.
+        addOns.MapPost("/offer", async (
+            Guid tenantId, OfferAddOnRequest request, ICommandHandler<AdminOfferAddOnCommand, Guid> handler, CancellationToken ct) =>
+            TypedResults.Ok(new CreatedResponse(await handler.HandleAsync(
+                new AdminOfferAddOnCommand(tenantId, request.PlanId, request.Quantity ?? 1, request.UntilUtc, request.RenewalMonths, request.Then), ct))));
+
+        addOns.MapPost("/{addOnId:guid}/offer/end", (Guid tenantId, Guid addOnId, ICommandHandler<AdminEndAddOnOfferCommand> handler, CancellationToken ct) =>
+            Run(handler.HandleAsync(new AdminEndAddOnOfferCommand(tenantId, addOnId), ct)));
 
         // Toutes les options actives de la plateforme (vue Vente en ligne du back-office).
         admin.MapGet("/add-ons", async (int? page, int? pageSize, IQueryHandler<ListActiveAddOnsQuery, IReadOnlyList<TenantAddOnDto>> handler, CancellationToken ct) =>

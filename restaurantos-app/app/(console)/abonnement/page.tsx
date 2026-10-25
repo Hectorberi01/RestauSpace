@@ -9,7 +9,7 @@ import {
   addOnUnavailable, cancelAddOn, changeAddOnQuantity, changePlan, comparedFeatures, comparedLimits, downgradeLosses, featureLabel, includedInPlan, isCounted, isMonthly, listAddOns, listPayments, listPlans, loadOnlinePayment,
   loadSubscription, methodName, providerName, pushesToPhone, refreshCheckout, scheduleCancellation, startCheckout, statusLabel, statusTone, subscribe,
   subscribeAddOn, suspensionLabel, unscheduleCancellation, unschedulePlanChange, type Charge, type Checkout, type MyAddOns, type MySubscription, type OnlinePayment, type PaymentOption,
-  type Plan, type TenantAddOn,
+  type Plan, type TenantAddOn, addOnOfferText,
 } from '@/lib/billing';
 import {useConsole} from '@/components/console';
 import {usePlanFeatures} from '@/components/plan';
@@ -190,7 +190,7 @@ function NextCharge({charge}: {charge: Charge}) {
         {charge.lines.map(line => (
           <li key={line.planId} className="flex justify-between gap-3">
             <span className="text-ink-600">{line.label}{line.quantity > 1 ? ` × ${line.quantity}` : ''}</span>
-            <span className="tabular-nums">{money(line.amount, charge.currencyCode)}</span>
+            <span className="tabular-nums">{line.kind === 'AddOn' && line.amount === 0 ? 'Offerte' : money(line.amount, charge.currencyCode)}</span>
           </li>
         ))}
         <li className="flex justify-between gap-3 border-t border-slate-100 pt-1 font-semibold">
@@ -239,7 +239,7 @@ function Options({data, plan: base, canChange, onChanged}: {data: MyAddOns; plan
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 font-semibold">
                     {plan.name}
-                    {active && <Badge tone="green">Active</Badge>}
+                    {active && (active.isComplimentary ? <Badge tone="brand">Offerte</Badge> : <Badge tone="green">Active</Badge>)}
                     {!active && included && <Badge tone="green">Inclus dans votre plan</Badge>}
                     {!active && !included && unavailable && <Badge>Plans Pro et Multi-sites</Badge>}
                   </p>
@@ -249,10 +249,11 @@ function Options({data, plan: base, canChange, onChanged}: {data: MyAddOns; plan
               <p className="mt-3"><span className="text-2xl font-bold tracking-tight">{money(plan.price, plan.currencyCode)}</span><span className="text-ink-500"> / {per(plan)}{isCounted(plan) ? ' par unité' : ''}</span></p>
               {!active && !included && unavailable && <p className="mt-1 text-sm text-ink-600">Indisponible sur votre plan : passez au plan Pro ou Multi-sites pour ajouter des établissements.</p>}
               {active && included && <p className="mt-1 text-sm text-ink-600">Votre plan l’inclut désormais : vous pouvez résilier cette option.</p>}
-              {active && isCounted(plan) && <p className="mt-1 text-sm text-ink-600">Quantité : <strong>{count(active.quantity)}</strong> · {money(plan.price * active.quantity, plan.currencyCode)} / {per(plan)}</p>}
+              {active && isCounted(plan) && <p className="mt-1 text-sm text-ink-600">Quantité : <strong>{count(active.quantity)}</strong>{active.isComplimentary ? '' : ` · ${money(plan.price * active.quantity, plan.currencyCode)} / ${per(plan)}`}</p>}
+              {active?.isComplimentary && <p className="mt-1 text-sm font-medium text-brand-700">{addOnOfferText(active, day)}.</p>}
               <div className="mt-4 flex flex-1 flex-wrap items-end gap-2">
                 {canChange && !active && !included && !unavailable && <Button size="sm" onClick={() => open({kind: 'subscribe', plan})}><Plus className="size-4" aria-hidden="true" />Souscrire</Button>}
-                {canChange && active && isCounted(plan) && <Button size="sm" variant="secondary" onClick={() => open({kind: 'quantity', addOn: active})}>Modifier la quantité</Button>}
+                {canChange && active && !active.isComplimentary && isCounted(plan) && <Button size="sm" variant="secondary" onClick={() => open({kind: 'quantity', addOn: active})}>Modifier la quantité</Button>}
                 {canChange && active && <Button size="sm" variant="ghost" className="text-red-600" onClick={() => open({kind: 'cancel', addOn: active})}>Résilier</Button>}
               </div>
             </Card>
@@ -571,7 +572,7 @@ export default function SubscriptionPage() {
                 </div>
                 <p className="text-ink-600">
                   {offered
-                    ? <>Offert par RestauSpace {forever ? 'sans limite de durée' : `jusqu’au ${day(sub!.complimentaryUntilUtc!)}`} <span className="text-ink-500">(au lieu de {money(data.plan.price, data.plan.currencyCode)} / {per(data.plan)})</span></>
+                    ? <>Offert par RestauSpace {forever ? 'sans limite de durée' : `jusqu’au ${day(sub!.complimentaryUntilUtc!)}${sub!.complimentaryRenewalMonths ? `, renouvelé automatiquement tous les ${sub!.complimentaryRenewalMonths} mois` : ''}`} <span className="text-ink-500">(au lieu de {money(data.plan.price, data.plan.currencyCode)} / {per(data.plan)})</span></>
                     : <>{money(data.plan.price, data.plan.currencyCode)} / {per(data.plan)}</>}
                 </p>
               </div>
@@ -582,7 +583,7 @@ export default function SubscriptionPage() {
               <div><dt className="text-ink-500">Client depuis</dt><dd className="font-medium">{day(sub!.startedAtUtc)}</dd></div>
             </dl>
             {data.nextCharge && !forever && <NextCharge charge={data.nextCharge} />}
-            {offered && <div className="mt-4"><Alert tone="blue">{forever ? 'Votre plan est offert sans limite de durée : rien à payer. Pour changer de plan, ajouter une option ou résilier, contactez l’équipe RestauSpace.' : `Rien à payer jusqu’au ${day(sub!.complimentaryUntilUtc!)}. Ensuite, réglez la période suivante ici pour continuer sans interruption (vous serez prévenu 7 jours avant).`}</Alert></div>}
+            {offered && <div className="mt-4"><Alert tone="blue">{forever ? 'Votre plan est offert sans limite de durée : rien à payer. Pour changer de plan, ajouter une option ou résilier, contactez l’équipe RestauSpace.' : sub!.complimentaryRenewalMonths ? `Rien à payer : l’offre se renouvelle automatiquement tous les ${sub!.complimentaryRenewalMonths} mois (prochain renouvellement le ${day(sub!.complimentaryUntilUtc!)}), tant que RestauSpace la maintient.` : `Rien à payer jusqu’au ${day(sub!.complimentaryUntilUtc!)}. Ensuite, réglez la période suivante ici pour continuer sans interruption (vous serez prévenu 7 jours avant).`}</Alert></div>}
             {sub!.status === 'PastDue' && <div className="mt-4"><Alert tone="amber">Paiement en retard : régularisez pour éviter la suspension du compte.</Alert></div>}
             {sub!.status === 'Suspended' && <div className="mt-4"><Alert>Compte suspendu : {suspensionLabel[sub!.suspensionReason ?? 'Other']}. La console est en lecture seule.{trialExpired && (data.plan.price === 0 ? ' Choisissez un plan payant ci-dessous, puis payez pour continuer.' : ' Payez, ou choisissez un autre plan ci-dessous, pour continuer.')}</Alert></div>}
             {sub!.cancelAtPeriodEnd && (

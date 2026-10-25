@@ -240,6 +240,28 @@ namespace SaasRestaurant.Contracts.Billing
     [IntegrationEvent("billing", "SubscriptionEndingSoon")]
     public sealed record SubscriptionEndingSoon(Guid TenantId, Guid SubscriptionId, Guid PlanId, DateTimeOffset EndsAtUtc, bool Complimentary) : IIntegrationEvent;
 
+    /// <summary>La plateforme offre le plan ; <paramref name="UntilUtc"/> null : sans limite de durée.</summary>
+    [IntegrationEvent("billing", "SubscriptionComplimentaryGranted")]
+    public sealed record SubscriptionComplimentaryGranted(Guid TenantId, Guid SubscriptionId, Guid PlanId, DateTimeOffset? UntilUtc, int? RenewalMonths)
+        : IIntegrationEvent;
+
+    [IntegrationEvent("billing", "SubscriptionComplimentaryRenewed")]
+    public sealed record SubscriptionComplimentaryRenewed(Guid TenantId, Guid SubscriptionId, Guid PlanId, DateTimeOffset UntilUtc) : IIntegrationEvent;
+
+    [IntegrationEvent("billing", "SubscriptionComplimentaryEnded")]
+    public sealed record SubscriptionComplimentaryEnded(Guid TenantId, Guid SubscriptionId, Guid? PlanId) : IIntegrationEvent;
+
+    /// <summary>La plateforme offre une option ; <paramref name="Then"/> : <c>Cancel</c> ou <c>Bill</c> à la fin de l'offre.</summary>
+    [IntegrationEvent("billing", "TenantAddOnComplimentaryGranted")]
+    public sealed record TenantAddOnComplimentaryGranted(
+        Guid TenantId, Guid TenantAddOnId, Guid PlanId, DateTimeOffset? UntilUtc, int? RenewalMonths, string Then) : IIntegrationEvent;
+
+    [IntegrationEvent("billing", "TenantAddOnComplimentaryRenewed")]
+    public sealed record TenantAddOnComplimentaryRenewed(Guid TenantId, Guid TenantAddOnId, Guid PlanId, DateTimeOffset UntilUtc) : IIntegrationEvent;
+
+    [IntegrationEvent("billing", "TenantAddOnComplimentaryEnded")]
+    public sealed record TenantAddOnComplimentaryEnded(Guid TenantId, Guid TenantAddOnId, Guid PlanId, string Then) : IIntegrationEvent;
+
     [IntegrationEvent("billing", "Subscription*")]
     public sealed record SubscriptionEvent(Guid TenantId, Guid SubscriptionId) : IIntegrationEvent;
 

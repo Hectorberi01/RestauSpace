@@ -258,23 +258,153 @@ internal sealed class BillingFlow(IServiceScopeFactory scopes, ILogger<BillingFl
 }
 
 /// <summary>
-/// Billing -> Notifications : préavis de fin d'essai ou d'offre (billing.SubscriptionEndingSoon, par l'outbox), envoyé dans
-/// l'application et par email aux membres actifs qui gèrent l'abonnement (<c>billing.manage</c>). Le message donne le
-/// plan, la date et le lien vers la page Abonnement de la console ; aucun montant. Une clé d'idempotence par membre et
-/// par canal rend un rejeu sans effet. Journal : rien de personnel.
+/// Billing -> Notifications, par l'outbox, aux membres actifs qui gèrent l'abonnement (<c>billing.manage</c>), dans
+/// l'application et par email : préavis de fin d'essai ou d'offre (<c>staff.subscription_ending</c>), et offres de la
+/// plateforme sur le plan ou une option, accordées, renouvelées ou terminées (<c>staff.subscription_offer</c>). Le message
+/// donne le plan ou l'option, la date et le lien vers la page Abonnement ; aucun montant. Une clé d'idempotence par membre
+/// et par canal rend un rejeu sans effet. Journal : rien de personnel.
 /// </summary>
 internal sealed class SubscriptionNoticesFlow(IServiceScopeFactory scopes, BillingOnlinePayment settings, IConfiguration configuration) : IOutboxConsumer
 {
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
-        if ((message.Module, message.Type) is not ("billing", "SubscriptionEndingSoon"))
+        if (message.Module != "billing")
         {
             return;
         }
 
-        var ending = message.Read<SaasRestaurant.Contracts.Billing.SubscriptionEndingSoon>();
-        var tenantId = TenantId.From(ending.TenantId);
+        switch (message.Type)
+        {
+            case "SubscriptionEndingSoon":
+            {
+                var ending = message.Read<SaasRestaurant.Contracts.Billing.SubscriptionEndingSoon>();
+                await NotifyAsync(message, ending.TenantId, ending.PlanId, NotificationTypes.StaffSubscriptionEnding, (plan, french) => new()
+                {
+                    ["subscription.plan"] = plan,
+                    ["subscription.endDate"] = Day(ending.EndsAtUtc, french),
+                    ["subscription.reason"] = (ending.Complimentary, french) switch
+                    {
+                        (true, true) => "l'offre du plan",
+                        (true, false) => "the offer of the plan",
+                        (false, true) => "votre essai du plan",
+                        _ => "your trial of the plan",
+                    },
+                }, cancellationToken);
+                return;
+            }
+
+            case "SubscriptionComplimentaryGranted":
+            {
+                var granted = message.Read<SaasRestaurant.Contracts.Billing.SubscriptionComplimentaryGranted>();
+                await NotifyOfferAsync(message, granted.TenantId, granted.PlanId, addOn: false,
+                    french => OfferDetail(addOn: false, granted.UntilUtc, granted.RenewalMonths, then: null, french), cancellationToken);
+                return;
+            }
+
+            case "SubscriptionComplimentaryRenewed":
+            {
+                var renewed = message.Read<SaasRestaurant.Contracts.Billing.SubscriptionComplimentaryRenewed>();
+                await NotifyOfferAsync(message, renewed.TenantId, renewed.PlanId, addOn: false, french => Renewed(addOn: false, renewed.UntilUtc, french), cancellationToken);
+                return;
+            }
+
+            case "SubscriptionComplimentaryEnded":
+            {
+                var ended = message.Read<SaasRestaurant.Contracts.Billing.SubscriptionComplimentaryEnded>();
+                if (ended.PlanId is { } planId)
+                {
+                    await NotifyOfferAsync(message, ended.TenantId, planId, addOn: false, french => french
+                        ? "n'est plus offert : réglez la période suivante depuis Abonnement"
+                        : "is no longer offered: pay for the next period in Subscription", cancellationToken);
+                }
+
+                return;
+            }
+
+            case "TenantAddOnComplimentaryGranted":
+            {
+                var granted = message.Read<SaasRestaurant.Contracts.Billing.TenantAddOnComplimentaryGranted>();
+                await NotifyOfferAsync(message, granted.TenantId, granted.PlanId, addOn: true,
+                    french => OfferDetail(addOn: true, granted.UntilUtc, granted.RenewalMonths, granted.Then, french), cancellationToken);
+                return;
+            }
+
+            case "TenantAddOnComplimentaryRenewed":
+            {
+                var renewed = message.Read<SaasRestaurant.Contracts.Billing.TenantAddOnComplimentaryRenewed>();
+                await NotifyOfferAsync(message, renewed.TenantId, renewed.PlanId, addOn: true, french => Renewed(addOn: true, renewed.UntilUtc, french), cancellationToken);
+                return;
+            }
+
+            case "TenantAddOnComplimentaryEnded":
+            {
+                var ended = message.Read<SaasRestaurant.Contracts.Billing.TenantAddOnComplimentaryEnded>();
+                var billed = ended.Then == nameof(AddOnAfterOffer.Bill);
+                await NotifyOfferAsync(message, ended.TenantId, ended.PlanId, addOn: true, french => (billed, french) switch
+                {
+                    (true, true) => "n'est plus offerte : elle sera facturée avec votre prochaine période",
+                    (true, false) => "is no longer offered: it will be billed with your next period",
+                    (false, true) => "n'est plus offerte : elle est arrêtée",
+                    _ => "is no longer offered: it has been stopped",
+                }, cancellationToken);
+                return;
+            }
+        }
+    }
+
+    // Offre : « Le plan Pro » / « L'option Borne » + le détail.
+    private Task NotifyOfferAsync(
+        OutboxEnvelope message, Guid tenantId, Guid planId, bool addOn, Func<bool, string> detail, CancellationToken cancellationToken) =>
+        NotifyAsync(message, tenantId, planId, NotificationTypes.StaffSubscriptionOffer, (plan, french) => new()
+        {
+            ["offer.subject"] = (addOn, french) switch
+            {
+                (true, true) => $"L'option {plan}",
+                (true, false) => $"The {plan} add-on",
+                (false, true) => $"Le plan {plan}",
+                _ => $"The {plan} plan",
+            },
+            ["offer.detail"] = detail(french),
+        }, cancellationToken);
+
+    private static string OfferDetail(bool addOn, DateTimeOffset? untilUtc, int? renewalMonths, string? then, bool french)
+    {
+        var offered = french ? (addOn ? "vous est offerte par RestauSpace" : "vous est offert par RestauSpace") : "is offered to you by RestauSpace";
+        var period = untilUtc is not { } until
+            ? french ? " sans limite de durée" : " with no end date"
+            : french ? $" jusqu'au {Day(until, true)}" : $" until {Day(until, false)}";
+        var renewal = renewalMonths is { } months
+            ? french ? $", puis renouvelé{(addOn ? "e" : string.Empty)} automatiquement tous les {months} mois" : $", then renewed automatically every {months} month(s)"
+            : string.Empty;
+        var after = untilUtc is null || renewalMonths is not null || then is null
+            ? string.Empty
+            : (then == nameof(AddOnAfterOffer.Bill), french) switch
+            {
+                (true, true) => ". Ensuite, elle devient payante",
+                (true, false) => ". After that, it becomes paid",
+                (false, true) => ". Ensuite, elle s'arrête",
+                _ => ". After that, it stops",
+            };
+        return offered + period + renewal + after;
+    }
+
+    private static string Renewed(bool addOn, DateTimeOffset untilUtc, bool french) => french
+        ? $"reste offert{(addOn ? "e" : string.Empty)} par RestauSpace jusqu'au {Day(untilUtc, true)} (renouvellement automatique)"
+        : $"remains offered by RestauSpace until {Day(untilUtc, false)} (automatic renewal)";
+
+    private static string Day(DateTimeOffset value, bool french) =>
+        value.UtcDateTime.ToString(french ? "dd/MM/yyyy" : "yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private async Task NotifyAsync(
+        OutboxEnvelope message,
+        Guid tenant,
+        Guid planId,
+        NotificationTypeDefinition type,
+        Func<string, bool, Dictionary<string, string>> describe,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = TenantId.From(tenant);
         await using var scope = scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         services.GetRequiredService<BackgroundTenant>().ActFor(tenantId);
@@ -282,7 +412,7 @@ internal sealed class SubscriptionNoticesFlow(IServiceScopeFactory scopes, Billi
         var restaurant = await services.GetRequiredService<IQueryHandler<GetTenantByIdQuery, TenantDto>>()
             .HandleAsync(new GetTenantByIdQuery(tenantId.Value), cancellationToken);
         var plan = await services.GetRequiredService<IQueryHandler<GetPlanQuery, PlanDto>>()
-            .HandleAsync(new GetPlanQuery(ending.PlanId), cancellationToken);
+            .HandleAsync(new GetPlanQuery(planId), cancellationToken);
         var send = services.GetRequiredService<ICommandHandler<SendNotificationCommand, SendNotificationResult>>();
         var key = $"billing:{message.Id.ToString(CultureInfo.InvariantCulture)}";
         foreach (var userId in await ManagersAsync(services, tenantId, cancellationToken))
@@ -303,29 +433,18 @@ internal sealed class SubscriptionNoticesFlow(IServiceScopeFactory scopes, Billi
             }
 
             var french = user.Language.StartsWith("fr", StringComparison.OrdinalIgnoreCase);
-            var variables = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["restaurant.name"] = restaurant.Name,
-                ["location.name"] = string.Empty,
-                ["subscription.plan"] = plan.Name,
-                ["subscription.endDate"] = ending.EndsAtUtc.UtcDateTime.ToString(french ? "dd/MM/yyyy" : "yyyy-MM-dd", CultureInfo.InvariantCulture),
-                ["subscription.reason"] = (ending.Complimentary, french) switch
-                {
-                    (true, true) => "l'offre du plan",
-                    (true, false) => "the offer of the plan",
-                    (false, true) => "votre essai du plan",
-                    _ => "your trial of the plan",
-                },
-                ["subscription.url"] = SubscriptionUrl(),
-            };
+            var variables = describe(plan.Name, french);
+            variables["restaurant.name"] = restaurant.Name;
+            variables["location.name"] = string.Empty;
+            variables["subscription.url"] = SubscriptionUrl();
             _ = await send.HandleAsync(
                 new SendNotificationCommand(
-                    NotificationTypes.StaffSubscriptionEnding.Key.Value, NotificationChannel.InApp, UserId: userId, Variables: variables,
+                    type.Key.Value, NotificationChannel.InApp, UserId: userId, Variables: variables,
                     IdempotencyKey: $"{key}:{userId:N}:InApp"),
                 cancellationToken);
             _ = await send.HandleAsync(
                 new SendNotificationCommand(
-                    NotificationTypes.StaffSubscriptionEnding.Key.Value, NotificationChannel.Email, UserId: userId, Address: user.Email, Variables: variables,
+                    type.Key.Value, NotificationChannel.Email, UserId: userId, Address: user.Email, Variables: variables,
                     IdempotencyKey: $"{key}:{userId:N}:Email"),
                 cancellationToken);
         }

@@ -40,12 +40,20 @@ public sealed record TenantAddOnDto(
     int Quantity,
     TenantAddOnStatus Status,
     DateTimeOffset ActivatedAtUtc,
-    DateTimeOffset? CancelledAtUtc)
+    DateTimeOffset? CancelledAtUtc,
+    bool IsComplimentary = false,
+    DateTimeOffset? ComplimentaryUntilUtc = null,
+    int? ComplimentaryRenewalMonths = null,
+    AddOnAfterOffer? AfterComplimentary = null)
 {
+    /// <remarks><c>ComplimentaryUntilUtc</c> null avec <c>IsComplimentary</c> : offerte sans limite de durée.</remarks>
     public static TenantAddOnDto From(TenantAddOn addOn, Plan plan)
     {
         ArgumentNullException.ThrowIfNull(addOn);
-        return new(addOn.Id.Value, addOn.TenantId.Value, PlanDto.From(plan), addOn.Quantity, addOn.Status, addOn.ActivatedAtUtc, addOn.CancelledAtUtc);
+        return new(
+            addOn.Id.Value, addOn.TenantId.Value, PlanDto.From(plan), addOn.Quantity, addOn.Status, addOn.ActivatedAtUtc, addOn.CancelledAtUtc,
+            addOn.IsComplimentary, addOn.IsComplimentaryUnlimited ? null : addOn.ComplimentaryUntilUtc,
+            addOn.ComplimentaryRenewalMonths, addOn.AfterComplimentary);
     }
 }
 
@@ -66,7 +74,8 @@ public sealed record SubscriptionDto(
     bool IsComplimentary = false,
     DateTimeOffset? ComplimentaryUntilUtc = null,
     Guid? ScheduledPlanId = null,
-    DateTimeOffset? ScheduledPlanEffectiveAtUtc = null)
+    DateTimeOffset? ScheduledPlanEffectiveAtUtc = null,
+    int? ComplimentaryRenewalMonths = null)
 {
     public static SubscriptionDto From(SaasSubscription subscription)
     {
@@ -76,7 +85,7 @@ public sealed record SubscriptionDto(
             subscription.CurrentPeriod.StartUtc, subscription.CurrentPeriod.EndUtc, subscription.CancelAtPeriodEnd,
             subscription.SuspensionReason, subscription.StartedAtUtc, subscription.CancelledAtUtc,
             subscription.IsComplimentary, subscription.IsComplimentary && !subscription.IsComplimentaryUnlimited ? subscription.CurrentPeriod.EndUtc : null,
-            subscription.ScheduledPlanId?.Value, subscription.ScheduledPlanEffectiveAtUtc);
+            subscription.ScheduledPlanId?.Value, subscription.ScheduledPlanEffectiveAtUtc, subscription.ComplimentaryRenewalMonths);
     }
 }
 

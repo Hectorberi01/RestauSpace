@@ -93,6 +93,10 @@ public static class NotificationTypes
     public static readonly NotificationTypeDefinition StaffSubscriptionEnding =
         Transactional("staff.subscription_ending", NotificationPriority.High, Restaurant, ["subscription.plan", "subscription.endDate", "subscription.reason", "subscription.url"]);
 
+    /// <summary>Offre de la plateforme (plan ou option) accordée, renouvelée ou terminée : aux gérants de l'abonnement (aucun montant).</summary>
+    public static readonly NotificationTypeDefinition StaffSubscriptionOffer =
+        Transactional("staff.subscription_offer", NotificationPriority.Normal, Restaurant, ["offer.subject", "offer.detail", "subscription.url"]);
+
     // Marketing : consentement, opt-out et fréquence vérifiés avant tout envoi.
     public static readonly NotificationTypeDefinition PromotionalCampaign = Marketing("marketing.promotional_campaign", Restaurant, Customer, Campaign);
     public static readonly NotificationTypeDefinition NewMenu = Marketing("marketing.new_menu", Restaurant, Customer, Campaign);
@@ -107,7 +111,7 @@ public static class NotificationTypes
         PaymentSucceeded, PaymentFailed, RefundSucceeded, LoyaltyRewardEarned,
         AccountWelcome, AccountVerifyEmail, AccountPasswordReset, SecurityOtp,
         StaffNewReservation, StaffOrderCancelled, StaffPaymentFailed, StaffLowStock, StaffNewReview, StaffReportReady, StaffWebhookDisabled,
-        StaffSchedulePublished, StaffTimeOffRequested, StaffTimeOffDecided, StaffShiftSwap, StaffSubscriptionEnding,
+        StaffSchedulePublished, StaffTimeOffRequested, StaffTimeOffDecided, StaffShiftSwap, StaffSubscriptionEnding, StaffSubscriptionOffer,
         PromotionalCampaign, NewMenu, LoyaltyCampaign, CustomerReactivation, SpecialEvent,
     }.ToFrozenDictionary(definition => definition.Key);
 

@@ -44,6 +44,23 @@ export interface TenantAddOn {
   quantity: number;
   status: 'Active' | 'Cancelled';
   activatedAtUtc: string;
+  /** Option offerte par RestauSpace : rien à payer pendant l'offre. */
+  isComplimentary?: boolean;
+  /** Fin de l'offre ; null quand elle est sans limite. */
+  complimentaryUntilUtc?: string | null;
+  /** Renouvellement automatique de l'offre, en mois. */
+  complimentaryRenewalMonths?: number | null;
+  /** À la fin de l'offre : arrêt, ou option payante. */
+  afterComplimentary?: 'Cancel' | 'Bill' | null;
+}
+
+/** « Offerte jusqu'au 25/04/2027, renouvelée tous les 3 mois » ; null si l'option n'est pas offerte. */
+export function addOnOfferText(addOn: TenantAddOn, day: (iso: string) => string): string | null {
+  if (!addOn.isComplimentary) return null;
+  if (!addOn.complimentaryUntilUtc) return 'Offerte par RestauSpace, sans limite de durée';
+  const renewal = addOn.complimentaryRenewalMonths ? `, renouvelée automatiquement tous les ${addOn.complimentaryRenewalMonths} mois` : '';
+  const after = addOn.complimentaryRenewalMonths ? '' : addOn.afterComplimentary === 'Bill' ? ' ; ensuite, elle devient payante' : ' ; ensuite, elle s’arrête';
+  return `Offerte par RestauSpace jusqu’au ${day(addOn.complimentaryUntilUtc)}${renewal}${after}`;
 }
 
 export interface MyAddOns {
@@ -66,6 +83,8 @@ export interface MySubscription {
     isComplimentary?: boolean;
     /** Fin de l'offre ; null quand elle est sans limite. */
     complimentaryUntilUtc?: string | null;
+    /** Renouvellement automatique de l'offre, en mois. */
+    complimentaryRenewalMonths?: number | null;
     /** Plan programmé pour la fin de la période payée. */
     scheduledPlanId?: string | null;
     scheduledPlanEffectiveAtUtc?: string | null;
