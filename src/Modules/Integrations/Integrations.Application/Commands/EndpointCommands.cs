@@ -12,13 +12,16 @@ public sealed record WebhookSecretIssued(Guid EndpointId, string Secret);
 
 public sealed record CreateWebhookEndpointCommand(string? Url, IReadOnlyList<string>? Events) : ICommand<WebhookSecretIssued>;
 
-public sealed class CreateWebhookEndpointHandler(IntegrationsWorkspace workspace, IClock clock) : ICommandHandler<CreateWebhookEndpointCommand, WebhookSecretIssued>
+/// <summary>Exige l'option webhooks du plan (<c>integrations.webhooks</c>).</summary>
+public sealed class CreateWebhookEndpointHandler(IntegrationsWorkspace workspace, IPlanFeatureGate plan, IClock clock)
+    : ICommandHandler<CreateWebhookEndpointCommand, WebhookSecretIssued>
 {
     public async Task<WebhookSecretIssued> HandleAsync(CreateWebhookEndpointCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var tenant = workspace.CurrentTenant;
+        await plan.RequireAsync(tenant, PlanFeatures.IntegrationsWebhooks, cancellationToken);
         var url = WebhookUrl.Create(command.Url);
         var events = (command.Events ?? Array.Empty<string>()).Select(WebhookEvents.Require).ToList();
         var (reference, secret) = workspace.Secrets.Create(tenant);

@@ -53,9 +53,13 @@ public sealed class LocationsFixture : ILocationRepository, ILocationsUnitOfWork
 
     public AddExceptionalOpeningHandler AddOpening => new(Editor, Clock);
 
+    public LocationFreeze Freeze => new(this, this);
+
     public GetLocationByIdHandler GetById => new(this, this);
 
-    public ListLocationsHandler List => new(this, this);
+    public ListLocationsHandler List => new(this, this, Freeze);
+
+    public IsLocationFrozenHandler IsFrozen => new(this, Freeze);
 
     public RestaurantLocation Stored(Guid id) => _locations.Single(location => location.Id.Value == id);
 
@@ -92,6 +96,14 @@ public sealed class LocationsFixture : ILocationRepository, ILocationsUnitOfWork
             .ToList();
         return Task.FromResult(new LocationPage(matching.Skip(skip).Take(take).ToList(), matching.Count));
     }
+
+    public Task<IReadOnlyList<LocationId>> ListOpenIdsByCreationAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<LocationId>>(_locations
+            .Where(location => location.TenantId == tenantId && location.Status != LocationStatus.Archived)
+            .OrderBy(location => location.CreatedAtUtc)
+            .ThenBy(location => location.Id.Value)
+            .Select(location => location.Id)
+            .ToList());
 
     public void Add(RestaurantLocation location) => _locations.Add(location);
 

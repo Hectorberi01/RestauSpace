@@ -10,12 +10,15 @@ import {
 import {parseAmount} from '@/lib/format';
 import {useResource} from '@/lib/hooks';
 import {useConsole} from '@/components/console';
+import {PlanBadge} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cx, useAction} from '@/components/ui';
 import {KioskDevices} from './kiosks';
 import {Switch} from './shared';
 
 const kinds: SalesAppKind[] = ['Web', 'MobileApp', 'Kiosk'];
 const kindIcon: Record<SalesAppKind, typeof Globe> = {Web: Globe, MobileApp: Smartphone, Kiosk: Monitor};
+const kindFeature: Record<SalesAppKind, string> = {Web: Feature.StorefrontWeb, MobileApp: Feature.StorefrontMobileApp, Kiosk: Feature.StorefrontKiosk};
 const modes: ServiceMode[] = ['DineIn', 'Takeaway', 'Delivery'];
 
 function CopyValue({value, label}: {value: string; label: string}) {
@@ -186,6 +189,8 @@ function AppRow({app, overview, editable, onEdit, onIssued, onChanged}: {
   const {busy, run} = useAction();
   const Icon = kindIcon[app.kind];
   const active = app.status === 'Active';
+  // Canal perdu (plan ou option) : application visible, clé refusée par l'API.
+  const usable = accessOf(overview, app.kind);
   const names = app.locationIds.map(id => overview.locations.find(location => location.locationId === id)?.locationName).filter(Boolean);
   return (
     <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
@@ -195,6 +200,7 @@ function AppRow({app, overview, editable, onEdit, onIssued, onChanged}: {
           {app.name}
           <Badge tone={active ? 'green' : 'neutral'}>{active ? 'Active' : 'Désactivée'}</Badge>
           <Badge>{kindLabel[app.kind]}</Badge>
+          {!usable && <Badge tone="amber">Hors abonnement</Badge>}
         </p>
         <p className="text-sm text-ink-500">
           Clé <code className="text-xs">{app.keyPrefix}…{app.keyHint}</code>
@@ -208,12 +214,12 @@ function AppRow({app, overview, editable, onEdit, onIssued, onChanged}: {
       {editable && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
           <Button size="sm" variant="ghost" onClick={onEdit}><Pencil className="size-4" aria-hidden="true" />Modifier</Button>
-          <Button size="sm" variant="secondary" busy={busy === 'key'} onClick={() => void run('key', async () => {
+          {usable && <Button size="sm" variant="secondary" busy={busy === 'key'} onClick={() => void run('key', async () => {
             const issued = await rotateSalesAppKey(app.id);
             await onChanged();
             onIssued({name: app.name, key: issued.key, kind: app.kind});
-          })}><KeyRound className="size-4" aria-hidden="true" />Nouvelle clé</Button>
-          <Switch on={active} label={`${active ? 'Désactiver' : 'Activer'} : ${app.name}`} disabled={!!busy}
+          })}><KeyRound className="size-4" aria-hidden="true" />Nouvelle clé</Button>}
+          <Switch on={active} label={`${active ? 'Désactiver' : 'Activer'} : ${app.name}`} disabled={!!busy || (!active && !usable)}
             onChange={() => void run('toggle', async () => {
               await (active ? disableSalesApp(app.id) : enableSalesApp(app.id));
               await onChanged();
@@ -400,9 +406,9 @@ export function OnlineSales() {
             <Card key={kind} className="flex gap-3 p-4">
               <span className={cx('grid size-10 shrink-0 place-items-center rounded-xl', on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-ink-500')} aria-hidden="true"><Icon className="size-5" /></span>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}<Badge tone={on ? 'green' : 'neutral'}>{on ? 'Option active' : 'Non souscrite'}</Badge></p>
-                <p className="text-sm text-ink-500">{on ? kindHint[kind] : 'Option de votre abonnement, active dès la souscription.'}</p>
-                {!on && <Link href="/abonnement#options" className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">Ajouter cette option</Link>}
+                <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}{on ? <Badge tone="green">Disponible</Badge> : <PlanBadge force feature={kindFeature[kind]} />}</p>
+                <p className="text-sm text-ink-500">{on ? kindHint[kind] : kind === 'Web' ? 'Inclus dans le plan Pro, ou avec l’option Site web.' : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
+                {!on && <Link href={kind === 'Web' ? '/abonnement' : '/abonnement#options'} className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">{kind === 'Web' ? 'Voir les plans' : 'Ajouter cette option'}</Link>}
               </div>
             </Card>
           );

@@ -38,6 +38,7 @@ public sealed class RunReportHandler(ReportingWorkspace workspace) : IQueryHandl
         ArgumentNullException.ThrowIfNull(query);
         var metrics = MetricSet.Create(query.Metrics ?? Array.Empty<string>(), ReportingMetrics.Catalog).Codes.ToList();
         var filters = ReportFilters.Create(ReportFilterInput.ToFilters(query.Filters), ReportingMetrics.Catalog).Items;
+        await workspace.RequireConsolidatedAllowedAsync(filters, cancellationToken);
         var rows = await workspace.RunAsync(metrics, filters, query.From, query.To, query.Granularity, query.ByLocation, cancellationToken);
         return new ReportResultDto(query.From, query.To, query.Granularity, rows.Select(ReportRowDto.From).ToList());
     }
@@ -55,6 +56,7 @@ public sealed class RunSavedReportHandler(ReportingWorkspace workspace) : IQuery
         ArgumentNullException.ThrowIfNull(query);
         var definition = await workspace.LoadDefinitionAsync(query.DefinitionId, cancellationToken);
         definition.EnsureCompatibleWith(ReportingMetrics.Catalog);
+        await workspace.RequireConsolidatedAllowedAsync(definition.Filters.Items, cancellationToken);
         var rows = await workspace.RunAsync(
             definition.Metrics.Codes.ToList(), definition.Filters.Items, query.From, query.To, query.Granularity, query.ByLocation, cancellationToken);
         return new ReportResultDto(query.From, query.To, query.Granularity, rows.Select(ReportRowDto.From).ToList());
@@ -89,6 +91,7 @@ public sealed class GetDashboardHandler(ReportingWorkspace workspace) : IQueryHa
         var filters = query.LocationId is { } location
             ? ReportFilterInput.ToFilters([new ReportFilterInput(ReportingMetrics.LocationField, FilterOperator.EqualTo, location.ToString())])
             : Array.Empty<ReportFilter>();
+        await workspace.RequireConsolidatedAllowedAsync(filters, cancellationToken);
         var totals = await workspace.RunAsync(Indicators, filters, query.From, query.To, ReportGranularity.Total, false, cancellationToken);
         var daily = await workspace.RunAsync([ReportingMetrics.Revenue], filters, query.From, query.To, ReportGranularity.Day, false, cancellationToken);
         return new DashboardDto(query.From, query.To, totals.Select(ReportRowDto.From).ToList(), daily.Select(ReportRowDto.From).ToList());

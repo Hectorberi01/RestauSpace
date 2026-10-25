@@ -31,6 +31,18 @@ public static class ApiKeys
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }
 
+/// <summary>
+/// Après l'authentification par clé d'API : le plan doit inclure l'option API (<c>storefront.api</c>), sinon 403
+/// <c>common.plan.feature_required</c>. La clé reste valide : elle refonctionne si l'option revient.
+/// </summary>
+public sealed record EnsureApiKeyPlanCommand : ICommand;
+
+public sealed class EnsureApiKeyPlanHandler(ITenantContext tenantContext, IPlanFeatureGate plan) : ICommandHandler<EnsureApiKeyPlanCommand>
+{
+    public Task HandleAsync(EnsureApiKeyPlanCommand command, CancellationToken cancellationToken = default) =>
+        plan.RequireAsync(tenantContext.RequireTenant(), PlanFeatures.IntegrationsApi, cancellationToken);
+}
+
 /// <summary>Une clé émise (ou renouvelée) : la clé en clair, à recopier maintenant, ne sera plus affichée.</summary>
 public sealed record IssuedApiKey(Guid CredentialId, string Key);
 

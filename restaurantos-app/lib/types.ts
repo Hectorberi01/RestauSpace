@@ -45,6 +45,8 @@ export interface LocationSummary {
   city: string;
   countryCode: string;
   seats: number;
+  /** Au-delà de la limite du plan : lisible, sans nouvelles commandes ni réservations. */
+  isFrozen?: boolean;
 }
 
 export type OrderType = 'DineIn' | 'Takeaway' | 'Delivery';

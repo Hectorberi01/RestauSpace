@@ -264,4 +264,54 @@ public sealed class BillingEndpointsTests(BillingApi api) : IClassFixture<Billin
             await client.PutAsJsonAsync("/billing/subscription/plan", new { planId = other }), HttpStatusCode.UnprocessableEntity, "billing.tenant.not_writable");
         await AssertStatusAsync(await client.GetAsync("/billing/subscription"), HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task A_restaurant_reads_its_features_and_add_ons_must_fit_its_plan()
+    {
+        var plan = await CreatedIdAsync(await api.Admin().PostAsJsonAsync("/admin/billing/plans", new
+        {
+            name = "Essentiel",
+            price = 49m,
+            currencyCode = "EUR",
+            billingInterval = "Monthly",
+            entitlements = new[]
+            {
+                new { featureCode = BillingFeatures.Locations, enabled = true, limit = (long?)1 },
+                new { featureCode = BillingFeatures.LocationsExtra, enabled = false, limit = (long?)null },
+                new { featureCode = BillingFeatures.StorefrontWeb, enabled = true, limit = (long?)null },
+            },
+        }));
+        async Task<Guid> AddOnAsync(string name, string feature, long? limit) =>
+            await CreatedIdAsync(await api.Admin().PostAsJsonAsync("/admin/billing/plans", new
+            {
+                name,
+                price = 15m,
+                currencyCode = "EUR",
+                billingInterval = "Monthly",
+                kind = "AddOn",
+                entitlements = new[] { new { featureCode = feature, enabled = true, limit } },
+            }));
+        var site = await AddOnAsync("Site web", BillingFeatures.StorefrontWeb, null);
+        var extra = await AddOnAsync("Établissement supplémentaire", BillingFeatures.Locations, 1);
+        var client = api.ActingFor(api.NewTenant());
+
+        var before = await JsonAsync(await client.GetAsync("/billing/features"));
+        await SubscribeAsync(client, plan);
+        var included = await client.PostAsJsonAsync("/billing/add-ons", new { planId = site });
+        var notAvailable = await client.PostAsJsonAsync("/billing/add-ons", new { planId = extra });
+        var after = await JsonAsync(await client.GetAsync("/billing/features"));
+
+        Assert.Equal(JsonValueKind.Null, before.GetProperty("planName").ValueKind);
+        Assert.All(before.GetProperty("features").EnumerateArray(), feature => Assert.False(feature.GetProperty("enabled").GetBoolean()));
+        await AssertProblemAsync(included, HttpStatusCode.UnprocessableEntity, "billing.add_on.already_included");
+        await AssertProblemAsync(notAvailable, HttpStatusCode.UnprocessableEntity, "billing.add_on.not_available_on_plan");
+        Assert.Equal(("Essentiel", "Trialing"), (after.GetProperty("planName").GetString(), after.GetProperty("status").GetString()));
+        Assert.Equal(JsonValueKind.String, after.GetProperty("trialEndsAtUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, after.GetProperty("usage").ValueKind);
+        var features = after.GetProperty("features").EnumerateArray().ToDictionary(feature => feature.GetProperty("code").GetString()!);
+        Assert.Equal(BillingFeatures.All.Count, features.Count);
+        Assert.Equal(1, features[BillingFeatures.Locations].GetProperty("limit").GetInt64());
+        Assert.True(features[BillingFeatures.StorefrontWeb].GetProperty("enabled").GetBoolean());
+        Assert.False(features[BillingFeatures.Loyalty].GetProperty("enabled").GetBoolean());
+    }
 }

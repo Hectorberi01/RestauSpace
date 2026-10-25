@@ -40,6 +40,7 @@ public sealed class TestNotificationConfigurationHandler(NotificationsWorkspace 
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var configuration = await workspace.LoadConfigurationAsync(command.ConfigurationId, cancellationToken);
+        await workspace.RequireModeAllowedAsync(configuration.Mode, cancellationToken);
         var channel = configuration.Channel;
         DomainException.ThrowIf(
             channel is not (NotificationChannel.Email or NotificationChannel.Sms or NotificationChannel.WhatsApp),

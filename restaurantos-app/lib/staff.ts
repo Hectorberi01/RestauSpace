@@ -11,6 +11,8 @@ export interface StaffMember {
   invitedAtUtc: string;
   email: string | null;
   hasPin?: boolean;
+  /** Au-delà de la limite du plan : connexion au restaurant et caisse refusées. */
+  isFrozen?: boolean;
 }
 
 export interface Role {

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using SaasRestaurant.BuildingBlocks.Api;
 
@@ -27,6 +28,7 @@ public static class IdentityModule
         configureAuthRateLimit?.Invoke(authRateLimit);
 
         services.AddIdentityInfrastructure(connectionString, configureAccessTokens, configureTwoFactor);
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddAuthRateLimiting(authRateLimit);
         services.AddHandlersFrom(typeof(LoginHandler).Assembly);
         return services;

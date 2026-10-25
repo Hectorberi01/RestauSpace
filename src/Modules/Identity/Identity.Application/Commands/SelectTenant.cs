@@ -33,6 +33,11 @@ public sealed class SelectTenantHandler(IUserRepository users, ITenantMembership
         }
 
         var tenantId = TenantId.From(command.TenantId);
+        if (await memberships.IsFrozenAsync(user.Id, tenantId, cancellationToken))
+        {
+            throw PlanFeatures.OverLimit("staff");
+        }
+
         var accessToken = accessTokens.Issue(user, SessionId.From(sessionId), tenantId);
         return new TenantAccessTokenDto(tenantId.Value, accessToken.Value, accessToken.ExpiresAtUtc);
     }

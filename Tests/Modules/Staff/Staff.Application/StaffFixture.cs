@@ -101,6 +101,12 @@ public sealed class StaffFixture :
 
     public StaffPermissionChecker Checker => new(this, this);
 
+    public StaffFreeze Freeze => new(this, this, this);
+
+    public IsStaffMemberFrozenHandler IsFrozen => new(this, Freeze);
+
+    public ListStaffHandler List => new(this, this, this, Freeze);
+
     public StaffMember Member(Guid id) => _members.Single(member => member.Id.Value == id);
 
     public Role SystemRole(TenantId tenantId, string name) =>
@@ -165,6 +171,9 @@ public sealed class StaffFixture :
 
     public Task<IReadOnlyList<StaffMember>> ListActiveAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<StaffMember>>(_members.Where(member => member.TenantId == tenantId && member.Status == StaffStatus.Active).ToList());
+
+    public Task<IReadOnlyList<StaffMember>> ListCurrentAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StaffMember>>(_members.Where(member => member.TenantId == tenantId && member.Status != StaffStatus.Left).ToList());
 
     public void Add(StaffMember member) => _members.Add(member);
 

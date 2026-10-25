@@ -14,6 +14,9 @@ public interface ILocationRepository
     Task<LocationPage> ListAsync(
         TenantId tenantId, bool includeArchived, int skip, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>Ids des établissements non archivés, du plus ancien au plus récent (rang pour le gel).</summary>
+    Task<IReadOnlyList<LocationId>> ListOpenIdsByCreationAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+
     void Add(RestaurantLocation location);
 }
 

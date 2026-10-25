@@ -76,12 +76,12 @@ internal sealed class SignUpFlow(
     public static SignUpCountry? FindCountry(string? code) =>
         Countries.FirstOrDefault(country => string.Equals(country.Code, code?.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Les plans de base actifs des devises des pays ouverts à l'inscription.</summary>
+    /// <summary>Les plans de base actifs et payants des devises des pays ouverts à l'inscription (essai sur le plan choisi).</summary>
     public async Task<IReadOnlyList<SignUpPlan>> PlansAsync(CancellationToken cancellationToken)
     {
         var currencies = Countries.Select(country => country.CurrencyCode).ToHashSet(StringComparer.Ordinal);
         return (await plans.HandleAsync(new ListPlansQuery(ActiveOnly: true), cancellationToken))
-            .Where(plan => plan.Kind == PlanKind.Base && plan.Status == PlanStatus.Active && currencies.Contains(plan.CurrencyCode))
+            .Where(plan => plan.Kind == PlanKind.Base && plan.Status == PlanStatus.Active && plan.Price > 0m && currencies.Contains(plan.CurrencyCode))
             .OrderBy(plan => plan.CurrencyCode, StringComparer.Ordinal)
             .ThenBy(plan => plan.BillingInterval)
             .ThenBy(plan => plan.Price)

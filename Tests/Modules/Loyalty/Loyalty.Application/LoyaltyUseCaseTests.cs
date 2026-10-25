@@ -409,4 +409,33 @@ public sealed class LoyaltyUseCaseTests
         Assert.Equal([-3L, 10L], history.Select(entry => entry.SignedPoints));
         Assert.Equal(LoyaltyApplicationErrors.PageInvalid, invalid.Error);
     }
+
+    // --- Plan
+
+    [Fact]
+    public async Task Without_loyalty_in_the_plan_setup_and_redemption_are_refused_and_no_point_is_earned()
+    {
+        _fixture.EnableProgram(rate: 1m);
+        var (customer, account) = await AccountWithPointsAsync(250);
+        var reward = await RewardAsync(cost: 100);
+        var order = _fixture.NewOrder(customer);
+        _fixture.DeniedFeatures.Add(PlanFeatures.Loyalty);
+
+        var refused = new[]
+        {
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.SetProgram.HandleAsync(new SetLoyaltyProgramCommand(true, 1m, false, null))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => RewardAsync()),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.ChangeCost.HandleAsync(new ChangeRewardCostCommand(reward, 50))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Open.HandleAsync(new OpenLoyaltyAccountCommand(_fixture.NewCustomer()))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Adjust.HandleAsync(
+                new AdjustLoyaltyPointsCommand(account, 10, LedgerDirection.Credit, "Geste"))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Redeem.HandleAsync(new RedeemRewardForOrderCommand(account, reward, order))),
+        };
+
+        Assert.True(refused.All(error => error.Code == PlanFeatures.RequiredCode));
+        Assert.Equal(LoyaltyReactionOutcome.Ignored, await CompleteOrderAsync(Guid.NewGuid(), customer, 40m));
+        Assert.Equal(250, _fixture.AccountById(account).Balance);
+        await _fixture.SetProgram.HandleAsync(new SetLoyaltyProgramCommand(false, 1m, false, null)); // désactiver reste permis
+        await _fixture.DeactivateReward.HandleAsync(new DeactivateRewardCommand(reward));
+    }
 }

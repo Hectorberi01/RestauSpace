@@ -12,7 +12,7 @@ namespace Reporting.Application.Commands;
 
 /// <summary>
 /// Demande un export : d'un rapport enregistré (<paramref name="DefinitionId"/>), ou ponctuel (mesures et filtres
-/// donnés). Période en jours locaux, bornes comprises. Renvoie l'id du job.
+/// donnés). Période en jours locaux, bornes comprises. Renvoie l'id du job. Exige <c>reporting.advanced</c>.
 /// </summary>
 public sealed record RequestExportCommand(
     Guid? DefinitionId,
@@ -34,6 +34,7 @@ public sealed class RequestExportHandler(ReportingWorkspace workspace, IClock cl
         var user = workspace.RequireRequester();
         workspace.EnsurePeriod(command.From, command.To);
         ReportingWorkspace.EnsureGranularity(command.Granularity);
+        await workspace.RequireFeatureAsync(PlanFeatures.ReportingAdvanced, cancellationToken);
 
         string title;
         IReadOnlyCollection<string> metrics;
@@ -53,6 +54,7 @@ public sealed class RequestExportHandler(ReportingWorkspace workspace, IClock cl
         }
 
         DomainException.ThrowIf(!Enum.IsDefined(command.Format), ExportErrors.TypeInvalid);
+        await workspace.RequireConsolidatedAllowedAsync(filters, cancellationToken);
         var job = ExportJob.Queue(workspace.CurrentTenant, ExportType.Create(ExportFormats.TypeCode(command.Format)), user, reference, clock);
         workspace.Exports.Add(job);
         workspace.ExportRequests.Add(
@@ -68,7 +70,7 @@ public sealed class RequestExportHandler(ReportingWorkspace workspace, IClock cl
 
 /// <summary>
 /// Demande l'export comptable d'une période (journal des ventes et de la trésorerie, par jour) avec ce plan de comptes
-/// (le plan SYSCOHADA par défaut). Renvoie l'id du job.
+/// (le plan SYSCOHADA par défaut). Renvoie l'id du job. Exige <c>reporting.advanced</c>.
 /// </summary>
 public sealed record RequestAccountingExportCommand(DateOnly From, DateOnly To, AccountingPlan? Plan = null) : ICommand<Guid>;
 
@@ -83,6 +85,7 @@ public sealed class RequestAccountingExportHandler(ReportingWorkspace workspace,
         workspace.EnsurePeriod(command.From, command.To);
         var plan = command.Plan ?? AccountingPlan.Default;
         plan.Validate();
+        await workspace.RequireFeatureAsync(PlanFeatures.ReportingAdvanced, cancellationToken);
 
         var job = ExportJob.Queue(workspace.CurrentTenant, ExportType.Create(ExportFormats.AccountingCsv), user, null, clock);
         workspace.Exports.Add(job);
@@ -230,7 +233,7 @@ public enum ScheduledRunOutcome
     Nothing = 1,
     Queued = 2,
 
-    /// <summary>Restaurant suspendu ou fermé : l'envoi est sauté, le suivant reste prévu.</summary>
+    /// <summary>Restaurant suspendu ou fermé, ou plan qui ne le permet plus : l'envoi est sauté, le suivant reste prévu.</summary>
     Skipped = 3,
 
     /// <summary>Le rapport ne passe plus le catalogue : il est déplanifié.</summary>
@@ -283,7 +286,9 @@ public sealed class RunScheduledReportHandler(ReportingWorkspace workspace, IClo
         }
 
         var next = ReportOccurrences.NextAfter(schedule, now);
-        if (await workspace.TenantAsync(tenant, cancellationToken) is not { AcceptsBusinessWrites: true })
+        if (await workspace.TenantAsync(tenant, cancellationToken) is not { AcceptsBusinessWrites: true }
+            || !await workspace.AllowsAsync(PlanFeatures.Automations, cancellationToken)
+            || await workspace.IsConsolidatedRefusedAsync(definition.Filters.Items, cancellationToken))
         {
             delivery.MarkRun(now, next);
             await workspace.SaveAsync(cancellationToken);

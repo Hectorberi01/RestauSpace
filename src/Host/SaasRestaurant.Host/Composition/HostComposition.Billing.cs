@@ -100,6 +100,8 @@ internal static partial class HostComposition
         builder.Services.AddScoped<Payments.Application.Abstractions.IPlatformCollectionListener, SubscriptionCheckoutsFromPlatformWebhooks>();
         builder.Services.AddScoped<INotificationEntitlementChecker, NotificationEntitlementsFromBilling>();
         builder.Services.AddScoped<PlanLimitsFromBilling>();
+        // Remplace les AllowAllPlanFeatures enregistrés en TryAdd par les modules.
+        builder.Services.AddScoped<IPlanFeatureGate, PlanFeatureGateFromBilling>();
         builder.Services.AddScoped<SignUpFlow>();
         builder.Services.AddScoped<IOrderPlanLimits>(provider => provider.GetRequiredService<PlanLimitsFromBilling>());
         builder.Services.AddScoped<ILocationPlanLimits>(provider => provider.GetRequiredService<PlanLimitsFromBilling>());

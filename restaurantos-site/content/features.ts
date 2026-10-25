@@ -29,6 +29,8 @@ export interface Module {
   /** Photo facultative déposée par l'équipe dans public/photos/<id>.webp : elle remplace la capture dans les vignettes. */
   photo?: string;
   link?: {href: string; label: string};
+  /** Ce qui dépend du plan, en une ligne. */
+  plans?: string;
   group: 'service' | 'carte' | 'clients' | 'gestion';
 }
 
@@ -38,7 +40,7 @@ export const modules: Module[] = [
     icon: 'orders',
     title: 'Commandes',
     filter: 'Commandes',
-    badge: 'Essentiel',
+    badge: 'Incontournable',
     short: 'Sur place, à emporter ou en livraison.',
     summary: 'Toutes vos commandes au même endroit, quel que soit le canal : comptoir, salle, site, application, borne ou plateforme de livraison.',
     points: [
@@ -98,7 +100,7 @@ export const modules: Module[] = [
     icon: 'menu',
     title: 'Menu & produits',
     filter: 'Menu & produits',
-    badge: 'Essentiel',
+    badge: 'Incontournable',
     short: 'Créez et gérez votre carte facilement.',
     summary: 'Votre carte tenue à jour une seule fois, et affichée partout : caisse, site, application et borne.',
     points: [
@@ -191,6 +193,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/clients.webp', focus: '0% 70%', zoom: 1.18},
     thumb: {src: '/captures/clients.webp', focus: '4% 56%', zoom: 2.4},
+    plans: 'Import, étiquettes et segments à partir de Pro.',
     group: 'clients',
   },
   {
@@ -210,6 +213,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/marketing.webp', focus: '0% 30%', zoom: 1.23},
     thumb: {src: '/captures/marketing.webp', focus: '4% 36%', zoom: 2.4},
+    plans: 'Fidélité et codes promo dans tous les plans ; campagnes et cartes cadeaux à partir de Pro.',
     group: 'clients',
   },
   {
@@ -230,6 +234,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/rapports.webp', focus: '0% 55%', zoom: 1.16},
     thumb: {src: '/captures/rapports.webp', focus: '4% 40%', zoom: 2.2},
+    plans: 'Exports, rapprochement et rapports automatiques à partir de Pro ; rapports consolidés dans Multi-sites.',
     group: 'gestion',
   },
   {
@@ -249,6 +254,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/etablissements.webp', focus: '0% 20%', zoom: 1.25},
     thumb: {src: '/captures/etablissements.webp', focus: '4% 28%', zoom: 2.3},
+    plans: '2 établissements dans Pro, 5 dans Multi-sites, et d’autres en option à partir de Pro.',
     group: 'gestion',
   },
   {
@@ -268,6 +274,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/integrations.webp', focus: '0% 30%', zoom: 1.23},
     thumb: {src: '/captures/integrations.webp', focus: '6% 34%', zoom: 2.4},
+    plans: 'API et webhooks inclus dans Pro et Multi-sites, en option sur Essentiel.',
     link: {href: '/developpeurs', label: 'Espace développeurs'},
     group: 'gestion',
   },
@@ -276,7 +283,7 @@ export const modules: Module[] = [
     icon: 'payments',
     title: 'Encaissement',
     filter: 'Autres',
-    badge: 'Essentiel',
+    badge: 'Incontournable',
     short: 'Caisse tactile, mobile money et paiement en ligne.',
     summary: 'Encaissez comme vos clients veulent payer, et retrouvez chaque mouvement de caisse.',
     points: [
@@ -307,6 +314,7 @@ export const modules: Module[] = [
     ],
     visual: {src: '/captures/hero-phone.webp', focus: '50% 0%'},
     thumb: {src: '/captures/hero-phone.webp', focus: '50% 40%', zoom: 1.2},
+    plans: 'Site inclus dans Pro et Multi-sites, en option sur Essentiel ; application et borne en option.',
     group: 'service',
   },
   {
@@ -352,17 +360,3 @@ export const homeModules = ['commandes', 'cuisine', 'reservations', 'menu', 'sal
   .map(id => modules.find(item => item.id === id)!);
 
 export const filters = ['Commandes', 'Cuisine', 'Réservations', 'Menu & produits', 'Salle & tables', 'Stock', 'Personnel', 'Clients', 'Marketing', 'Rapports', 'Autres'];
-
-const groupTitles: Record<Module['group'], string> = {
-  service: 'Le service',
-  carte: 'La carte et le stock',
-  clients: 'Vos clients',
-  gestion: 'Encaisser et piloter',
-};
-
-/** Les modules par thème (comparatif des tarifs). */
-export const featureGroups = (Object.keys(groupTitles) as Module['group'][]).map(group => ({
-  id: group,
-  title: groupTitles[group],
-  features: modules.filter(item => item.group === group),
-}));

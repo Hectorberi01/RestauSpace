@@ -57,6 +57,9 @@ internal sealed class StaffMemberRepository(StaffDbContext context) : IStaffMemb
     public async Task<IReadOnlyList<StaffMember>> ListActiveAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
         await Members.AsNoTracking().Where(member => member.TenantId == tenantId && member.Status == StaffStatus.Active).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<StaffMember>> ListCurrentAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        await Members.AsNoTracking().Where(member => member.TenantId == tenantId && member.Status != StaffStatus.Left).ToListAsync(cancellationToken);
+
     public void Add(StaffMember member) => context.Members.Add(member);
 }
 

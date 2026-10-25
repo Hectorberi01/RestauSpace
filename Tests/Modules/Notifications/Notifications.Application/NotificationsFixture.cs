@@ -18,10 +18,11 @@ public sealed class NotificationsFixture
       INotificationTemplateRepository, INotificationPreferenceRepository, INotificationRepository, INotificationDirectory,
       INotificationSecretStore, INotificationInbox, INotificationUsage, INotificationEntitlementChecker, INotificationLocations,
       INotificationContacts, INotificationConsents, INotificationsCurrentUser, IDeviceRegistrationRepository, IOtpChallengeRepository,
-      IOtpHasher, INotificationsUnitOfWork, INotificationSenderResolver, IUnsubscribeLinks
+      IOtpHasher, INotificationsUnitOfWork, INotificationSenderResolver, IUnsubscribeLinks, IPlanFeatureGate
 {
     public static readonly NotificationProviderCode TestMail = NotificationProviderCode.Create("TESTMAIL");
     public static readonly NotificationProviderCode TestSms = NotificationProviderCode.Create("TESTSMS");
+    public static readonly NotificationProviderCode OtherMail = NotificationProviderCode.Create("OTHERMAIL");
     public static readonly CountryCode Benin = CountryCode.Create("BJ");
 
     private readonly List<(Notification Notification, string? Key)> _notifications = [];
@@ -36,6 +37,7 @@ public sealed class NotificationsFixture
         Integrations =
         [
             new NotificationIntegration(TestMail, [NotificationChannel.Email], ["api_key"]),
+            new NotificationIntegration(OtherMail, [NotificationChannel.Email], ["api_key"]),
             new NotificationIntegration(TestSms, [NotificationChannel.Sms, NotificationChannel.WhatsApp], ["api_key"]),
             new NotificationIntegration(NotificationProviderCode.InApp, [NotificationChannel.InApp], []),
         ];
@@ -108,9 +110,15 @@ public sealed class NotificationsFixture
 
     // ---- Composition
 
-    public NotificationsWorkspace Workspace => new(this, this, this, this, this, this, this, this);
+    public NotificationsWorkspace Workspace => new(this, this, this, this, this, this, this, this, this);
 
-    public NotificationRouting Routing => new(this, this, this);
+    /// <summary>Fonctionnalités refusées par le plan (faux gate) : vide = tout est permis.</summary>
+    public HashSet<string> DeniedFeatures { get; } = [];
+
+    Task<bool> IPlanFeatureGate.AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedFeatures.Contains(feature));
+
+    public NotificationRouting Routing => new(this, this, this, this);
 
     public NotificationPolicy Policy => new(this, this, this, this, this, this, Routing, Settings, Clock, new RulesStore(this), new HistoryStore(this), this);
 
@@ -200,6 +208,17 @@ public sealed class NotificationsFixture
         var reference = NotificationCredentialReference.ForTenant(tenant, code);
         Secrets[reference.Value] = new Dictionary<string, string> { ["api_key"] = "key-" + tenant.Value.ToString("N") };
         configuration.Configure(reference, Clock);
+        configuration.Enable(provider, Clock);
+        ConfigurationRows.Add(configuration);
+        return configuration;
+    }
+
+    /// <summary>Le restaurant utilise ce prestataire avec le compte de la PLATEFORME, actif.</summary>
+    public RestaurantNotificationConfiguration PlatformConfigured(TenantId tenant, NotificationProviderCode code, NotificationChannel channel)
+    {
+        var provider = Provider(code, channel);
+        var configuration = RestaurantNotificationConfiguration.Create(tenant, provider, NotificationProviderMode.PlatformManaged, isFirstForTenant: true, Clock);
+        Secrets[NotificationCredentialReference.ForPlatform(code).Value] = new Dictionary<string, string> { ["api_key"] = "platform-key" };
         configuration.Enable(provider, Clock);
         ConfigurationRows.Add(configuration);
         return configuration;

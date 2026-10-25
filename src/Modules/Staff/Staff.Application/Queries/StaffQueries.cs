@@ -10,7 +10,7 @@ public sealed record ListStaffQuery(int Page = 1, int PageSize = ListStaffQuery.
     public const int MaxPage = 100_000;
 }
 
-public sealed class ListStaffHandler(ITenantContext tenantContext, IStaffMemberRepository members, IUserAccounts users)
+public sealed class ListStaffHandler(ITenantContext tenantContext, IStaffMemberRepository members, IUserAccounts users, StaffFreeze freeze)
     : IQueryHandler<ListStaffQuery, PagedResult<StaffMemberDto>>
 {
     public async Task<PagedResult<StaffMemberDto>> HandleAsync(ListStaffQuery query, CancellationToken cancellationToken = default)
@@ -20,11 +20,12 @@ public sealed class ListStaffHandler(ITenantContext tenantContext, IStaffMemberR
             throw new DomainException(StaffApplicationErrors.PagingInvalid);
         }
 
-        var page = await members.ListAsync(
-            tenantContext.RequireTenant(), (query.Page - 1) * query.PageSize, query.PageSize, cancellationToken);
+        var tenant = tenantContext.RequireTenant();
+        var page = await members.ListAsync(tenant, (query.Page - 1) * query.PageSize, query.PageSize, cancellationToken);
         var emails = await users.EmailsAsync(page.Items.Select(member => member.UserId).Distinct().ToList(), cancellationToken);
+        var frozen = await freeze.FrozenAsync(tenant, cancellationToken);
         return PagedResult<StaffMemberDto>.Counted(
-            page.Items.Select(member => StaffMemberDto.From(member, emails.GetValueOrDefault(member.UserId))).ToList(),
+            page.Items.Select(member => StaffMemberDto.From(member, emails.GetValueOrDefault(member.UserId), frozen.Contains(member.Id))).ToList(),
             query.Page,
             query.PageSize,
             page.TotalCount);
@@ -146,6 +147,27 @@ public sealed class IsActiveStaffMemberHandler(IStaffMemberRepository members) :
 
         var member = await members.FindByUserAsync(TenantId.From(query.TenantId), UserId.From(query.UserId), cancellationToken);
         return member?.Status == StaffStatus.Active;
+    }
+}
+
+/// <summary>
+/// Pour l'hôte : le membre de cet utilisateur est-il gelé (au-delà de la limite du plan) ? À lire dans un contexte qui
+/// agit pour CE tenant : la limite du plan vient du tenant du contexte.
+/// </summary>
+public sealed record IsStaffMemberFrozenQuery(Guid UserId, Guid TenantId) : IQuery<bool>;
+
+public sealed class IsStaffMemberFrozenHandler(IStaffMemberRepository members, StaffFreeze freeze) : IQueryHandler<IsStaffMemberFrozenQuery, bool>
+{
+    public async Task<bool> HandleAsync(IsStaffMemberFrozenQuery query, CancellationToken cancellationToken = default)
+    {
+        if (query.UserId == Guid.Empty || query.TenantId == Guid.Empty)
+        {
+            return false;
+        }
+
+        var tenantId = TenantId.From(query.TenantId);
+        var member = await members.FindByUserAsync(tenantId, UserId.From(query.UserId), cancellationToken);
+        return member is not null && await freeze.IsFrozenAsync(tenantId, member.Id, cancellationToken);
     }
 }
 

@@ -3,7 +3,7 @@ import {createContext, useCallback, useContext, useEffect, useRef, useState, typ
 import {AlertCircle, ArrowDownRight, ArrowRight, ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Minus, X} from 'lucide-react';
 import Link from 'next/link';
 import type {Tone} from '@/lib/format';
-import {describe} from '@/lib/api';
+import {describe, PLAN_FEATURE_REQUIRED_MESSAGE} from '@/lib/api';
 
 export function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -248,12 +248,18 @@ export function Skeleton({className}: {className?: string}) {
   return <div className={cx('animate-pulse rounded-lg bg-slate-200/70', className)} />;
 }
 
+/** Ajoute le lien vers Abonnement au message « fonction non incluse ». */
+function planLink(content: ReactNode, className: string): ReactNode {
+  if (content !== PLAN_FEATURE_REQUIRED_MESSAGE) return content;
+  return <>{content} <Link href="/abonnement" className={className}>Voir les plans</Link></>;
+}
+
 export function Alert({children, tone = 'red'}: {children: ReactNode; tone?: 'red' | 'amber' | 'blue'}) {
   const style = {red: 'border-red-200 bg-red-50 text-red-800', amber: 'border-amber-200 bg-amber-50 text-amber-900', blue: 'border-sky-200 bg-sky-50 text-sky-900'}[tone];
   return (
     <div role={tone === 'red' ? 'alert' : 'status'} className={cx('flex gap-2 rounded-xl border px-4 py-3 text-sm', style)}>
       <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0">{planLink(children, 'font-semibold underline underline-offset-2')}</div>
     </div>
   );
 }
@@ -353,7 +359,7 @@ export function ToastProvider({children}: {children: ReactNode}) {
         {toasts.map(toast => (
           <div key={toast.id} className={cx('pointer-events-auto flex max-w-md items-start gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg', toast.tone === 'error' ? 'bg-red-700' : 'bg-ink-900')}>
             {toast.tone === 'error' ? <AlertCircle className="mt-0.5 size-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 size-4 shrink-0" />}
-            {toast.text}
+            <span>{planLink(toast.text, 'font-semibold underline underline-offset-2')}</span>
           </div>
         ))}
       </div>

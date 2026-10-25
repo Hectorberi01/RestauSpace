@@ -8,6 +8,11 @@
 - Format : `srk_` suivi de 43 caractères (47 au total). Elle s'affiche **une seule fois** à la création ou à la
   régénération ; la plateforme n'en garde qu'une empreinte.
 - Elle vaut pour **tout le restaurant** (tous ses établissements).
+- Elle demande le droit API du restaurant : inclus dans les plans Pro et Multi-sites, en option (« API et webhooks »)
+  sur Essentiel. Si le restaurant perd ce droit (plan inférieur, option arrêtée), ses clés restent visibles dans la
+  console mais sont refusées.
+- Certaines routes dépendent aussi du plan (exports comptables, campagnes, cartes cadeaux, rapports consolidés…) :
+  sans le droit, la réponse est `403` avec le code `common.plan.feature_required`.
 - À envoyer dans l'en-tête `X-Api-Key` (pas dans `Authorization`) :
 
 ```bash
@@ -16,7 +21,7 @@ curl -s "{{API_URL}}/v1/orders?status=Placed&pageSize=20" -H "X-Api-Key: $RESTAU
 
 ```ts
 // Node.js 20+ : la clé vient de l'environnement du serveur, jamais du navigateur.
-const restauspace = async (path: string, init: RequestInit = {}) => {
+const restaurantos = async (path: string, init: RequestInit = {}) => {
   const response = await fetch(`{{API_URL}}/v1${path}`, {
     ...init,
     headers: {'X-Api-Key': process.env.RESTAUSPACE_API_KEY!, Accept: 'application/json', 'Content-Type': 'application/json', ...init.headers},

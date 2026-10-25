@@ -5,6 +5,8 @@ import {useResource} from '@/lib/hooks';
 import {issueKey, listKeys, revokeKey, rotateKey, type ApiCredential, type Catalog} from '@/lib/integrations';
 import {groupOf, permissionLabel} from '@/lib/staff';
 import {useConsole} from '@/components/console';
+import {UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Spinner, cx, useAction} from '@/components/ui';
 import {SecretOnce, day} from './shared';
 
@@ -78,14 +80,17 @@ export function ApiKeys({catalog}: {catalog: Catalog}) {
   const [secret, setSecret] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{key: ApiCredential; action: 'rotate' | 'revoke'} | null>(null);
   const manage = can('integrations.manage');
+  // Sans le droit : clés visibles et révocables, plus de création ni de renouvellement.
+  const locked = usePlanFeatures().blocked(Feature.IntegrationsApi);
   const keys = (data ?? []).slice().sort((a, b) => Number(a.status === 'Revoked') - Number(b.status === 'Revoked') || b.issuedAtUtc.localeCompare(a.issuedAtUtc));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p className="flex-1 text-sm text-ink-600">Une clé permet à un logiciel externe (caisse, site, comptabilité) d’utiliser l’API de votre restaurant, avec seulement les droits choisis.</p>
-        {manage && <Button onClick={() => setIssuing(true)}><Plus className="size-4" aria-hidden="true" />Nouvelle clé</Button>}
+        {manage && !locked && <Button onClick={() => setIssuing(true)}><Plus className="size-4" aria-hidden="true" />Nouvelle clé</Button>}
       </div>
+      {locked && <UpgradePanel feature={Feature.IntegrationsApi} title="Clés d’API">Connectez vos logiciels à RestauSpace.{keys.some(key => key.status === 'Active') ? ' Les clés existantes sont refusées par l’API.' : ''}</UpgradePanel>}
       {error ? <Alert>{error}</Alert> : !data ? <Spinner /> : keys.length === 0 ? (
         <Card className="p-6"><Empty icon={<KeyRound className="size-8" />} title="Aucune clé d’API">Créez une clé pour connecter un logiciel externe.</Empty></Card>
       ) : (
@@ -115,7 +120,7 @@ export function ApiKeys({catalog}: {catalog: Catalog}) {
                   </div>
                   {manage && key.status === 'Active' && (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="secondary" onClick={() => setConfirm({key, action: 'rotate'})}><RefreshCw className="size-4" aria-hidden="true" />Renouveler</Button>
+                      {!locked && <Button size="sm" variant="secondary" onClick={() => setConfirm({key, action: 'rotate'})}><RefreshCw className="size-4" aria-hidden="true" />Renouveler</Button>}
                       <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setConfirm({key, action: 'revoke'})}><Trash2 className="size-4" aria-hidden="true" />Révoquer</Button>
                     </div>
                   )}

@@ -39,6 +39,7 @@ export interface LocationDetail {
   temporaryClosureReason: string | null;
   createdAtUtc: string;
   archivedAtUtc: string | null;
+  isFrozen?: boolean;
 }
 
 export const days: {day: Day; label: string; short: string}[] = [

@@ -359,6 +359,7 @@ const messages: Record<string, string> = translated({
   'common.phone.invalid': 'Le numéro de téléphone n’est pas valide.',
   'common.email.invalid': 'L’adresse e-mail n’est pas valide.',
   'orders.plan.monthly_limit_reached': 'Le restaurant ne prend plus de commandes en ligne ce mois-ci.',
+  'common.plan.over_limit': 'Cet établissement ne prend pas de commandes ni de réservations en ligne pour le moment.',
   'catalog.product.not_sellable': 'Un produit du panier n’est plus disponible.',
   'catalog.product.variant_unavailable': 'Une variante du panier n’est plus disponible.',
 });

@@ -16,7 +16,7 @@ namespace Reporting.Application;
 /// </summary>
 public sealed class ReportingFixture
     : ITenantContext, IReportingTenants, IReportingCurrentUser, IReportDefinitionRepository, IExportJobRepository, IExportRequestStore,
-      IReportDeliveryStore, IMetricsStore, IExportFileStore, IPlatformDirectory, IReportingUnitOfWork
+      IReportDeliveryStore, IMetricsStore, IExportFileStore, IPlatformDirectory, IReportingUnitOfWork, IPlanFeatureGate, IReportingLocations
 {
     private readonly Dictionary<(TenantId, Guid, DateOnly, string, string, string), decimal> _metrics = [];
     private readonly HashSet<string> _sources = [];
@@ -66,7 +66,18 @@ public sealed class ReportingFixture
 
     public int SaveCount { get; private set; }
 
-    public ReportingWorkspace Workspace => new(this, this, this, this, this, this, this, this, this, Settings, this);
+    public ReportingWorkspace Workspace => new(this, this, this, this, this, this, this, this, this, Settings, this, this, this);
+
+    /// <summary>Fonctionnalités refusées par le plan (faux gate) : vide = tout est permis.</summary>
+    public HashSet<string> DeniedFeatures { get; } = [];
+
+    /// <summary>Le restaurant a-t-il plusieurs établissements non archivés ?</summary>
+    public bool SeveralLocations { get; set; }
+
+    Task<bool> IPlanFeatureGate.AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedFeatures.Contains(feature));
+
+    Task<bool> IReportingLocations.HasSeveralAsync(TenantId tenantId, CancellationToken cancellationToken) => Task.FromResult(SeveralLocations);
 
     public RecordReportingFactsHandler Record => new(Workspace);
 

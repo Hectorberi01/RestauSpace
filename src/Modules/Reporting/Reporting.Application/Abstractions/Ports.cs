@@ -118,6 +118,18 @@ public interface IReportingLocationNames
     Task<IReadOnlyDictionary<Guid, string>> ListAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Le tenant du contexte a-t-il plus d'un établissement non archivé ? Fourni par l'hôte depuis Locations.</summary>
+public interface IReportingLocations
+{
+    Task<bool> HasSeveralAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Sans hôte : un seul établissement.</summary>
+public sealed class SingleReportingLocation : IReportingLocations
+{
+    public Task<bool> HasSeveralAsync(TenantId tenantId, CancellationToken cancellationToken = default) => Task.FromResult(false);
+}
+
 /// <summary>Ce que Reporting doit savoir d'un restaurant, fourni par l'hôte depuis Tenants.</summary>
 public sealed record ReportingTenant(TenantId TenantId, string Name, TimeZoneId TimeZone, bool AcceptsBusinessWrites);
 

@@ -14,7 +14,7 @@ namespace Integrations.Application;
 /// </summary>
 public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, IWebhookEndpointRepository, IWebhookDeliveryRepository,
     IApiCredentialRepository, IApiCredentialLookup, IApiCredentialUsage, IWebhookSecretVault, IWebhookSender, IIntegrationsUnitOfWork,
-    IIntegrationsActor, IPermissionChecker
+    IIntegrationsActor, IPermissionChecker, IPlanFeatureGate
 {
     public IntegrationsFixture()
     {
@@ -39,6 +39,9 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     /// <summary>Tenants sans l'option API (les autres l'ont).</summary>
     public HashSet<TenantId> WithoutApiOption { get; } = [];
+
+    /// <summary>Fonctionnalités absentes du plan, par tenant (tout le reste est permis).</summary>
+    public HashSet<(TenantId Tenant, string Feature)> NotInPlan { get; } = [];
 
     public List<WebhookEndpoint> Endpoints { get; } = [];
 
@@ -67,7 +70,7 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     public IntegrationsWorkspace Workspace => new(this, this, this, this, this, this, Settings, this, this);
 
-    public CreateWebhookEndpointHandler CreateEndpoint => new(Workspace, Clock);
+    public CreateWebhookEndpointHandler CreateEndpoint => new(Workspace, this, Clock);
 
     public SubscribeWebhookEventHandler Subscribe => new(Workspace);
 
@@ -77,7 +80,9 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
 
     public RotateWebhookSecretHandler RotateSecret => new(Workspace, Clock);
 
-    public PublishWebhookEventHandler Publish => new(Workspace, Clock);
+    public PublishWebhookEventHandler Publish => new(Workspace, this, Clock);
+
+    public EnsureApiKeyPlanHandler EnsureApiKeyPlan => new(this, this);
 
     public AttemptWebhookDeliveryHandler Attempt => new(Workspace, this, Clock);
 
@@ -117,6 +122,9 @@ public sealed class IntegrationsFixture : ITenantContext, IIntegrationTenants, I
     /// <summary>Publie un événement du restaurant courant (données minimales).</summary>
     public Task<int> PublishAsync(string eventType, Guid? eventId = null) =>
         Publish.HandleAsync(new PublishWebhookEventCommand(eventType, eventId ?? Guid.NewGuid(), Clock.UtcNow, """{"order_id":"o-1"}"""));
+
+    public Task<bool> AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken = default) =>
+        Task.FromResult(!NotInPlan.Contains((tenantId, feature)));
 
     public WebhookEndpoint EndpointById(Guid id) => Endpoints.Single(endpoint => endpoint.Id.Value == id);
 

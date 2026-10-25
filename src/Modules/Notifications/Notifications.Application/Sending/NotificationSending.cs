@@ -7,7 +7,8 @@ namespace Notifications.Application.Sending;
 /// <summary>
 /// Une tentative d'envoi, de bout en bout : consentement relu (marketing), prestataire choisi (repli si le prestataire
 /// actuel n'est plus disponible), tentative ouverte, appel au prestataire, issue enregistrée, relance planifiée pour un
-/// échec temporaire, appareil désactivé pour un jeton push refusé, consommation comptée. Utilisée par le worker et par
+/// échec temporaire, appareil désactivé pour un jeton push refusé, consommation comptée (compte de la plateforme
+/// seulement). Utilisée par le worker et par
 /// l'OTP (envoi immédiat). Ne sauvegarde pas : l'appelant décide (le worker sauvegarde aussi juste après l'ouverture
 /// de la tentative, l'OTP jamais avant l'effacement du code).
 /// </summary>
@@ -64,7 +65,7 @@ public sealed class NotificationSending(
         var result = sender is null
             ? NotificationSendResult.Failed(NotificationFailure.Temporary(ProviderUnavailable))
             : await CallAsync(sender, notification, delivery.Id, cancellationToken);
-        await ApplyAsync(notification, result, cancellationToken);
+        await ApplyAsync(notification, result, route is null || NotificationPolicy.IsPlatformAccount(route), cancellationToken);
         return result;
     }
 
@@ -101,7 +102,7 @@ public sealed class NotificationSending(
         return result;
     }
 
-    private async Task ApplyAsync(Notification notification, NotificationSendResult result, CancellationToken cancellationToken)
+    private async Task ApplyAsync(Notification notification, NotificationSendResult result, bool platformAccount, CancellationToken cancellationToken)
     {
         if (result.IsAccepted)
         {
@@ -111,7 +112,7 @@ public sealed class NotificationSending(
                 notification.MarkAsDelivered(clock, result.MessageId);
             }
 
-            if (notification.TenantId is { } tenant)
+            if (notification.TenantId is { } tenant && platformAccount)
             {
                 await usage.RecordAsync(tenant, notification.Channel, notification.ProviderCode, clock.UtcNow, cancellationToken);
             }

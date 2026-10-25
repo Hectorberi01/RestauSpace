@@ -12,7 +12,8 @@ namespace Loyalty.Application;
 /// </summary>
 public sealed class LoyaltyFixture
     : ITenantContext, ILoyaltyUnitOfWork, ILoyaltyTenants, ILoyaltyAccountRepository, IRewardRepository, ILoyaltyLedgerLookup,
-      ILoyaltyAccountUniquenessChecker, ILoyaltyProgramStore, ILoyaltyHistory, ILoyaltyExpiryCandidates, ILoyaltyCustomers, ILoyaltyOrders
+      ILoyaltyAccountUniquenessChecker, ILoyaltyProgramStore, ILoyaltyHistory, ILoyaltyExpiryCandidates, ILoyaltyCustomers, ILoyaltyOrders,
+      IPlanFeatureGate
 {
     public LoyaltyFixture()
     {
@@ -45,7 +46,13 @@ public sealed class LoyaltyFixture
 
     public int SaveCount { get; private set; }
 
-    public LoyaltyWorkspace Workspace => new(this, this, this, this, this, this, this, this);
+    public LoyaltyWorkspace Workspace => new(this, this, this, this, this, this, this, this, this);
+
+    /// <summary>Fonctionnalités refusées par le plan (faux gate) : vide = tout est permis.</summary>
+    public HashSet<string> DeniedFeatures { get; } = [];
+
+    Task<bool> IPlanFeatureGate.AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedFeatures.Contains(feature));
 
     public OpenLoyaltyAccountHandler Open => new(Workspace, this, Clock);
 

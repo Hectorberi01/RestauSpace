@@ -400,17 +400,30 @@ Migration : `scripts/migrations-abonnements.sh` (`ComplimentaryAndPaymentRoutes`
   UEMOA en XOF, avec leur fuseau), les plans de base actifs de ces devises et la durée d'essai. `POST /v1/public/sign-up`
   (anonyme, limité en débit comme `/auth`, champ piège `website`) contrôle conditions acceptées, pays, nom du restaurant
   et plan AVANT toute écriture, puis : compte du propriétaire en attente (email de confirmation), restaurant dans la
-  devise et le fuseau du pays, propriétaire actif, essai du plan choisi. Un échec après la création du restaurant le
+  devise et le fuseau du pays, propriétaire actif, essai d'un mois sur le plan choisi (plans payants seulement). Un échec après la création du restaurant le
   ferme. La connexion n'est possible qu'une fois l'email confirmé.
 - **Console** : `/inscription?plan=<nom>&pays=fr|bj` (lien des tarifs du site), puis « Vérifiez votre boîte mail ».
   Pendant l'essai, la carte du plan propose « Payer maintenant » (page Abonnement, règlement en ligne).
-- **Plan gratuit (Découverte)** : un mois (`Billing:FreePlanMonths`, défaut 1), une seule fois par restaurant : au premier
+- **Plan gratuit** (Découverte, retiré du catalogue ; le code reste pour les abonnements en cours) : un mois (`Billing:FreePlanMonths`, défaut 1), une seule fois par restaurant : au premier
   abonnement, ou en y passant pendant le premier essai sans dépasser le premier mois. Sinon
   `billing.subscription.free_plan_unavailable`. Le préavis part 7 jours avant la fin ; à la fin, suspendu (essai expiré).
   Le restaurant choisit alors un plan payant (changement de plan permis après un essai expiré) puis paie.
   Seul un plan gratuit déjà payé (offre de la plateforme) se renouvelle seul (`RenewedFree`).
 
-## 14. Plusieurs prestataires par devise
+## 14. Fonctionnalités du plan et règles des options
+
+- `GET /billing/features` (`billing.view`) : `{ planName, status, trialEndsAtUtc, features: [{ code, enabled, limit }], usage }`,
+  tous les codes de `BillingFeatures.All`, plan et options combinés ; sans abonnement vivant, tout est désactivé. `usage` : null.
+- Porte des fonctionnalités : l'hôte remplace `AllowAllPlanFeatures` par `PlanFeatureGateFromBilling` (fail-closed : autre
+  tenant que le contexte, ou pas d'abonnement vivant).
+- Souscription d'une option (restaurant et plateforme) : une option qui donne `locations.count` exige `locations.extra`
+  dans le plan de base (`billing.add_on.not_available_on_plan`) ; une option dont tous les droits sont déjà illimités dans
+  le plan est refusée (`billing.add_on.already_included`). Une limite d'option s'ajoute à celle du plan : elle n'est donc
+  jamais « déjà incluse » tant que le plan est limité.
+- Archiver un plan (`scripts/seed-plans.py --archive-missing`) le retire de la vente seulement : abonnements, options,
+  renouvellements, paiements et droits en cours continuent.
+
+## 15. Plusieurs prestataires par devise
 
 - Pour chaque devise, la plateforme propose un ou plusieurs prestataires prêts (ex. EUR : Stripe et PayPal), dans
   l'ordre (`online_payment_routes.provider` puis `other_providers`). `PUT /admin/billing/online-payment/{devise}` prend

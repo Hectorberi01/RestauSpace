@@ -45,3 +45,22 @@ internal sealed class PlanLimitsFromBilling(ITenantContext tenantContext, IQuery
         return limit.Enabled ? limit.Limit : 0;
     }
 }
+
+/// <summary>
+/// Modules -> Billing : la porte des fonctionnalités du plan (plan et options). Fail-closed : tenant autre que celui du
+/// contexte, ou restaurant sans abonnement vivant, n'a droit à rien.
+/// </summary>
+internal sealed class PlanFeatureGateFromBilling(ITenantContext tenantContext, IQueryHandler<GetFeatureLimitQuery, FeatureLimitDto> limits)
+    : IPlanFeatureGate
+{
+    public async Task<bool> AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken = default)
+    {
+        if (tenantContext.CurrentTenantId != tenantId || string.IsNullOrWhiteSpace(feature))
+        {
+            return false;
+        }
+
+        var limit = await limits.HandleAsync(new GetFeatureLimitQuery(feature), cancellationToken);
+        return limit.HasLiveSubscription && limit.Enabled;
+    }
+}

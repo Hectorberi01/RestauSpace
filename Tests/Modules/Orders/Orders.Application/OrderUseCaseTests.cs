@@ -164,6 +164,21 @@ public sealed class OrderUseCaseTests
     }
 
     [Fact]
+    public async Task A_frozen_location_takes_no_new_order_and_its_drafts_cannot_be_placed()
+    {
+        var (draft, _) = await _fixture.GivenDraftAsync();
+        _fixture.FrozenLocations.Add(LocationId.From(_fixture.Location));
+
+        var create = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _fixture.Create.HandleAsync(new CreateOrderCommand(_fixture.Location, OrderType.Takeaway)));
+        var place = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Place.HandleAsync(new PlaceOrderCommand(draft)));
+
+        Assert.Equal(PlanFeatures.OverLimitCode, create.Error.Code);
+        Assert.Equal(PlanFeatures.OverLimitCode, place.Error.Code);
+        Assert.Equal(OrderStatus.Draft, _fixture.Orders.Stored(draft).Status);
+    }
+
+    [Fact]
     public async Task An_already_placed_order_reports_its_state_and_not_the_plan_limit()
     {
         var (id, _) = await _fixture.GivenDraftAsync();

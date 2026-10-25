@@ -293,6 +293,10 @@ export async function logout(): Promise<void> {
   } catch {}
 }
 
+/** Le plan n'inclut pas la fonction : le message s'affiche avec un lien vers Abonnement. */
+export const PLAN_FEATURE_REQUIRED = 'common.plan.feature_required';
+export const PLAN_FEATURE_REQUIRED_MESSAGE = 'Cette fonctionnalité n’est pas incluse dans votre plan.';
+
 const messages: Record<string, string> = {
   ...moreMessages,
   'identity.user.email_not_verified': 'Confirmez d’abord votre adresse : ouvrez le lien reçu par email.',
@@ -948,6 +952,10 @@ const messages: Record<string, string> = {
   'orders.plan.monthly_limit_reached': 'Plafond mensuel de commandes de votre plan atteint. Passez au plan supérieur pour continuer.',
   'locations.plan.limit_reached': 'Nombre maximal d’établissements de votre plan atteint.',
   'staff.plan.limit_reached': 'Nombre maximal de membres de l’équipe de votre plan atteint.',
+  [PLAN_FEATURE_REQUIRED]: PLAN_FEATURE_REQUIRED_MESSAGE,
+  'common.plan.over_limit': 'Élément gelé : au-delà de la limite de votre plan. Passez à un plan supérieur ou archivez-en un.',
+  'billing.add_on.already_included': 'Votre plan inclut déjà tout ce que donne cette option : inutile de la souscrire.',
+  'billing.add_on.not_available_on_plan': 'Cette option n’est pas disponible avec votre plan : passez au plan Pro ou Multi-sites pour l’ajouter.',
 };
 
 export function describe(error: unknown): string {

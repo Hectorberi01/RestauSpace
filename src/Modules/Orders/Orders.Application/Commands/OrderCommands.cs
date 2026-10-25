@@ -38,6 +38,10 @@ public sealed class CreateOrderHandler(
                 ? null
                 : await locations.FindAsync(tenantId, LocationId.From(command.LocationId), cancellationToken))
             ?? throw new NotFoundException(OrdersApplicationErrors.LocationNotFound);
+        if (await locations.IsFrozenAsync(tenantId, location.LocationId, cancellationToken))
+        {
+            throw PlanFeatures.OverLimit("location");
+        }
 
         TableSessionReference? session = null;
         if (command.TableSessionId is { } sessionId)
@@ -192,14 +196,23 @@ public sealed class RemoveDiscountHandler(OrdersWorkspace workspace) : ICommandH
 /// <summary>Draft -> Placed : les lignes et les montants sont désormais figés (base du ticket cuisine et du paiement).</summary>
 public sealed record PlaceOrderCommand(Guid OrderId) : ICommand;
 
-/// <summary>Passe la commande ; refusée quand le plafond mensuel du plan est atteint (un brouillon n'est pas compté).</summary>
-public sealed class PlaceOrderHandler(OrdersWorkspace workspace, IOrderPlanLimits limits, IClock clock) : ICommandHandler<PlaceOrderCommand>
+/// <summary>
+/// Passe la commande ; refusée quand le plafond mensuel du plan est atteint (un brouillon n'est pas compté) ou quand
+/// l'établissement est gelé.
+/// </summary>
+public sealed class PlaceOrderHandler(OrdersWorkspace workspace, IOrderPlanLimits limits, IOrderLocations locations, IClock clock)
+    : ICommandHandler<PlaceOrderCommand>
 {
     public async Task HandleAsync(PlaceOrderCommand command, CancellationToken cancellationToken = default)
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var tenantId = workspace.CurrentTenant;
         var order = await workspace.LoadAsync(tenantId, command.OrderId, cancellationToken);
+        if (order.Status == OrderStatus.Draft && await locations.IsFrozenAsync(tenantId, order.LocationId, cancellationToken))
+        {
+            throw PlanFeatures.OverLimit("location");
+        }
+
         if (order.Status == OrderStatus.Draft && await limits.MonthlyOrdersAsync(tenantId, cancellationToken) is { } limit)
         {
             var now = clock.UtcNow.ToUniversalTime();

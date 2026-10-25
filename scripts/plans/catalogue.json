@@ -1,56 +1,8 @@
 {
   "plans": [
     {
-      "name": "Découverte",
-      "price": 0,
-      "currencyCode": "XOF",
-      "billingInterval": "Monthly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 1
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 2
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": 150
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 200
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": 500
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
       "name": "Essentiel",
-      "price": 9900,
+      "price": 14900,
       "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "entitlements": [
@@ -60,340 +12,9 @@
           "limit": 1
         },
         {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 5
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": 1500
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 1000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 50
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 100
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Essentiel annuel",
-      "price": 99000,
-      "currencyCode": "XOF",
-      "billingInterval": "Yearly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 1
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 5
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": 1500
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 1000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 50
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 100
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Pro",
-      "price": 24900,
-      "currencyCode": "XOF",
-      "billingInterval": "Monthly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 2
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 15
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 5000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 200
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 500
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Pro annuel",
-      "price": 249000,
-      "currencyCode": "XOF",
-      "billingInterval": "Yearly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 2
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 15
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 5000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 200
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 500
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Groupe",
-      "price": 59900,
-      "currencyCode": "XOF",
-      "billingInterval": "Monthly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 5
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 20000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 1000
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 2000
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Groupe annuel",
-      "price": 599000,
-      "currencyCode": "XOF",
-      "billingInterval": "Yearly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 5
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 20000
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
-          "enabled": true,
-          "limit": 1000
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": true,
-          "limit": 2000
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Découverte",
-      "price": 0,
-      "currencyCode": "EUR",
-      "billingInterval": "Monthly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 1
-        },
-        {
-          "featureCode": "staff.count",
-          "enabled": true,
-          "limit": 2
-        },
-        {
-          "featureCode": "orders.monthly",
-          "enabled": true,
-          "limit": 150
-        },
-        {
-          "featureCode": "notifications.email.monthly",
-          "enabled": true,
-          "limit": 200
-        },
-        {
-          "featureCode": "notifications.sms.monthly",
+          "featureCode": "locations.extra",
           "enabled": false,
           "limit": null
-        },
-        {
-          "featureCode": "notifications.whatsapp.monthly",
-          "enabled": false,
-          "limit": null
-        },
-        {
-          "featureCode": "notifications.push.monthly",
-          "enabled": true,
-          "limit": 500
-        },
-        {
-          "featureCode": "notifications.inapp.monthly",
-          "enabled": true,
-          "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Essentiel",
-      "price": 29,
-      "currencyCode": "EUR",
-      "billingInterval": "Monthly",
-      "entitlements": [
-        {
-          "featureCode": "locations.count",
-          "enabled": true,
-          "limit": 1
         },
         {
           "featureCode": "staff.count",
@@ -408,17 +29,17 @@
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 100
+          "limit": 50
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 100
+          "limit": 50
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -429,19 +50,94 @@
           "featureCode": "notifications.inapp.monthly",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": false,
+          "limit": null
         }
       ]
     },
     {
       "name": "Essentiel annuel",
-      "price": 290,
-      "currencyCode": "EUR",
+      "price": 149000,
+      "currencyCode": "XOF",
       "billingInterval": "Yearly",
       "entitlements": [
         {
           "featureCode": "locations.count",
           "enabled": true,
           "limit": 1
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": false,
+          "limit": null
         },
         {
           "featureCode": "staff.count",
@@ -456,17 +152,17 @@
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 100
+          "limit": 50
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 100
+          "limit": 50
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -477,19 +173,94 @@
           "featureCode": "notifications.inapp.monthly",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": false,
+          "limit": null
         }
       ]
     },
     {
       "name": "Pro",
-      "price": 59,
-      "currencyCode": "EUR",
+      "price": 34900,
+      "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "entitlements": [
         {
           "featureCode": "locations.count",
           "enabled": true,
           "limit": 2
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
         },
         {
           "featureCode": "staff.count",
@@ -499,22 +270,22 @@
         {
           "featureCode": "orders.monthly",
           "enabled": true,
-          "limit": null
+          "limit": 20000
         },
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 10000
+          "limit": 5000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 500
+          "limit": 200
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 500
+          "limit": 200
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -523,6 +294,76 @@
         },
         {
           "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
           "enabled": true,
           "limit": null
         }
@@ -530,14 +371,19 @@
     },
     {
       "name": "Pro annuel",
-      "price": 590,
-      "currencyCode": "EUR",
+      "price": 349000,
+      "currencyCode": "XOF",
       "billingInterval": "Yearly",
       "entitlements": [
         {
           "featureCode": "locations.count",
           "enabled": true,
           "limit": 2
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
         },
         {
           "featureCode": "staff.count",
@@ -547,22 +393,22 @@
         {
           "featureCode": "orders.monthly",
           "enabled": true,
-          "limit": null
+          "limit": 20000
         },
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 10000
+          "limit": 5000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 500
+          "limit": 200
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 500
+          "limit": 200
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -573,13 +419,83 @@
           "featureCode": "notifications.inapp.monthly",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
         }
       ]
     },
     {
-      "name": "Groupe",
-      "price": 129,
-      "currencyCode": "EUR",
+      "name": "Multi-sites",
+      "price": 79900,
+      "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "entitlements": [
         {
@@ -588,29 +504,34 @@
           "limit": 5
         },
         {
-          "featureCode": "staff.count",
+          "featureCode": "locations.extra",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 100
         },
         {
           "featureCode": "orders.monthly",
           "enabled": true,
-          "limit": null
+          "limit": 100000
         },
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 40000
+          "limit": 20000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -621,13 +542,83 @@
           "featureCode": "notifications.inapp.monthly",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
         }
       ]
     },
     {
-      "name": "Groupe annuel",
-      "price": 1290,
-      "currencyCode": "EUR",
+      "name": "Multi-sites annuel",
+      "price": 799000,
+      "currencyCode": "XOF",
       "billingInterval": "Yearly",
       "entitlements": [
         {
@@ -636,29 +627,34 @@
           "limit": 5
         },
         {
-          "featureCode": "staff.count",
+          "featureCode": "locations.extra",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 100
         },
         {
           "featureCode": "orders.monthly",
           "enabled": true,
-          "limit": null
+          "limit": 100000
         },
         {
           "featureCode": "notifications.email.monthly",
           "enabled": true,
-          "limit": 40000
+          "limit": 20000
         },
         {
           "featureCode": "notifications.sms.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.whatsapp.monthly",
           "enabled": true,
-          "limit": 2000
+          "limit": 1000
         },
         {
           "featureCode": "notifications.push.monthly",
@@ -667,6 +663,76 @@
         },
         {
           "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
           "enabled": true,
           "limit": null
         }
@@ -674,7 +740,7 @@
     },
     {
       "name": "Site web",
-      "price": 3000,
+      "price": 4900,
       "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -688,7 +754,7 @@
     },
     {
       "name": "Application mobile",
-      "price": 10000,
+      "price": 9900,
       "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -702,7 +768,7 @@
     },
     {
       "name": "Borne",
-      "price": 7500,
+      "price": 4900,
       "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -715,8 +781,8 @@
       ]
     },
     {
-      "name": "API",
-      "price": 15000,
+      "name": "API et webhooks",
+      "price": 11900,
       "currencyCode": "XOF",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -725,31 +791,788 @@
           "featureCode": "storefront.api",
           "enabled": true,
           "limit": null
-        }
-      ]
-    },
-    {
-      "name": "Site web",
-      "price": 5,
-      "currencyCode": "EUR",
-      "billingInterval": "Monthly",
-      "kind": "AddOn",
-      "entitlements": [
+        },
         {
-          "featureCode": "storefront.web",
+          "featureCode": "integrations.webhooks",
           "enabled": true,
           "limit": null
         }
       ]
     },
     {
-      "name": "Application mobile",
+      "name": "Établissement supplémentaire",
+      "price": 10900,
+      "currencyCode": "XOF",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 1
+        }
+      ]
+    },
+    {
+      "name": "Essentiel",
+      "price": 49,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 1
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 8
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 3000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 50
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 50
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": false,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Essentiel annuel",
+      "price": 490,
+      "currencyCode": "EUR",
+      "billingInterval": "Yearly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 1
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 8
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 3000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 50
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 50
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": false,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Pro",
+      "price": 99,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 2
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 25
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 20000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 5000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 200
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 200
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Pro annuel",
+      "price": 990,
+      "currencyCode": "EUR",
+      "billingInterval": "Yearly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 2
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 25
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 20000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 5000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 200
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 200
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Multi-sites",
+      "price": 199,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 5
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 100
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 100000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 20000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Multi-sites annuel",
+      "price": 1990,
+      "currencyCode": "EUR",
+      "billingInterval": "Yearly",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 5
+        },
+        {
+          "featureCode": "locations.extra",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "staff.count",
+          "enabled": true,
+          "limit": 100
+        },
+        {
+          "featureCode": "orders.monthly",
+          "enabled": true,
+          "limit": 100000
+        },
+        {
+          "featureCode": "notifications.email.monthly",
+          "enabled": true,
+          "limit": 20000
+        },
+        {
+          "featureCode": "notifications.sms.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.whatsapp.monthly",
+          "enabled": true,
+          "limit": 1000
+        },
+        {
+          "featureCode": "notifications.push.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.inapp.monthly",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "notifications.byok",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "loyalty",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "customers.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.campaigns",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "marketing.gift_cards",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "automations",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.advanced",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "reporting.consolidated",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.mobile_app",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.kiosk",
+          "enabled": false,
+          "limit": null
+        },
+        {
+          "featureCode": "storefront.api",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        },
+        {
+          "featureCode": "support.priority",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Site web",
       "price": 15,
       "currencyCode": "EUR",
       "billingInterval": "Monthly",
       "kind": "AddOn",
       "entitlements": [
         {
+          "featureCode": "storefront.web",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Application mobile",
+      "price": 29,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
           "featureCode": "storefront.mobile_app",
           "enabled": true,
           "limit": null
@@ -758,7 +1581,7 @@
     },
     {
       "name": "Borne",
-      "price": 12,
+      "price": 15,
       "currencyCode": "EUR",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -771,8 +1594,8 @@
       ]
     },
     {
-      "name": "API",
-      "price": 25,
+      "name": "API et webhooks",
+      "price": 39,
       "currencyCode": "EUR",
       "billingInterval": "Monthly",
       "kind": "AddOn",
@@ -781,6 +1604,25 @@
           "featureCode": "storefront.api",
           "enabled": true,
           "limit": null
+        },
+        {
+          "featureCode": "integrations.webhooks",
+          "enabled": true,
+          "limit": null
+        }
+      ]
+    },
+    {
+      "name": "Établissement supplémentaire",
+      "price": 35,
+      "currencyCode": "EUR",
+      "billingInterval": "Monthly",
+      "kind": "AddOn",
+      "entitlements": [
+        {
+          "featureCode": "locations.count",
+          "enabled": true,
+          "limit": 1
         }
       ]
     }

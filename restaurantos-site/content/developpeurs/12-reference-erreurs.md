@@ -32,7 +32,7 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 
 | Code | Statut | Cause | Message proposé |
 |---|---|---|---|
-| `storefront.checkout.unavailable` | 422 | Option du canal (site, application, borne) non souscrite par le restaurant | Le restaurant ne prend pas de commandes en ligne pour le moment. |
+| `storefront.checkout.unavailable` | 422 | Canal (site, application, borne) absent de l'abonnement du restaurant, plan ou option | Le restaurant ne prend pas de commandes en ligne pour le moment. |
 | `storefront.checkout.paused` | 422 | Commande en ligne en pause dans l'établissement | Les commandes en ligne sont en pause dans cet établissement. |
 | `storefront.checkout.closed` | 422 | Établissement fermé (commande « dès que possible ») | L’établissement est fermé : choisissez une heure de retrait. |
 | `storefront.checkout.closed_at_schedule` | 422 | Fermé à l'heure choisie | L’établissement est fermé à l’heure choisie. |
@@ -61,6 +61,7 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 | `storefront.table.out_of_service` | 422 | Table hors service | Cette table n’est pas en service pour le moment. |
 | `storefront.table.not_scheduled` | 422 | Commande à table avec une heure programmée | Une commande passée à table est servie tout de suite. |
 | `orders.plan.monthly_limit_reached` | 422 | Quota mensuel de commandes de l'abonnement atteint | Le restaurant ne prend plus de commandes en ligne ce mois-ci. |
+| `common.plan.over_limit` | 403 | Établissement gelé : au-delà de la limite du plan du restaurant | Cet établissement ne prend pas de commandes ni de réservations en ligne pour le moment. |
 | `orders.order.schedule_too_far` | 422 | Heure programmée à plus de 14 jours | Choisissez une heure dans les 14 prochains jours. |
 | `orders.product.not_found` | 404 | Produit inconnu | Un produit du panier n’est plus disponible. |
 | `catalog.product.not_sellable` | 422 | Produit épuisé ou retiré | Un produit du panier n’est plus disponible. |

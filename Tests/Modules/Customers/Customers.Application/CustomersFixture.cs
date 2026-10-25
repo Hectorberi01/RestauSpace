@@ -11,7 +11,7 @@ namespace Customers.Application;
 /// </summary>
 public sealed class CustomersFixture
     : ITenantContext, ICustomersUnitOfWork, ICustomersTenants, ICustomerRepository, IConsentRepository, IConsentUniquenessChecker,
-      ICustomerSettingsStore
+      ICustomerSettingsStore, IPlanFeatureGate
 {
     public CustomersFixture()
     {
@@ -42,7 +42,10 @@ public sealed class CustomersFixture
 
     public int SaveCount { get; private set; }
 
-    public CustomersWorkspace Workspace => new(this, this, this, this, this, this);
+    public CustomersWorkspace Workspace => new(this, this, this, this, this, this, this);
+
+    /// <summary>Fonctionnalités refusées par le plan (faux gate) : vide = tout est permis.</summary>
+    public HashSet<string> DeniedFeatures { get; } = [];
 
     public CreateCustomerHandler Create => new(Workspace, Clock);
 
@@ -97,6 +100,9 @@ public sealed class CustomersFixture
         SaveCount++;
         return Task.CompletedTask;
     }
+
+    Task<bool> IPlanFeatureGate.AllowsAsync(TenantId tenantId, string feature, CancellationToken cancellationToken) =>
+        Task.FromResult(!DeniedFeatures.Contains(feature));
 
     Task<bool> ICustomersTenants.AcceptsBusinessWritesAsync(TenantId tenantId, CancellationToken cancellationToken) =>
         Task.FromResult(Writable.TryGetValue(tenantId, out var writable) && writable);

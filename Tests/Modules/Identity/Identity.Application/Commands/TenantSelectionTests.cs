@@ -47,6 +47,18 @@ public sealed class TenantSelectionTests
     }
 
     [Fact]
+    public async Task A_frozen_member_cannot_select_the_restaurant()
+    {
+        var (user, tokens) = await GivenSignedInMemberAsync();
+        _fixture.Frozen.Add((user.Id, _restaurant));
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.SelectTenant.HandleAsync(
+            new SelectTenantCommand(user.Id.Value, tokens.SessionId, _restaurant.Value)));
+
+        Assert.Equal(PlanFeatures.OverLimitCode, refused.Error.Code);
+    }
+
+    [Fact]
     public async Task Selecting_needs_a_session_and_a_known_user()
     {
         var (user, _) = await GivenSignedInMemberAsync();

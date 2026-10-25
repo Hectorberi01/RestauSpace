@@ -35,10 +35,13 @@ Réglages de chaque application :
 La clé `pk_live_…` (40 caractères) s'affiche **une seule fois**. Elle peut être régénérée : l'ancienne cesse aussitôt de
 fonctionner.
 
-Le canal (site, application, borne) est une option de l'abonnement du restaurant. Sans l'option, la carte reste
-lisible mais `orderingEnabled` vaut `false` et une commande est refusée (`storefront.checkout.unavailable`).
+Le canal dépend de l'abonnement du restaurant : le site web est inclus dans les plans Pro et Multi-sites, et en option
+sur Essentiel ; l'application et la borne sont des options sur tous les plans. Sans ce droit, la carte reste lisible
+mais `orderingEnabled` vaut `false` et une commande est refusée (`storefront.checkout.unavailable`).
 
 ## 3. Créer une clé d'API (clé secrète)
+
+Les clés d'API sont incluses dans les plans Pro et Multi-sites, et en option (« API et webhooks ») sur Essentiel.
 
 **Console › Intégrations › Clés d'API › Nouvelle clé** (droit « Gérer les intégrations »). Choisissez un nom, une date
 d'expiration facultative et **le moins de droits possible** (voir [Clés d'API](09-integrations-cles.md)). La clé

@@ -18,7 +18,7 @@ public enum LoyaltyReactionOutcome
 /// <summary>
 /// orders.OrderCompleted : la commande d'un client rapporte des points selon le barème du restaurant (référence = id de
 /// la commande, une seule fois). Sans compte, il en est ouvert un si le barème le prévoit (et que le client n'est pas
-/// anonymisé). Un compte suspendu ou clos ne gagne rien.
+/// anonymisé). Un compte suspendu ou clos ne gagne rien, ni un restaurant dont le plan n'a plus la fidélité.
 /// </summary>
 public sealed record EarnPointsForOrderCommand(Guid OrderId, Guid? CustomerId, decimal Total, string CurrencyCode) : ICommand<LoyaltyReactionOutcome>;
 
@@ -27,7 +27,8 @@ public sealed class EarnPointsForOrderHandler(LoyaltyWorkspace workspace, ILoyal
 {
     public async Task<LoyaltyReactionOutcome> HandleAsync(EarnPointsForOrderCommand command, CancellationToken cancellationToken = default)
     {
-        if (command.CustomerId is not { } customerGuid || customerGuid == Guid.Empty || !await workspace.AcceptsWritesAsync(cancellationToken))
+        if (command.CustomerId is not { } customerGuid || customerGuid == Guid.Empty || !await workspace.AcceptsWritesAsync(cancellationToken)
+            || !await workspace.AllowsAsync(PlanFeatures.Loyalty, cancellationToken))
         {
             return LoyaltyReactionOutcome.Ignored;
         }

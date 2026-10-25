@@ -30,6 +30,41 @@ public sealed class IntegrationsUseCaseTests
     }
 
     [Fact]
+    public async Task Without_the_webhooks_option_no_endpoint_is_created()
+    {
+        _fixture.NotInPlan.Add((_fixture.TenantA, PlanFeatures.IntegrationsWebhooks));
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.NewEndpointAsync());
+
+        Assert.Equal(PlanFeatures.RequiredCode, refused.Error.Code);
+        Assert.Empty(_fixture.Endpoints);
+    }
+
+    [Fact]
+    public async Task When_the_webhooks_option_is_lost_events_are_ignored_and_endpoints_stay_visible()
+    {
+        var issued = await _fixture.NewEndpointAsync(WebhookEvents.OrderPlaced);
+        _fixture.NotInPlan.Add((_fixture.TenantA, PlanFeatures.IntegrationsWebhooks));
+
+        var created = await _fixture.PublishAsync(WebhookEvents.OrderPlaced);
+
+        Assert.Equal(0, created);
+        Assert.Empty(_fixture.Deliveries);
+        Assert.Equal(issued.EndpointId, (await _fixture.GetEndpoint.HandleAsync(new GetWebhookEndpointQuery(issued.EndpointId))).Id);
+    }
+
+    [Fact]
+    public async Task A_request_by_api_key_needs_the_api_option_of_the_plan()
+    {
+        await _fixture.EnsureApiKeyPlan.HandleAsync(new EnsureApiKeyPlanCommand());
+        _fixture.NotInPlan.Add((_fixture.TenantA, PlanFeatures.IntegrationsApi));
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.EnsureApiKeyPlan.HandleAsync(new EnsureApiKeyPlanCommand()));
+
+        Assert.Equal(PlanFeatures.RequiredCode, refused.Error.Code);
+    }
+
+    [Fact]
     public async Task An_endpoint_only_subscribes_to_published_events_and_a_suspended_restaurant_creates_none()
     {
         var unknown = await Assert.ThrowsAsync<DomainException>(() => _fixture.NewEndpointAsync("orders.order_secret_stuff"));

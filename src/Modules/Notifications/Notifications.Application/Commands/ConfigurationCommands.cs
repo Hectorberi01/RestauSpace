@@ -16,6 +16,7 @@ public sealed class CreateNotificationConfigurationHandler(NotificationsWorkspac
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireModeAllowedAsync(command.Mode, cancellationToken);
         var tenant = workspace.CurrentTenant;
         var provider = await workspace.LoadProviderAsync(command.ProviderId, cancellationToken);
         var configuration = RestaurantNotificationConfiguration.Create(
@@ -48,6 +49,7 @@ public sealed class SetConfigurationCredentialsHandler(
         var configuration = await workspace.LoadConfigurationAsync(command.ConfigurationId, cancellationToken);
         DomainException.ThrowIf(
             configuration.Mode != NotificationProviderMode.TenantManaged, NotificationConfigurationErrors.CredentialsNotApplicable);
+        await workspace.RequireModeAllowedAsync(configuration.Mode, cancellationToken);
         var credentials = check.Validate(configuration.Provider, command.Credentials);
         var reference = NotificationCredentialReference.ForTenant(workspace.CurrentTenant, configuration.Provider);
 
@@ -66,6 +68,7 @@ public sealed class ChangeNotificationModeHandler(NotificationsWorkspace workspa
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireModeAllowedAsync(command.Mode, cancellationToken);
         var configuration = await workspace.LoadConfigurationAsync(command.ConfigurationId, cancellationToken);
         var provider = await workspace.LoadProviderAsync(configuration.NotificationProviderId.Value, cancellationToken);
         configuration.ChangeMode(command.Mode, provider, clock);
@@ -83,6 +86,7 @@ public sealed class EnableNotificationConfigurationHandler(NotificationsWorkspac
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var configuration = await workspace.LoadConfigurationAsync(command.ConfigurationId, cancellationToken);
+        await workspace.RequireModeAllowedAsync(configuration.Mode, cancellationToken);
         var provider = await workspace.LoadProviderAsync(configuration.NotificationProviderId.Value, cancellationToken);
         configuration.Enable(provider, clock);
         await workspace.SaveAsync(cancellationToken);

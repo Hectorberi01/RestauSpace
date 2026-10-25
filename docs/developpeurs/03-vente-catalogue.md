@@ -48,7 +48,7 @@ curl -s {{API_URL}}/v1/storefront/ -H "X-Storefront-Key: $KEY" -H "Accept: appli
         "postalCode": null,
         "countryCode": "BJ",
         "coordinates": {"latitude": 6.365536, "longitude": 2.418378},
-        "contact": {"phone": "+22997001122", "whatsApp": "+22997001122", "email": "contact@chezawa.bj"}
+        "contact": {"phone": "+2290197001122", "whatsApp": "+2290197001122", "email": "contact@chezawa.bj"}
       },
       "specialDays": [
         {"date": "2026-08-01", "isClosed": true, "ranges": [], "reason": "Fête de l'indépendance"},
@@ -64,7 +64,7 @@ curl -s {{API_URL}}/v1/storefront/ -H "X-Storefront-Key: $KEY" -H "Accept: appli
 | `restaurant.primaryColor`, `logoUrl` | Habiller l'interface aux couleurs du restaurant. |
 | `restaurant.tagline`, `description`, `coverImageUrl` | Page d'accueil : accroche (120 caractères au plus), présentation en **texte brut** (une ligne vide sépare deux paragraphes : n'interprétez jamais ce texte comme du HTML), photo de couverture. Chacun peut être `null`. |
 | `restaurant.links` | Site et réseaux sociaux, au plus un par réseau : `Website`, `Facebook`, `Instagram`, `TikTok`, `X`, `YouTube`, `GoogleMaps`. Ouvrez-les avec `rel="noopener"`. |
-| `orderingEnabled` | `false` : le restaurant n'a pas souscrit l'option de ce canal (site, application ou borne). Affichez la carte en lecture seule. Une application désactivée ou un restaurant suspendu ne reçoit, lui, que des `401`. |
+| `orderingEnabled` | `false` : ce canal (site, application ou borne) n'est pas dans l'abonnement du restaurant, ni par son plan ni par une option. Affichez la carte en lecture seule. Une application désactivée ou un restaurant suspendu ne reçoit, lui, que des `401`. |
 | `locations` | Seulement les établissements servis par l'application (une borne : le sien), triés par nom. |
 | `isOpenNow`, `nextOpeningUtc` | « Ouvert » / « Ouvre à 11 h 30 ». |
 | `isPaused` | Le restaurant a mis la commande en ligne en pause (rush, panne). |

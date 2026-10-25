@@ -91,6 +91,49 @@ internal static class HumanChecks
 /// Le contrôle anti-robot d'une requête d'application : exigé si l'application l'a activé ; le jeton du widget est
 /// vérifié chez le prestataire. Sans application (requête non authentifiée par clé), rien n'est exigé ici.
 /// </summary>
+/// <summary>
+/// Après l'authentification par clé publique : le plan permet-il ce canal (<c>storefront.web</c>, <c>mobile_app</c>,
+/// <c>kiosk</c>) ? Sinon 403 <c>common.plan.feature_required</c>. Une borne gelée (au-delà de la limite) : 403
+/// <c>common.plan.over_limit</c>.
+/// </summary>
+public sealed record EnsureStorefrontAccessCommand(SalesAppKind Channel) : ICommand;
+
+public sealed class EnsureStorefrontAccessHandler(StorefrontWorkspace workspace, IStorefrontClient client, IKioskDeviceRepository devices)
+    : ICommandHandler<EnsureStorefrontAccessCommand>
+{
+    public async Task HandleAsync(EnsureStorefrontAccessCommand command, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var tenant = workspace.CurrentTenant;
+        if (!await workspace.Entitlements.AllowsAsync(tenant, command.Channel, cancellationToken))
+        {
+            throw PlanFeatures.Required(StorefrontFeatures.Of(command.Channel));
+        }
+
+        if (command.Channel == SalesAppKind.Kiosk && client.DeviceId is { } deviceId
+            && (await Kiosks.KioskLimits.FrozenAsync(workspace, devices, tenant, cancellationToken)).Contains(deviceId))
+        {
+            throw PlanFeatures.OverLimit("kiosk");
+        }
+    }
+}
+
+/// <summary>Codes des droits des canaux de vente (catalogue Billing).</summary>
+public static class StorefrontFeatures
+{
+    public const string Web = "storefront.web";
+    public const string MobileApp = "storefront.mobile_app";
+    public const string Kiosk = "storefront.kiosk";
+
+    public static string Of(SalesAppKind channel) => channel switch
+    {
+        SalesAppKind.Web => Web,
+        SalesAppKind.MobileApp => MobileApp,
+        SalesAppKind.Kiosk => Kiosk,
+        _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, "Unknown sales channel."),
+    };
+}
+
 public sealed record VerifyHumanCheckCommand(string? Token, string? RemoteIp) : ICommand
 {
     public override string ToString() => "VerifyHumanCheckCommand (***)";

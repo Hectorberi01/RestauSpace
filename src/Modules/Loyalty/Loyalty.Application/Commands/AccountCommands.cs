@@ -15,6 +15,7 @@ public sealed class OpenLoyaltyAccountHandler(LoyaltyWorkspace workspace, ILoyal
     public async Task<Guid> HandleAsync(OpenLoyaltyAccountCommand command, CancellationToken cancellationToken = default)
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
         var tenant = workspace.CurrentTenant;
         var customer = (command.CustomerId == Guid.Empty ? null : await customers.FindAsync(tenant, CustomerId.From(command.CustomerId), cancellationToken))
             ?? throw new NotFoundException(LoyaltyApplicationErrors.CustomerNotFound);
@@ -49,12 +50,13 @@ public sealed record AdjustLoyaltyPointsCommand(Guid AccountId, int Points, Ledg
 
 public sealed class AdjustLoyaltyPointsHandler(LoyaltyWorkspace workspace, IClock clock) : ICommandHandler<AdjustLoyaltyPointsCommand>
 {
-    public Task HandleAsync(AdjustLoyaltyPointsCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(AdjustLoyaltyPointsCommand command, CancellationToken cancellationToken = default)
     {
         // Validés AVANT de charger : une saisie invalide n'ouvre pas de transaction.
         var points = Points.Of(command.Points);
         var reference = LoyaltyWorkspace.OptionalReference(command.Reference);
-        return workspace.EditAccountAsync(command.AccountId, async account =>
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
+        await workspace.EditAccountAsync(command.AccountId, async account =>
         {
             if (reference is null)
             {
@@ -111,6 +113,7 @@ public sealed class RedeemRewardForOrderHandler(LoyaltyWorkspace workspace, ILoy
     public async Task<RewardRedemptionDto> HandleAsync(RedeemRewardForOrderCommand command, CancellationToken cancellationToken = default)
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
         var tenant = workspace.CurrentTenant;
         var account = await workspace.LoadAccountAsync(command.AccountId, cancellationToken);
         var reward = await workspace.LoadRewardAsync(command.RewardId, cancellationToken);

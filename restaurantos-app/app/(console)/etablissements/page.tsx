@@ -7,6 +7,7 @@ import {post} from '@/lib/api';
 import {locationStatusLabel} from '@/lib/format';
 import type {LocationSummary} from '@/lib/types';
 import {useConsole} from '@/components/console';
+import {FrozenBadge, FrozenNote, usePlanFeatures} from '@/components/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, useAction} from '@/components/ui';
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -96,7 +97,10 @@ function LocationCard({location, onChanged}: {location: LocationSummary; onChang
           <h2 className="truncate font-semibold">{location.name}</h2>
           <p className="text-sm text-ink-500">{location.city} · {location.seats} places</p>
         </div>
-        <Badge tone={location.status === 'Active' ? 'green' : location.status === 'Draft' ? 'neutral' : 'amber'}>{locationStatusLabel[location.status]}</Badge>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <Badge tone={location.status === 'Active' ? 'green' : location.status === 'Draft' ? 'neutral' : 'amber'}>{locationStatusLabel[location.status]}</Badge>
+          {location.isFrozen && <FrozenBadge />}
+        </span>
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         <Link href={`/etablissements/${location.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold hover:bg-slate-50">
@@ -121,6 +125,8 @@ export default function LocationsPage() {
   const {locations, can, reloadLocations, setLocationId} = useConsole();
   const [creating, setCreating] = useState(false);
   const manage = can('locations.manage');
+  const limit = usePlanFeatures().feature('locations.count')?.limit ?? null;
+  const full = limit !== null && locations.length >= limit;
 
   return (
     <>
@@ -129,6 +135,12 @@ export default function LocationsPage() {
         description="Les adresses de votre restaurant. Chaque écran travaille sur l’établissement choisi en haut de page."
         actions={manage && <Button onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />Nouvel établissement</Button>}
       />
+      {locations.some(item => item.isFrozen) && (
+        <div className="mb-4"><FrozenNote what="Établissements gelés" action="Ils restent consultables, mais ne prennent plus de nouvelles commandes ni réservations." fix="archivez-en un" /></div>
+      )}
+      {manage && full && !locations.some(item => item.isFrozen) && (
+        <div className="mb-4"><Alert tone="blue">Votre plan compte {limit} établissement{limit! > 1 ? 's' : ''} : <Link href="/abonnement" className="font-semibold underline underline-offset-2">passez à un plan supérieur ou ajoutez un établissement</Link> pour en ouvrir un autre.</Alert></div>
+      )}
       {!manage && <div className="mb-4"><Alert tone="blue">Seuls les gérants peuvent créer ou fermer un établissement.</Alert></div>}
       {locations.length === 0 ? (
         <Empty icon={<Building2 className="size-8" />} title="Aucun établissement">

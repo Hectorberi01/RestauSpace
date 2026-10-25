@@ -41,6 +41,12 @@ public static class BillingApplicationErrors
     public static readonly DomainError OnlinePaymentProviderNotReady =
         new("billing.online_payment.provider_not_ready", "This provider cannot collect in this currency yet: enable it, allow the currency and save the platform account.");
     public static readonly DomainError CurrencyInvalid = new("billing.currency_invalid", "Unknown currency.");
+    public static readonly DomainError AddOnNotAvailableOnPlan =
+        new("billing.add_on.not_available_on_plan", "This add-on is not available on the restaurant's plan: upgrade the plan first.");
+
+    public static readonly DomainError AddOnAlreadyIncluded =
+        new("billing.add_on.already_included", "The restaurant's plan already includes everything this add-on gives.");
+
     public static readonly DomainError AddOnComplimentaryUnlimited =
         new("billing.add_on.complimentary_unlimited", "The plan is offered without end date: ask the platform to add options.");
 }
@@ -63,10 +69,10 @@ public static class BillingPermissions
 /// <summary>Réglages des cas d'usage (section <c>Billing</c> de l'hôte).</summary>
 public sealed class BillingSettings
 {
-    /// <summary>Durée de l'essai offert quand un restaurant choisit son plan : un mois, comme le plan Découverte.</summary>
+    /// <summary>Durée de l'essai offert quand un restaurant choisit son plan : un mois.</summary>
     public TimeSpan TrialLength { get; set; } = TimeSpan.FromDays(30);
 
-    /// <summary>Durée du plan gratuit (Découverte), une seule fois par restaurant : son premier mois.</summary>
+    /// <summary>Durée d'un plan gratuit (plan de base à 0, retiré du catalogue), une seule fois par restaurant : son premier mois.</summary>
     public int FreePlanMonths { get; set; } = 1;
 
     /// <summary>Délai entre l'échéance impayée (PastDue) et la suspension pour impayé.</summary>

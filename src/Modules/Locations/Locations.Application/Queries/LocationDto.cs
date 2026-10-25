@@ -94,9 +94,10 @@ public sealed record ExceptionalScheduleDto(DateOnly Date, bool IsClosed, IReadO
     }
 }
 
-public sealed record LocationSummaryDto(Guid Id, string Name, LocationStatus Status, string City, string CountryCode, int Seats)
+/// <param name="IsFrozen">Au-delà de la limite du plan (<see cref="LocationFreeze"/>) : plus de nouvelle commande ni réservation.</param>
+public sealed record LocationSummaryDto(Guid Id, string Name, LocationStatus Status, string City, string CountryCode, int Seats, bool IsFrozen = false)
 {
-    public static LocationSummaryDto From(RestaurantLocation location)
+    public static LocationSummaryDto From(RestaurantLocation location, bool isFrozen = false)
     {
         ArgumentNullException.ThrowIfNull(location);
         return new LocationSummaryDto(
@@ -105,7 +106,8 @@ public sealed record LocationSummaryDto(Guid Id, string Name, LocationStatus Sta
             location.Status,
             location.Address.City,
             location.Address.CountryCode.Value,
-            location.Capacity.Seats);
+            location.Capacity.Seats,
+            isFrozen);
     }
 }
 

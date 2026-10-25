@@ -57,6 +57,18 @@ public sealed class ReservationsWorkspace(
         (locationId == Guid.Empty ? null : await locations.FindAsync(tenantId, LocationId.From(locationId), cancellationToken))
         ?? throw new NotFoundException(ReservationsApplicationErrors.LocationNotFound);
 
+    /// <summary>L'établissement d'une NOUVELLE réservation : refusé s'il est gelé (403 <c>common.plan.over_limit</c>).</summary>
+    public async Task<LocationReference> RequireBookableLocationAsync(TenantId tenantId, Guid locationId, CancellationToken cancellationToken)
+    {
+        var location = await RequireLocationAsync(tenantId, locationId, cancellationToken);
+        if (await locations.IsFrozenAsync(tenantId, location.LocationId, cancellationToken))
+        {
+            throw PlanFeatures.OverLimit("location");
+        }
+
+        return location;
+    }
+
     /// <summary>Refuse un créneau qui déborde des horaires d'ouverture (exceptions comprises) de l'établissement.</summary>
     public async Task EnsureOpenDuringAsync(TenantId tenantId, LocationId locationId, Period slot, CancellationToken cancellationToken)
     {

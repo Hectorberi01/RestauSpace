@@ -32,6 +32,9 @@ public interface IStaffMemberRepository
     /// <summary>Membres actifs du tenant (lecture seule).</summary>
     Task<IReadOnlyList<StaffMember>> ListActiveAsync(TenantId tenantId, CancellationToken cancellationToken = default);
 
+    /// <summary>Membres qui occupent une place (invités, actifs ou suspendus), en lecture seule : rang pour le gel.</summary>
+    Task<IReadOnlyList<StaffMember>> ListCurrentAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+
     void Add(StaffMember member);
 }
 

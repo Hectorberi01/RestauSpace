@@ -115,6 +115,8 @@ export interface Kiosk {
   tokenHint: string;
   pairedAtUtc: string;
   revokedAtUtc: string | null;
+  /** Au-delà de la limite de bornes : authentification refusée. */
+  isFrozen?: boolean;
 }
 
 export interface Kiosks {

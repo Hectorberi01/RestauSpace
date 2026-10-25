@@ -202,6 +202,7 @@ public sealed class ImportCustomersHandler(CustomersWorkspace workspace, IConsen
         var rows = command.Rows ?? [];
         DomainException.ThrowIf(rows.Count is 0 or > MaxRows, CustomersApplicationErrors.ImportSizeInvalid);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.CustomersAdvanced, cancellationToken);
         var tenant = workspace.CurrentTenant;
         var policy = await workspace.Settings.GetContactPolicyAsync(tenant, cancellationToken);
         var source = command.ConsentCertified ? ConsentSources.Of(string.IsNullOrWhiteSpace(command.ConsentSource) ? "import" : command.ConsentSource) : null;

@@ -35,6 +35,9 @@ public sealed class OrdersFixture
 
     public List<LocationReference> Locations { get; } = [];
 
+    /// <summary>Établissements gelés (au-delà de la limite du plan), selon le faux module Locations.</summary>
+    public HashSet<LocationId> FrozenLocations { get; } = [];
+
     public List<TableSessionReference> Sessions { get; } = [];
 
     /// <summary>Produits vendables du faux Catalog, par id : (tenant, nom, prix unitaire, taux de taxe). Chaque option choisie coûte 5.</summary>
@@ -71,7 +74,7 @@ public sealed class OrdersFixture
 
     public ApplyDeliveryFeeHandler ApplyDeliveryFee => new(Workspace, Clock);
 
-    public PlaceOrderHandler Place => new(Workspace, this, Clock);
+    public PlaceOrderHandler Place => new(Workspace, this, this, Clock);
 
     /// <summary>Plafond mensuel de commandes du plan (null : aucun).</summary>
     public long? MonthlyOrderLimit { get; set; }
@@ -147,6 +150,9 @@ public sealed class OrdersFixture
 
     Task<LocationReference?> IOrderLocations.FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
         Task.FromResult<LocationReference?>(Locations.SingleOrDefault(location => location.TenantId == tenantId && location.LocationId == locationId));
+
+    Task<bool> IOrderLocations.IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
+        Task.FromResult(FrozenLocations.Contains(locationId));
 
     Task<long?> IOrderPlanLimits.MonthlyOrdersAsync(TenantId tenantId, CancellationToken cancellationToken) => Task.FromResult(MonthlyOrderLimit);
 

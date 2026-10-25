@@ -66,6 +66,10 @@ public static class BillingEndpoints
             TypedResults.Ok(await handler.HandleAsync(new GetMySubscriptionQuery(), ct)))
             .RequirePermission(View);
 
+        billing.MapGet("/features", async (IQueryHandler<GetMyFeaturesQuery, MyFeaturesDto> handler, CancellationToken ct) =>
+            TypedResults.Ok(await handler.HandleAsync(new GetMyFeaturesQuery(), ct)))
+            .RequirePermission(View);
+
         billing.MapPost("/subscription", async (ChoosePlanRequest request, ICommandHandler<StartSubscriptionCommand, Guid> handler, CancellationToken ct) =>
         {
             var id = await handler.HandleAsync(new StartSubscriptionCommand(request.PlanId), ct);

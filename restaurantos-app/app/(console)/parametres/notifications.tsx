@@ -9,6 +9,8 @@ import {
 import {API_URL} from '@/lib/api';
 import {useResource} from '@/lib/hooks';
 import {useConsole} from '@/components/console';
+import {PlanBadge, UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, cx, useAction} from '@/components/ui';
 import {Switch, TestResult} from './shared';
 
@@ -84,7 +86,11 @@ function CredentialsDialog({target, onClose, onDone, onSaved}: {
   }, [target]); // fields et code découlent de target
   const complete = fields.length > 0 && fields.every(field => values[field]?.trim());
   const set = (patch: Record<string, string>) => setValues(current => ({...current, ...patch}));
-  const webhook = target && code === 'MAILJET' ? notificationWebhookUrl(API_URL, code, target.configuration.id, values.webhook_password ?? '') : null;
+  // Adresse de webhook à déclarer chez le prestataire : mot de passe Basic dans l'URL, ou signature (clé à part).
+  const webhook = !target ? null
+    : fields.includes('webhook_password') ? notificationWebhookUrl(API_URL, code, target.configuration.id, values.webhook_password ?? '')
+    : fields.includes('webhook_secret') ? notificationWebhookUrl(API_URL, code, target.configuration.id)
+    : null;
 
   return (
     <Modal open={!!target} onClose={onClose} title={`Compte ${target?.provider.name ?? ''}`} footer={
@@ -136,17 +142,19 @@ function CredentialsDialog({target, onClose, onDone, onSaved}: {
           })}
           {webhook && (
             <div className="space-y-1.5 rounded-xl border border-slate-200 p-3">
-              <p className="text-sm font-medium text-ink-800">Suivi des remises : adresse à déclarer chez Mailjet</p>
+              <p className="text-sm font-medium text-ink-800">Suivi des remises : adresse à déclarer chez {target.provider.name}</p>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg bg-slate-100 px-2.5 py-2 text-xs">{webhook}</code>
-                <Button type="button" size="sm" variant="secondary" disabled={!values.webhook_password}
+                <Button type="button" size="sm" variant="secondary" disabled={fields.includes('webhook_password') && !values.webhook_password}
                   onClick={() => void navigator.clipboard?.writeText(webhook).then(() => setCopied(true))}>
                   {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{copied ? 'Copiée' : 'Copier'}
                 </Button>
               </div>
               <p className="text-xs text-ink-500">
-                Mailjet › Paramètres du compte › Notifications d’événements (webhooks) : collez cette adresse pour les événements « Envoyé », « Rebond » et
-                « Bloqué ». L’adresse doit être joignable depuis Internet.
+                {code === 'MAILJET'
+                  ? 'Mailjet › Paramètres du compte › Notifications d’événements (webhooks) : collez cette adresse pour les événements « Envoyé », « Rebond » et « Bloqué ».'
+                  : 'Collez cette adresse dans les rapports de remise (webhook ou URL de rappel) de votre compte.'}{' '}
+                L’adresse doit être joignable depuis Internet.
               </p>
             </div>
           )}
@@ -230,6 +238,9 @@ function ProviderRow({provider, configuration, editable, onChanged, onCredential
   const mode = configuration?.mode ?? modes[0];
   const enabled = !!configuration?.isEnabled;
   const awaiting = configuration?.status === 'AwaitingCredentials';
+  // Sans le droit, votre propre compte n'est ni configurable ni utilisé à l'envoi.
+  const byokLocked = usePlanFeatures().blocked(Feature.NotificationsOwnAccount);
+  const ownLocked = byokLocked && mode === 'TenantManaged';
 
   const activate = (chosen: NotificationMode) => run('toggle', async () => {
     let current = configuration;
@@ -257,21 +268,22 @@ function ProviderRow({provider, configuration, editable, onChanged, onCredential
           {enabled && <Badge tone="green">Actif</Badge>}
           {awaiting && !enabled && <Badge tone="amber">Identifiants à saisir</Badge>}
           {!provider.hasIntegration && <Badge>Bientôt disponible</Badge>}
+          {ownLocked && enabled && <Badge tone="amber">Non utilisé : hors plan</Badge>}
         </p>
         {modes.length > 1 ? (
           <div className="mt-2 inline-flex rounded-lg bg-slate-100 p-0.5 text-xs" role="radiogroup" aria-label={`Compte utilisé pour ${provider.name}`}>
             {modes.map(item => (
-              <button key={item} type="button" role="radio" aria-checked={mode === item} disabled={!editable || !!busy || !provider.hasIntegration}
+              <button key={item} type="button" role="radio" aria-checked={mode === item} disabled={!editable || !!busy || !provider.hasIntegration || (item === 'TenantManaged' && byokLocked)}
                 onClick={() => {
                   if (item !== mode) void activate(item);
                 }}
                 className={cx('rounded-md px-2.5 py-1 font-medium disabled:cursor-default', mode === item ? 'bg-white shadow-sm' : 'text-ink-500')}>
-                {modeLabel[item]}
+                {modeLabel[item]}{item === 'TenantManaged' && <PlanBadge feature={Feature.NotificationsOwnAccount} className="ml-1" />}
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-ink-500">{modeLabel[modes[0]]}{modes[0] === 'PlatformManaged' ? ' : les envois comptent dans le quota de votre abonnement.' : ''}</p>
+          <p className="flex flex-wrap items-center gap-1 text-sm text-ink-500">{modeLabel[modes[0]]}{modes[0] === 'PlatformManaged' ? ' : les envois comptent dans le quota de votre abonnement.' : ''}{modes[0] === 'TenantManaged' && <PlanBadge feature={Feature.NotificationsOwnAccount} />}</p>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
@@ -286,10 +298,10 @@ function ProviderRow({provider, configuration, editable, onChanged, onCredential
             <FlaskConical className="size-4" aria-hidden="true" />Tester
           </Button>
         )}
-        {configuration && mode === 'TenantManaged' && editable && (
+        {configuration && mode === 'TenantManaged' && editable && !byokLocked && (
           <Button size="sm" variant="secondary" onClick={() => onCredentials(configuration)}><KeyRound className="size-4" aria-hidden="true" />Identifiants</Button>
         )}
-        <Switch on={enabled} label={`${enabled ? 'Désactiver' : 'Activer'} : ${provider.name}`} disabled={!editable || !!busy || (!provider.hasIntegration && !enabled)}
+        <Switch on={enabled} label={`${enabled ? 'Désactiver' : 'Activer'} : ${provider.name}`} disabled={!editable || !!busy || (!provider.hasIntegration && !enabled) || (ownLocked && !enabled)}
           onChange={() => {
             if (enabled && configuration) {
               void run('toggle', async () => {
@@ -309,6 +321,7 @@ export function NotificationSettings() {
   const {can} = useConsole();
   const editable = can('notifications.configure');
   const allowed = can('notifications.view') || editable;
+  const byokLocked = usePlanFeatures().blocked(Feature.NotificationsOwnAccount);
   const [credentials, setCredentials] = useState<Target | null>(null);
   const [placing, setPlacing] = useState<Target | null>(null);
   const [testing, setTesting] = useState<Target | null>(null);
@@ -328,6 +341,7 @@ export function NotificationSettings() {
 
   return (
     <div className="space-y-4">
+      {byokLocked && <UpgradePanel feature={Feature.NotificationsOwnAccount} title="Envoi par votre propre compte">Envoyez avec vos propres identifiants (SMTP, Twilio…), sans quota.</UpgradePanel>}
       {!editable && <Alert tone="blue">Lecture seule : seuls les membres qui configurent les notifications peuvent modifier ces réglages.</Alert>}
       {channels.length === 0 && <Empty icon={<Bell className="size-8" />} title="Aucun canal proposé">La plateforme n’a encore ouvert aucun prestataire d’envoi.</Empty>}
       {channels.map(({channel, list}) => {

@@ -6,15 +6,17 @@ import {useResource} from '@/lib/hooks';
 import {loadCatalog} from '@/lib/integrations';
 import {developerDocsUrl} from '@/lib/storefront';
 import {useConsole} from '@/components/console';
+import {PlanBadge} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Spinner, cx} from '@/components/ui';
 import {ApiKeys} from './keys';
 import {Webhooks} from './webhooks';
 
 type Tab = 'cles' | 'webhooks';
 
-const tabs: {value: Tab; label: string; icon: typeof KeyRound}[] = [
-  {value: 'cles', label: 'Clés d’API', icon: KeyRound},
-  {value: 'webhooks', label: 'Webhooks', icon: Webhook},
+const tabs: {value: Tab; label: string; icon: typeof KeyRound; feature: string}[] = [
+  {value: 'cles', label: 'Clés d’API', icon: KeyRound, feature: Feature.IntegrationsApi},
+  {value: 'webhooks', label: 'Webhooks', icon: Webhook, feature: Feature.IntegrationsWebhooks},
 ];
 
 export default function IntegrationsPage() {
@@ -38,14 +40,14 @@ export default function IntegrationsPage() {
       {!allowed ? <Alert tone="blue">Vous n’avez pas accès aux intégrations (permission « Voir les intégrations »).</Alert> : catalog.error ? <Alert>{catalog.error}</Alert> : !catalog.data ? <Spinner /> : (
         <>
           <div role="tablist" aria-label="Intégrations" className="-mx-1 flex gap-1 overflow-x-auto border-b border-slate-200">
-            {tabs.map(({value, label, icon: Icon}) => (
+            {tabs.map(({value, label, icon: Icon, feature}) => (
               <button key={value} type="button" role="tab" aria-selected={tab === value}
                 onClick={() => {
                   setTab(value);
                   router.replace(`/integrations?onglet=${value}`, {scroll: false});
                 }}
                 className={cx('-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap', tab === value ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-800')}>
-                <Icon className="size-4" aria-hidden="true" />{label}
+                <Icon className="size-4" aria-hidden="true" />{label}<PlanBadge feature={feature} />
               </button>
             ))}
           </div>

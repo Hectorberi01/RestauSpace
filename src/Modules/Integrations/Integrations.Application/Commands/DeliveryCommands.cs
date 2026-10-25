@@ -12,12 +12,18 @@ namespace Integrations.Application.Commands;
 /// <param name="DataJson">Les données publiques de l'événement : un objet JSON, sans donnée personnelle.</param>
 public sealed record PublishWebhookEventCommand(string EventType, Guid EventId, DateTimeOffset OccurredAtUtc, string DataJson) : ICommand<int>;
 
-public sealed class PublishWebhookEventHandler(IntegrationsWorkspace workspace, IClock clock) : ICommandHandler<PublishWebhookEventCommand, int>
+public sealed class PublishWebhookEventHandler(IntegrationsWorkspace workspace, IPlanFeatureGate plan, IClock clock) : ICommandHandler<PublishWebhookEventCommand, int>
 {
     public async Task<int> HandleAsync(PublishWebhookEventCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         var tenant = workspace.CurrentTenant;
+        // Option webhooks perdue : rien n'est livré, les endpoints restent visibles.
+        if (!await plan.AllowsAsync(tenant, PlanFeatures.IntegrationsWebhooks, cancellationToken))
+        {
+            return 0;
+        }
+
         var eventType = WebhookEvents.Require(command.EventType);
         var eventId = EventId.From(command.EventId);
         var endpoints = (await workspace.Endpoints.ListActiveAsync(tenant, cancellationToken)).Where(endpoint => endpoint.ShouldReceive(eventType)).ToList();

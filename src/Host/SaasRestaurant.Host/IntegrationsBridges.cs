@@ -81,6 +81,12 @@ internal sealed class WebhookFeed(IServiceScopeFactory scopes, ILogger<WebhookFe
         await using var scope = scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         services.GetRequiredService<BackgroundTenant>().ActFor(TenantId.From(tenantId));
+        if (!await services.GetRequiredService<IPlanFeatureGate>().AllowsAsync(TenantId.From(tenantId), PlanFeatures.IntegrationsWebhooks, cancellationToken))
+        {
+            // Option webhooks perdue : rien n'est livré, sans erreur.
+            logger.LogInformation("Outbox message {Module}/{MessageId} not published: webhooks not included in the plan.", message.Module, message.Id);
+            return;
+        }
 
         var created = await services.GetRequiredService<ICommandHandler<PublishWebhookEventCommand, int>>().HandleAsync(
             new PublishWebhookEventCommand(eventType, EventIdOf(message), message.OccurredAtUtc, data.ToJsonString()),

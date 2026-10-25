@@ -24,6 +24,7 @@ public static class DependencyInjection
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         services.TryAddScoped<ITenantContext>(_ => new FixedTenantContext(null));
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>(); // l'hôte branche le vrai contrôle
         services.AddDbContext<CustomersDbContext>(options => options.UseCustomersNpgsql(connectionString));
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IMarketingAudienceReader, MarketingAudienceReader>();

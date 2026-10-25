@@ -31,6 +31,14 @@ internal sealed class LocationRepository(LocationsDbContext context) : ILocation
         return new LocationPage(items, total);
     }
 
+    public async Task<IReadOnlyList<LocationId>> ListOpenIdsByCreationAsync(TenantId tenantId, CancellationToken cancellationToken = default) =>
+        await context.Locations.AsNoTracking()
+            .Where(location => location.TenantId == tenantId && location.Status != LocationStatus.Archived)
+            .OrderBy(location => location.CreatedAtUtc)
+            .ThenBy(location => location.Id)
+            .Select(location => location.Id)
+            .ToListAsync(cancellationToken);
+
     public void Add(RestaurantLocation location) => context.Locations.Add(location);
 }
 

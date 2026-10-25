@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orders.Application;
 using Orders.Infrastructure;
 using Orders.Infrastructure.Persistence;
@@ -18,6 +19,7 @@ public static class OrdersModule
     {
         services.AddOrdersInfrastructure(connectionString);
         services.AddScoped<OrdersWorkspace>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddHandlersFrom(typeof(OrdersApplicationErrors).Assembly);
         return services;
     }

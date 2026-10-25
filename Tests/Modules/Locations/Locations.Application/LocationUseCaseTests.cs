@@ -84,6 +84,29 @@ public sealed class LocationUseCaseTests
     }
 
     [Fact]
+    public async Task Beyond_the_plan_limit_the_most_recent_locations_are_frozen_until_one_is_archived()
+    {
+        var oldest = await _fixture.GivenLocationAsync(name: "Cotonou");
+        _fixture.Clock.Advance(TimeSpan.FromDays(1));
+        var middle = await _fixture.GivenLocationAsync(name: "Abomey");
+        _fixture.Clock.Advance(TimeSpan.FromDays(1));
+        var newest = await _fixture.GivenLocationAsync(name: "Porto-Novo");
+        _fixture.MaxLocations[_fixture.TenantA] = 2;
+
+        var list = await _fixture.List.HandleAsync(new ListLocationsQuery());
+        var frozenNewest = await _fixture.IsFrozen.HandleAsync(new IsLocationFrozenQuery(newest));
+        var read = await _fixture.GetById.HandleAsync(new GetLocationByIdQuery(newest));
+        await _fixture.Archive.HandleAsync(new ArchiveLocationCommand(oldest));
+        var afterArchive = await _fixture.IsFrozen.HandleAsync(new IsLocationFrozenQuery(newest));
+
+        Assert.Equal(new[] { "Porto-Novo" }, list.Items.Where(item => item.IsFrozen).Select(item => item.Name));
+        Assert.True(frozenNewest);
+        Assert.False(await _fixture.IsFrozen.HandleAsync(new IsLocationFrozenQuery(middle)));
+        Assert.Equal("Porto-Novo", read.Name);
+        Assert.False(afterArchive);
+    }
+
+    [Fact]
     public async Task List_shows_only_the_locations_of_the_current_tenant_by_name_and_hides_archived_ones()
     {
         await _fixture.GivenLocationAsync(name: "Porto-Novo");

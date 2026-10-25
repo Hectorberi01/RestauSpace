@@ -45,7 +45,7 @@ public sealed record CampaignDto(
         campaign.OnlyLocationCustomers);
 }
 
-/// <summary>Crée (sans id) ou modifie un brouillon. Renvoie son id.</summary>
+/// <summary>Crée (sans id) ou modifie un brouillon. Renvoie son id. Exige <c>marketing.campaigns</c>.</summary>
 public sealed record SaveCampaignCommand(
     Guid? CampaignId,
     string? Name,
@@ -63,6 +63,7 @@ public sealed class SaveCampaignHandler(NotificationsWorkspace workspace, ICampa
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.MarketingCampaigns, cancellationToken);
         var tenant = workspace.CurrentTenant;
         LocationId? location = null;
         if (command.LocationId is { } id)
@@ -86,7 +87,10 @@ public sealed class SaveCampaignHandler(NotificationsWorkspace workspace, ICampa
     }
 }
 
-/// <summary>Programme l'envoi (<paramref name="At"/> null : dès que possible).</summary>
+/// <summary>
+/// Programme l'envoi (<paramref name="At"/> null : dès que possible). Exige <c>marketing.campaigns</c>, et
+/// <c>automations</c> pour une date future.
+/// </summary>
 public sealed record ScheduleCampaignCommand(Guid CampaignId, DateTimeOffset? At) : ICommand;
 
 public sealed class ScheduleCampaignHandler(NotificationsWorkspace workspace, ICampaignRepository campaigns, IClock clock) : ICommandHandler<ScheduleCampaignCommand>
@@ -95,6 +99,12 @@ public sealed class ScheduleCampaignHandler(NotificationsWorkspace workspace, IC
     {
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.MarketingCampaigns, cancellationToken);
+        if (command.At is { } at && at > clock.UtcNow)
+        {
+            await workspace.RequireFeatureAsync(PlanFeatures.Automations, cancellationToken);
+        }
+
         var campaign = await campaigns.LoadAsync(workspace.CurrentTenant, command.CampaignId, cancellationToken);
         campaign.Schedule(command.At, clock);
         await workspace.SaveAsync(cancellationToken);
@@ -169,6 +179,7 @@ public sealed class PreviewCampaignAudienceHandler(NotificationsWorkspace worksp
 /// Un lot d'envoi d'une campagne due, POUR le tenant du contexte (worker). Chaque client de l'audience devient une
 /// demande d'envoi ordinaire : la politique revérifie consentement, désinscription, fréquence, quota et modèle. Clé
 /// d'idempotence par campagne et client : un lot rejoué ne crée rien deux fois. Renvoie vrai s'il reste des clients.
+/// Sans <c>marketing.campaigns</c> dans le plan, rien n'est envoyé : la campagne reste programmée (gelée).
 /// </summary>
 public sealed record ProcessCampaignCommand(Guid CampaignId) : ICommand<bool>;
 
@@ -186,7 +197,8 @@ public sealed class ProcessCampaignHandler(
         ArgumentNullException.ThrowIfNull(command);
         var tenant = workspace.CurrentTenant;
         var campaign = await campaigns.LoadAsync(tenant, command.CampaignId, cancellationToken);
-        if (!campaign.IsDue(clock.UtcNow) || !await tenants.AcceptsBusinessWritesAsync(tenant, cancellationToken))
+        if (!campaign.IsDue(clock.UtcNow) || !await tenants.AcceptsBusinessWritesAsync(tenant, cancellationToken)
+            || !await workspace.AllowsAsync(PlanFeatures.MarketingCampaigns, cancellationToken))
         {
             return false;
         }

@@ -3,13 +3,15 @@
 
 Passer par l'API garde les règles du domaine (validation, devise, droits), l'outbox et le journal d'audit.
 Rejouable : un plan actif de même nom, même devise et même intervalle n'est pas recréé ; avec --update, son prix
-et ses droits sont alignés sur le fichier.
+et ses droits sont alignés sur le fichier. Avec --archive-missing, les plans actifs absents du fichier sont archivés :
+ils ne sont plus vendus, mais les abonnements et options en cours les gardent (renouvellement et paiement compris).
 
 Usage :
     python3 scripts/seed-plans.py                      # crée ce qui manque
     python3 scripts/seed-plans.py --dry-run            # montre ce qui serait fait, n'écrit rien
     python3 scripts/seed-plans.py --update             # aligne aussi les plans existants
     python3 scripts/seed-plans.py --currency XOF       # une seule devise
+    python3 scripts/seed-plans.py --archive-missing    # archive aussi les plans actifs absents du fichier
 
 Mot de passe : variable SAASRESTAURANT_ADMIN_PASSWORD, sinon demandé au clavier (jamais affiché ni écrit).
 """
@@ -106,13 +108,14 @@ def main() -> int:
     parser.add_argument("--file", default=str(Path(__file__).with_name("plans") / "catalogue.json"))
     parser.add_argument("--currency", help="ne traiter qu'une devise (XOF, EUR...)")
     parser.add_argument("--update", action="store_true", help="aligner prix et droits des plans existants")
+    parser.add_argument("--archive-missing", action="store_true", help="archiver les plans actifs absents du fichier")
     parser.add_argument("--dry-run", action="store_true", help="afficher sans rien écrire")
     args = parser.parse_args()
 
     wanted = json.loads(Path(args.file).read_text(encoding="utf-8"))["plans"]
     if args.currency:
         wanted = [p for p in wanted if p["currencyCode"].upper() == args.currency.upper()]
-    if not wanted:
+    if not wanted and not args.archive_missing:
         print("Aucun plan à traiter.")
         return 0
 
@@ -126,7 +129,7 @@ def main() -> int:
     finally:
         password = ""
 
-    created = updated = unchanged = failed = 0
+    created = updated = unchanged = archived = failed = 0
     try:
         try:
             existing = api.call("GET", "/admin/billing/plans?activeOnly=true")
@@ -177,11 +180,28 @@ def main() -> int:
             except ApiError as error:
                 print(f"  ! échec        {label(plan)} : {error.code or error.status} {error}", file=sys.stderr)
                 failed += 1
+
+        if args.archive_missing:
+            # Seulement les plans de la devise traitée (--currency) ; le fichier fait foi pour le reste.
+            kept = {key(p) for p in wanted}
+            for plan in existing:
+                if key(plan) in kept or (args.currency and plan["currencyCode"].upper() != args.currency.upper()):
+                    continue
+                try:
+                    if args.dry_run:
+                        print(f"  - à archiver   {label(plan)}")
+                    else:
+                        api.call("POST", f'/admin/billing/plans/{plan["id"]}/archive')
+                        print(f"  - archivé      {label(plan)}")
+                    archived += 1
+                except ApiError as error:
+                    print(f"  ! échec        {label(plan)} : {error.code or error.status} {error}", file=sys.stderr)
+                    failed += 1
     finally:
         api.logout()
 
     mode = " (simulation, rien n'a été écrit)" if args.dry_run else ""
-    print(f"\n{created} créé(s), {updated} aligné(s), {unchanged} inchangé(s), {failed} échec(s){mode}.")
+    print(f"\n{created} créé(s), {updated} aligné(s), {unchanged} inchangé(s), {archived} archivé(s), {failed} échec(s){mode}.")
     return 1 if failed else 0
 
 

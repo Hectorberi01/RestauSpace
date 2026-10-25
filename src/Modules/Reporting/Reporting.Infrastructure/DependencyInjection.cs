@@ -32,6 +32,8 @@ public static class DependencyInjection
         // Hors requête (job, consommateur d'outbox), le tenant du scope est celui fixé par le traitement.
         services.TryAddScoped<BackgroundTenant>();
         services.TryAddScoped<ITenantContext>(provider => new FixedTenantContext(provider.GetRequiredService<BackgroundTenant>().Current));
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>(); // l'hôte branche le vrai contrôle
+        services.TryAddScoped<IReportingLocations, SingleReportingLocation>(); // remplacé par l'hôte
         services.AddDbContext<ReportingDbContext>(options => options.UseReportingNpgsql(connectionString));
         services.AddScoped<IReportDefinitionRepository, ReportDefinitionRepository>();
         services.AddScoped<IExportJobRepository, ExportJobRepository>();

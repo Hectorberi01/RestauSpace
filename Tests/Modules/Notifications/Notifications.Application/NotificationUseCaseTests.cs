@@ -56,7 +56,7 @@ public sealed class NotificationUseCaseTests
         Assert.Equal("awa@example.com", sent.Recipient.Address);
         Assert.Equal("Bonjour Awa, commande A-12 prête.", sent.Content.Body);
         Assert.Equal(NotificationsFixture.TestMail, notification.ProviderCode);
-        Assert.Equal(1, _fixture.UsageRows[(A, NotificationChannel.Email)]);
+        Assert.False(_fixture.UsageRows.ContainsKey((A, NotificationChannel.Email))); // compte du restaurant : non compté
     }
 
     [Fact]
@@ -370,13 +370,78 @@ public sealed class NotificationUseCaseTests
     [Fact]
     public async Task The_monthly_quota_is_respected_except_for_security_messages()
     {
-        var (customer, _) = EmailReady(A);
+        _fixture.PlatformConfigured(A, NotificationsFixture.TestMail, NotificationChannel.Email);
+        _fixture.Template(null, NotificationTypes.OrderReady, NotificationChannel.Email, "Commande {{order.number}} prête.", "Commande prête");
+        var customer = _fixture.Customer(A);
         _fixture.Limits[NotificationChannel.Email] = 1;
         _fixture.UsageRows[(A, NotificationChannel.Email)] = 1;
 
         var result = await SendOrderReadyAsync(customer);
 
         Assert.Equal(NotificationSkipReason.QuotaExceeded, result.Skipped);
+    }
+
+    [Fact]
+    public async Task The_quota_only_counts_and_limits_sends_through_the_platform_account()
+    {
+        var (customer, _) = EmailReady(A);
+        _fixture.Limits[NotificationChannel.Email] = 1;
+        _fixture.UsageRows[(A, NotificationChannel.Email)] = 5;
+
+        var result = await SendOrderReadyAsync(customer);
+        await DispatchAllAsync();
+
+        Assert.Null(result.Skipped);
+        Assert.Single(_fixture.Sent);
+        Assert.Equal(5, _fixture.UsageRows[(A, NotificationChannel.Email)]); // compte du restaurant : non compté
+    }
+
+    [Fact]
+    public async Task Beyond_the_quota_of_the_platform_account_the_own_account_of_the_restaurant_is_used()
+    {
+        _fixture.PlatformConfigured(A, NotificationsFixture.OtherMail, NotificationChannel.Email);
+        var (customer, _) = EmailReady(A);
+        _fixture.UsageRows[(A, NotificationChannel.Email)] = 0;
+
+        await SendOrderReadyAsync(customer);
+        await DispatchAllAsync();
+        Assert.Equal(NotificationsFixture.OtherMail, _fixture.NotificationRows.ElementAt(0).ProviderCode);
+        Assert.Equal(1, _fixture.UsageRows[(A, NotificationChannel.Email)]); // compte de la plateforme : compté
+
+        _fixture.Limits[NotificationChannel.Email] = 1;
+        var second = await _fixture.Send.HandleAsync(new SendNotificationCommand(
+            "order.ready", NotificationChannel.Email, customer.Value, Variables: new Dictionary<string, string> { ["order.number"] = "A-13" }));
+        await DispatchAllAsync();
+
+        Assert.Null(second.Skipped);
+        Assert.Equal(NotificationsFixture.TestMail, _fixture.NotificationRows.ElementAt(1).ProviderCode);
+        Assert.Equal(1, _fixture.UsageRows[(A, NotificationChannel.Email)]);
+    }
+
+    [Fact]
+    public async Task Without_own_account_in_the_plan_a_restaurant_account_is_neither_set_up_nor_used()
+    {
+        var (customer, configuration) = EmailReady(A);
+        var provider = _fixture.Provider(NotificationsFixture.TestSms, NotificationChannel.Sms);
+        _fixture.DeniedFeatures.Add(PlanFeatures.NotificationsOwnAccount);
+
+        var result = await SendOrderReadyAsync(customer);
+        var refused = new[]
+        {
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.CreateConfiguration.HandleAsync(
+                new CreateNotificationConfigurationCommand(provider.Id.Value, NotificationProviderMode.TenantManaged))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.SetCredentials.HandleAsync(
+                new SetConfigurationCredentialsCommand(configuration.Id.Value, new Dictionary<string, string> { ["api_key"] = "k" }))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.TestConfiguration.HandleAsync(
+                new TestNotificationConfigurationCommand(configuration.Id.Value, "chef@example.com"))),
+        };
+        await _fixture.DisableConfiguration.HandleAsync(new DisableNotificationConfigurationCommand(configuration.Id.Value));
+        var enable = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.EnableConfiguration.HandleAsync(
+            new EnableNotificationConfigurationCommand(configuration.Id.Value)));
+        await _fixture.CreateConfiguration.HandleAsync(new CreateNotificationConfigurationCommand(provider.Id.Value, NotificationProviderMode.PlatformManaged));
+
+        Assert.Equal(NotificationSkipReason.NoProvider, result.Skipped);
+        Assert.True(refused.Append(enable).All(error => error.Code == PlanFeatures.RequiredCode));
     }
 
     // ---- Idempotence

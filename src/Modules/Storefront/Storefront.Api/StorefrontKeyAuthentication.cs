@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SaasRestaurant.BuildingBlocks.Api;
+using Storefront.Application;
 using Storefront.Application.Abstractions;
 using Storefront.Application.Commands;
 using Storefront.Application.Queries;
@@ -174,6 +175,27 @@ internal sealed class HttpStorefrontClient(IHttpContextAccessor accessor, Storef
         && Guid.TryParse(accessor.HttpContext.User.FindFirst(claim)?.Value, out var id) && id != Guid.Empty
             ? id
             : null;
+}
+
+/// <summary>
+/// Après l'authentification par clé (le tenant est alors dans le contexte) : le plan doit permettre le canal de
+/// l'application, et la borne ne doit pas être gelée. Un refus est un 403 avec son code, pas un 401 : l'application
+/// cliente sait que sa clé est valide mais que l'option manque.
+/// </summary>
+internal static class StorefrontAccessFilter
+{
+    public static async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var http = context.HttpContext;
+        if (!Enum.TryParse<SalesAppKind>(http.User.FindFirst(StorefrontKeyAuthentication.ChannelClaim)?.Value, out var channel))
+        {
+            throw new ForbiddenException(StorefrontApplicationErrors.ClientRequired);
+        }
+
+        await http.RequestServices.GetRequiredService<ICommandHandler<EnsureStorefrontAccessCommand>>()
+            .HandleAsync(new EnsureStorefrontAccessCommand(channel), http.RequestAborted);
+        return await next(context);
+    }
 }
 
 /// <summary>Contrôle anti-robot avant le traitement d'une route sensible (commande, réservation, code de connexion).</summary>

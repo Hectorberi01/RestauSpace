@@ -8,6 +8,8 @@ import {
   type StoredValueCard, type StoredValueKind,
 } from '@/lib/marketing';
 import {useConsole} from '@/components/console';
+import {UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {IssuedCode} from '@/components/issued-code';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cx, useAction} from '@/components/ui';
 
@@ -162,6 +164,7 @@ export function GiftCards() {
   const [code, setCode] = useState('');
   const [notFound, setNotFound] = useState(false);
   const {data, error, reload} = useResource(signal => listStoredValueCards(kind, page, signal), [kind, page]);
+  const locked = usePlanFeatures().blocked(Feature.MarketingGiftCards);
 
   const lookup = () => run('lookup', async () => {
     setNotFound(false);
@@ -177,6 +180,7 @@ export function GiftCards() {
 
   return (
     <div className="space-y-4">
+      {locked && <UpgradePanel feature={Feature.MarketingGiftCards} title="Cartes cadeaux">Vendez des cartes cadeaux. Les cartes déjà vendues restent utilisables en caisse.</UpgradePanel>}
       <Card className="p-5">
         <div className="mb-4 flex flex-wrap items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-600" aria-hidden="true"><Gift className="size-5" /></span>
@@ -184,7 +188,7 @@ export function GiftCards() {
             <h2 className="font-semibold">Cartes cadeaux et avoirs</h2>
             <p className="text-sm text-ink-500">Acceptées en caisse comme moyen de paiement (« Carte cadeau ou avoir »). Un paiement remboursé revient sur la carte.</p>
           </div>
-          {can('loyalty.manage') && <Button onClick={() => setIssuing(true)}><Plus className="size-4" aria-hidden="true" />Émettre</Button>}
+          {can('loyalty.manage') && !locked && <Button onClick={() => setIssuing(true)}><Plus className="size-4" aria-hidden="true" />Émettre</Button>}
         </div>
         <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={event => {
           event.preventDefault();

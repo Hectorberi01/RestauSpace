@@ -51,7 +51,8 @@ public sealed record NotificationDecision(Notification? Notification, Notificati
 /// La politique d'envoi (§ 18) : un événement ou une demande ne crée une notification QUE si tout est réuni, dans cet
 /// ordre : pas déjà créée (idempotence), SMS/WhatsApp anonyme permis (pays, plafond horaire), préférences et consentement (transactionnel n'implique jamais marketing ; un
 /// message de sécurité passe toujours), template disponible (restaurant puis plateforme, puis langue par défaut), rendu
-/// complet, prestataire disponible, quota du mois. Un refus n'est pas une erreur : la raison est renvoyée.
+/// complet, prestataire disponible, quota du mois. Un refus n'est pas une erreur : la raison est renvoyée. Le quota ne
+/// vaut que pour le compte de la PLATEFORME : au-delà, un compte du restaurant est pris s'il y en a un.
 /// </summary>
 public sealed class NotificationPolicy(
     INotificationRepository notifications,
@@ -124,17 +125,22 @@ public sealed class NotificationPolicy(
             return NotificationDecision.Skip(NotificationSkipReason.TemplateIncomplete);
         }
 
-        var route = (await routing.CandidatesAsync(tenant, channel, intent.Location, content.Body.Length, cancellationToken)).FirstOrDefault();
+        var routes = await routing.CandidatesAsync(tenant, channel, intent.Location, content.Body.Length, cancellationToken);
+        var route = routes.FirstOrDefault();
         if (route is null)
         {
             return NotificationDecision.Skip(NotificationSkipReason.NoProvider);
         }
 
-        if (tenant is { } quotaTenant && channel != NotificationChannel.InApp && !type.IsEssential
+        if (tenant is { } quotaTenant && channel != NotificationChannel.InApp && !type.IsEssential && IsPlatformAccount(route)
             && await entitlements.MonthlyLimitAsync(quotaTenant, channel, cancellationToken) is { } limit
             && await usage.CountAsync(quotaTenant, channel, clock.UtcNow, cancellationToken) >= limit)
         {
-            return NotificationDecision.Skip(NotificationSkipReason.QuotaExceeded);
+            route = routes.FirstOrDefault(candidate => !IsPlatformAccount(candidate));
+            if (route is null)
+            {
+                return NotificationDecision.Skip(NotificationSkipReason.QuotaExceeded);
+            }
         }
 
         var notification = tenant is { } owner
@@ -146,6 +152,10 @@ public sealed class NotificationPolicy(
                 intent.ScheduledAtUtc, template.Id);
         return new NotificationDecision(notification, null);
     }
+
+    /// <summary>Envoi par le compte de la plateforme (in-app compris) : le seul compté et limité par les quotas.</summary>
+    public static bool IsPlatformAccount(NotificationRoute route) =>
+        route.Configuration is not { Mode: NotificationProviderMode.TenantManaged };
 
     /// <summary>Délai avant qu'un envoi anonyme sorte du plafond horaire du restaurant.</summary>
     public async Task<TimeSpan> AnonymousRetryAfterAsync(TenantId tenant, NotificationTypeDefinition type, CancellationToken cancellationToken)

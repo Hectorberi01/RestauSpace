@@ -12,6 +12,8 @@ import {useResource} from '@/lib/hooks';
 import {ConnectionStatus} from './connection';
 import {GlobalSearch} from './search';
 import {useConsole} from './console';
+import {PlanBadge, usePlanFeatures} from './plan';
+import {Feature} from '@/lib/plan';
 import {cx, Select} from './ui';
 
 interface NavItem {
@@ -19,6 +21,8 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: 'orders';
+  /** Badge de plan quand aucun de ces droits n'est inclus. */
+  features?: string[];
 }
 
 const main: NavItem[] = [
@@ -45,7 +49,7 @@ const restaurant: NavItem[] = [
   {href: '/abonnement', label: 'Abonnement', icon: CreditCard},
   {href: '/parametres', label: 'Paramètres', icon: Settings},
   {href: '/journal', label: 'Journal d’activité', icon: ScrollText},
-  {href: '/integrations', label: 'Intégrations', icon: Plug},
+  {href: '/integrations', label: 'Intégrations', icon: Plug, features: [Feature.IntegrationsApi, Feature.IntegrationsWebhooks]},
   {href: '/profil', label: 'Mon profil', icon: UserRound},
 ];
 
@@ -75,24 +79,25 @@ interface Subscription {
 
 function PlanCard({collapsed}: {collapsed: boolean}) {
   const {can} = useConsole();
+  // Rechargée avec les droits du plan, après chaque changement d'abonnement.
+  const {version} = usePlanFeatures();
   const {data} = useResource(
     signal => (can('billing.view') ? api<Subscription>('/billing/subscription', {signal}).catch(() => null) : Promise.resolve(null)),
-    [],
+    [version],
   );
   if (collapsed || !data) return null;
   const trial = data.subscription?.status === 'Trialing';
   const paying = !!data.plan && data.plan.price > 0;
+  const price = data.plan && paying ? `${money(data.plan.price, data.plan.currencyCode)} / ${data.plan.billingInterval === 'Yearly' ? 'an' : 'mois'}` : null;
   const trialEnd = trial && data.subscription ? new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'short'}).format(new Date(data.subscription.currentPeriodEndUtc)) : null;
   return (
     <Link href={trialEnd && paying && can('billing.manage') ? '/abonnement?payer=1' : '/abonnement'} className="mx-3 mb-3 block rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4 transition hover:border-amber-200">
       <div className="flex items-center gap-3">
         <span className="grid size-10 place-items-center rounded-xl bg-white text-amber-500 shadow-sm"><Crown className="size-5" aria-hidden="true" /></span>
         <div className="min-w-0">
-          <p className="text-xs text-ink-500">{trialEnd ? (paying ? `Essai jusqu’au ${trialEnd}` : 'Plan gratuit') : 'Plan actuel'}</p>
-          <p className="truncate font-bold text-ink-900">{data.plan?.name ?? 'Sans abonnement'}</p>
-          {data.plan && data.plan.price > 0 && (
-            <p className="text-sm text-ink-600">{money(data.plan.price, data.plan.currencyCode)} / {data.plan.billingInterval === 'Yearly' ? 'an' : 'mois'}</p>
-          )}
+          <p className="text-xs text-ink-500">{trialEnd ? `Essai gratuit jusqu’au ${trialEnd}` : data.plan ? 'Plan actuel' : 'Abonnement'}</p>
+          <p className="truncate font-bold text-ink-900">{data.plan?.name ?? 'Choisir un plan'}</p>
+          {price && <p className="text-sm text-ink-600">{trialEnd ? `puis ${price}` : price}</p>}
         </div>
       </div>
       {trialEnd && paying && can('billing.manage') && (
@@ -105,11 +110,13 @@ function PlanCard({collapsed}: {collapsed: boolean}) {
 function Sidebar({collapsed, onToggle, onNavigate, ordersWaiting}: {collapsed: boolean; onToggle?: () => void; onNavigate?: () => void; ordersWaiting: number}) {
   const pathname = usePathname();
   const {tenant, locations, location} = useConsole();
+  const {blocked} = usePlanFeatures();
   const name = tenant.branding.displayName || tenant.name;
 
   const link = (item: NavItem) => {
     const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
     const count = item.badge === 'orders' ? ordersWaiting : 0;
+    const locked = !!item.features && item.features.every(blocked);
     return (
       <Link
         key={item.href}
@@ -126,6 +133,7 @@ function Sidebar({collapsed, onToggle, onNavigate, ordersWaiting}: {collapsed: b
         )}>
         <item.icon className={cx('size-[1.15rem] shrink-0', active ? 'text-brand-600' : 'text-ink-500')} aria-hidden="true" />
         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+        {!collapsed && locked && <PlanBadge feature={item.features![0]} />}
         {count > 0 && (
           <span className={cx('grid min-w-5 place-items-center rounded-full bg-brand-100 px-1.5 text-[11px] font-bold text-brand-700', collapsed && 'absolute -top-1 -right-1')}>
             {count > 99 ? '99+' : count}
@@ -195,7 +203,7 @@ function LocationPicker() {
         {locations.map(item => (
           <option key={item.id} value={item.id}>
             {item.name}
-            {item.status !== 'Active' ? ' (fermé)' : ''}
+            {item.isFrozen ? ' (gelé)' : item.status !== 'Active' ? ' (fermé)' : ''}
           </option>
         ))}
       </Select>

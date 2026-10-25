@@ -32,7 +32,7 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 
 | Code | Statut | Cause | Message proposé |
 |---|---|---|---|
-| `storefront.checkout.unavailable` | 422 | Option du canal (site, application, borne) non souscrite par le restaurant | Le restaurant ne prend pas de commandes en ligne pour le moment. |
+| `storefront.checkout.unavailable` | 422 | Canal (site, application, borne) absent de l'abonnement du restaurant, plan ou option | Le restaurant ne prend pas de commandes en ligne pour le moment. |
 | `storefront.checkout.paused` | 422 | Commande en ligne en pause dans l'établissement | Les commandes en ligne sont en pause dans cet établissement. |
 | `storefront.checkout.closed` | 422 | Établissement fermé (commande « dès que possible ») | L’établissement est fermé : choisissez une heure de retrait. |
 | `storefront.checkout.closed_at_schedule` | 422 | Fermé à l'heure choisie | L’établissement est fermé à l’heure choisie. |
@@ -50,7 +50,8 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 | `storefront.checkout.delivery_zone_required` | 422 | Livraison sans zone | Choisissez votre zone de livraison. |
 | `storefront.checkout.delivery_zone_unavailable` | 422 | Zone inconnue ou inactive | L’établissement ne livre plus cette zone. |
 | `storefront.checkout.delivery_address_required` | 422 | Livraison sans adresse ou sans téléphone | Indiquez votre nom, votre téléphone et votre adresse de livraison. |
-| `storefront.checkout.coupon_invalid` | 422 | Code promo refusé (sans motif plus précis) | Ce code promo ne peut pas être utilisé. |
+| `storefront.checkout.coupon_invalid` | 422 | Code promo refusé (même code pour tout motif) | Ce code promo ne peut pas être utilisé. |
+| `storefront.checkout.too_many_pending_payments` | 409 | Trop de commandes en attente de paiement en ligne (même adresse IP ou même client) | Plusieurs commandes attendent déjà leur paiement : payez-les ou annulez-les avant d’en passer une autre. |
 | `storefront.checkout.reward_unavailable` | 422 | Récompense inconnue, inactive ou programme désactivé | Cette récompense n’est plus disponible. |
 | `storefront.checkout.reward_not_affordable` | 422 | Pas assez de points | Vous n’avez pas assez de points pour cette récompense. |
 | `storefront.order.not_found` | 404 | Jeton de suivi invalide ou d'un autre restaurant | Cette commande est introuvable. |
@@ -60,6 +61,7 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 | `storefront.table.out_of_service` | 422 | Table hors service | Cette table n’est pas en service pour le moment. |
 | `storefront.table.not_scheduled` | 422 | Commande à table avec une heure programmée | Une commande passée à table est servie tout de suite. |
 | `orders.plan.monthly_limit_reached` | 422 | Quota mensuel de commandes de l'abonnement atteint | Le restaurant ne prend plus de commandes en ligne ce mois-ci. |
+| `common.plan.over_limit` | 403 | Établissement gelé : au-delà de la limite du plan du restaurant | Cet établissement ne prend pas de commandes ni de réservations en ligne pour le moment. |
 | `orders.order.schedule_too_far` | 422 | Heure programmée à plus de 14 jours | Choisissez une heure dans les 14 prochains jours. |
 | `orders.product.not_found` | 404 | Produit inconnu | Un produit du panier n’est plus disponible. |
 | `catalog.product.not_sellable` | 422 | Produit épuisé ou retiré | Un produit du panier n’est plus disponible. |
@@ -146,19 +148,10 @@ export function errorText(code: string | null, status: number, lang: 'fr' | 'en'
 
 ## Codes promo
 
-Un code promo refusé n'est pas une erreur au devis : `coupon.isValid` vaut `false` et `coupon.refusalCode` donne le
-motif. À la commande, le même motif est renvoyé comme `code` d'erreur.
-
-| `refusalCode` | Message proposé |
-|---|---|
-| `promotions.coupon.not_found`, `promotions.coupon_code.*` | Ce code promo n’existe pas. |
-| `promotions.coupon.exhausted`, `promotions.promotion.usage_limit_reached` | Ce code promo a déjà été utilisé autant de fois que prévu. |
-| `promotions.discount.minimum_order_amount_not_reached` | Le montant minimum de cette offre n’est pas atteint. |
-| `promotions.discount.order_type_not_eligible` | Cette offre ne vaut pas pour ce mode (sur place, à emporter ou livraison). |
-| `promotions.discount.location_not_eligible` | Cette offre ne vaut pas dans cet établissement. |
-| `promotions.discount.no_eligible_amount` | Aucun produit de votre panier n’est concerné par cette offre. |
-| `promotions.discount.outside_validity_period`, `promotions.promotion.expired`, `promotions.promotion.not_active`, `promotions.coupon.disabled`, `promotions.coupon.promotion_expired` | Cette offre n’est plus valable. |
-| autre `promotions.*` | Ce code promo ne peut pas être utilisé. |
+Un code promo refusé n'est pas une erreur au devis : `coupon.isValid` vaut `false` et `coupon.refusalCode` vaut
+toujours `storefront.checkout.coupon_invalid`, quel que soit le motif (inconnu, épuisé, expiré, non applicable) : on ne
+laisse pas deviner les codes. À la commande, le même code est renvoyé comme erreur (422). Message proposé : « Ce code
+promo ne peut pas être utilisé. »
 
 ## API d'intégration
 

@@ -171,6 +171,37 @@ public sealed class GetMySubscriptionHandler(BillingWorkspace workspace, IClock 
 }
 
 /// <summary>
+/// Restaurant : ses droits effectifs (plan et options) sur tous les codes connus. Sans abonnement vivant : tout désactivé.
+/// Les compteurs (<see cref="MyFeaturesDto.Usage"/>) ne sont pas encore fournis : null.
+/// </summary>
+public sealed record GetMyFeaturesQuery : IQuery<MyFeaturesDto>;
+
+public sealed class GetMyFeaturesHandler(BillingWorkspace workspace) : IQueryHandler<GetMyFeaturesQuery, MyFeaturesDto>
+{
+    public async Task<MyFeaturesDto> HandleAsync(GetMyFeaturesQuery query, CancellationToken cancellationToken = default)
+    {
+        var tenant = workspace.CurrentTenant;
+        var subscription = await workspace.Subscriptions.FindLiveAsync(tenant, cancellationToken);
+        if (subscription is null)
+        {
+            return new MyFeaturesDto(null, null, null, BillingFeatures.All.Select(code => new PlanFeatureDto(code, false, null)).ToList(), null);
+        }
+
+        var plan = await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken);
+        var addOns = await workspace.ActiveAddOnPlansAsync(tenant, cancellationToken);
+        var features = BillingFeatures.All
+            .Select(FeatureCode.Create)
+            .Select(feature => TenantAddOn.Combine(
+                plan?.EntitlementFor(feature) ?? Entitlement.Disabled(feature),
+                addOns.Select(item => (item.Plan.EntitlementFor(feature), item.AddOn.Quantity))))
+            .Select(entitlement => new PlanFeatureDto(entitlement.FeatureCode.Value, entitlement.Enabled, entitlement.Limit))
+            .ToList();
+        var trialEnds = subscription.Status == SubscriptionStatus.Trialing ? subscription.CurrentPeriod.EndUtc : (DateTimeOffset?)null;
+        return new MyFeaturesDto(plan?.Name, subscription.Status, trialEnds, features, null);
+    }
+}
+
+/// <summary>
 /// Pour l'hôte (au nom d'un autre module) : le droit du restaurant du contexte pour une fonctionnalité. Sans abonnement
 /// vivant ou si le plan ne la mentionne pas : désactivée.
 /// </summary>

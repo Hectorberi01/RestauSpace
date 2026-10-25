@@ -16,7 +16,8 @@ public sealed class NotificationsWorkspace(
     INotificationTemplateRepository templates,
     INotificationPreferenceRepository preferences,
     INotificationRepository notifications,
-    INotificationsUnitOfWork unitOfWork)
+    INotificationsUnitOfWork unitOfWork,
+    IPlanFeatureGate plan)
 {
     public INotificationProviderRepository Providers => providers;
 
@@ -33,6 +34,20 @@ public sealed class NotificationsWorkspace(
 
     /// <summary>Le tenant du contexte, ou null pour un traitement de la plateforme.</summary>
     public TenantId? CurrentTenantOrPlatform => tenantContext.CurrentTenantId;
+
+    /// <summary>Le plan permet-il cette fonctionnalité au tenant courant ?</summary>
+    public Task<bool> AllowsAsync(string feature, CancellationToken cancellationToken) =>
+        plan.AllowsAsync(CurrentTenant, feature, cancellationToken);
+
+    /// <summary>Fonctionnalité du plan exigée (403 <c>common.plan.feature_required</c> sinon).</summary>
+    public Task RequireFeatureAsync(string feature, CancellationToken cancellationToken) =>
+        plan.RequireAsync(CurrentTenant, feature, cancellationToken);
+
+    /// <summary>Le compte d'envoi propre (mode restaurant) exige <c>notifications.byok</c>.</summary>
+    public Task RequireModeAllowedAsync(NotificationProviderMode mode, CancellationToken cancellationToken) =>
+        mode == NotificationProviderMode.TenantManaged
+            ? RequireFeatureAsync(PlanFeatures.NotificationsOwnAccount, cancellationToken)
+            : Task.CompletedTask;
 
     public async Task RequireWritableTenantAsync(CancellationToken cancellationToken)
     {

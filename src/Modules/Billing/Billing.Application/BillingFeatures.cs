@@ -32,7 +32,32 @@ public static class BillingFeatures
     public const string StorefrontWeb = "storefront.web";
     public const string StorefrontMobileApp = "storefront.mobile_app";
     public const string StorefrontKiosk = "storefront.kiosk";
-    public const string StorefrontApi = "storefront.api";
+    public const string StorefrontApi = PlanFeatures.IntegrationsApi;
+
+    /// <summary>Le plan permet d'acheter des établissements supplémentaires (option).</summary>
+    public const string LocationsExtra = "locations.extra";
+
+    // Fonctionnalités contrôlées à l'usage par les modules (voir PlanFeatures).
+    public const string CustomersAdvanced = PlanFeatures.CustomersAdvanced;
+    public const string Loyalty = PlanFeatures.Loyalty;
+    public const string MarketingCampaigns = PlanFeatures.MarketingCampaigns;
+    public const string MarketingGiftCards = PlanFeatures.MarketingGiftCards;
+    public const string Automations = PlanFeatures.Automations;
+    public const string ReportingAdvanced = PlanFeatures.ReportingAdvanced;
+    public const string ReportingConsolidated = PlanFeatures.ReportingConsolidated;
+    public const string IntegrationsWebhooks = PlanFeatures.IntegrationsWebhooks;
+    public const string NotificationsOwnAccount = PlanFeatures.NotificationsOwnAccount;
+    public const string SupportPriority = PlanFeatures.SupportPriority;
+
+    /// <summary>Tous les codes connus, dans l'ordre d'affichage de la console.</summary>
+    public static IReadOnlyList<string> All { get; } =
+    [
+        Locations, LocationsExtra, StaffMembers, OrdersMonthly,
+        NotificationsEmailMonthly, NotificationsSmsMonthly, NotificationsWhatsAppMonthly, NotificationsPushMonthly, NotificationsInAppMonthly,
+        NotificationsOwnAccount, Loyalty, CustomersAdvanced, MarketingCampaigns, MarketingGiftCards, Automations,
+        ReportingAdvanced, ReportingConsolidated, StorefrontWeb, StorefrontMobileApp, StorefrontKiosk, StorefrontApi, IntegrationsWebhooks,
+        SupportPriority,
+    ];
 
     /// <summary>Le code de la fonctionnalité « notifications du mois » d'un canal (nom de l'enum en minuscules).</summary>
     public static string NotificationsMonthly(string channel) =>

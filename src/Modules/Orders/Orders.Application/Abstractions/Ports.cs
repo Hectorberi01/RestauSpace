@@ -105,6 +105,9 @@ public sealed record OrderTenant(Currency Currency, PriceTaxMode PriceTaxMode, b
 public interface IOrderLocations
 {
     Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default);
+
+    /// <summary>Établissement gelé (au-delà de la limite du plan) : aucune nouvelle commande. Sans hôte branché : jamais.</summary>
+    Task<bool> IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }
 
 /// <summary>Une session de table du tenant courant, fournie par l'hôte depuis Floor ; null si elle n'existe pas.</summary>

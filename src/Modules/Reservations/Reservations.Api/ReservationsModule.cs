@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Reservations.Application;
 using Reservations.Infrastructure;
 using Reservations.Infrastructure.Persistence;
@@ -19,6 +20,7 @@ public static class ReservationsModule
     {
         services.AddReservationsInfrastructure(connectionString, configure);
         services.AddScoped<ReservationsWorkspace>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddHandlersFrom(typeof(ReservationsApplicationErrors).Assembly);
         return services;
     }

@@ -16,7 +16,8 @@ public sealed class LoyaltyWorkspace(
     ILoyaltyLedgerLookup ledger,
     ILoyaltyAccountUniquenessChecker uniqueness,
     ILoyaltyProgramStore program,
-    ILoyaltyUnitOfWork unitOfWork)
+    ILoyaltyUnitOfWork unitOfWork,
+    IPlanFeatureGate plan)
 {
     public const int MaxTake = 100;
 
@@ -34,6 +35,14 @@ public sealed class LoyaltyWorkspace(
 
     public Task<bool> AcceptsWritesAsync(CancellationToken cancellationToken) =>
         tenants.AcceptsBusinessWritesAsync(CurrentTenant, cancellationToken);
+
+    /// <summary>Le plan permet-il cette fonctionnalité au tenant courant ?</summary>
+    public Task<bool> AllowsAsync(string feature, CancellationToken cancellationToken) =>
+        plan.AllowsAsync(CurrentTenant, feature, cancellationToken);
+
+    /// <summary>Fonctionnalité du plan exigée (403 <c>common.plan.feature_required</c> sinon).</summary>
+    public Task RequireFeatureAsync(string feature, CancellationToken cancellationToken) =>
+        plan.RequireAsync(CurrentTenant, feature, cancellationToken);
 
     public async Task RequireWritableTenantAsync(CancellationToken cancellationToken)
     {

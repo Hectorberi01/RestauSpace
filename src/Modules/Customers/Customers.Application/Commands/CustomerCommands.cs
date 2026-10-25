@@ -28,6 +28,12 @@ public sealed class CreateCustomerHandler(CustomersWorkspace workspace, IClock c
     public async Task<Guid> HandleAsync(CreateCustomerCommand command, CancellationToken cancellationToken = default)
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        if (command.Tags is { Count: > 0 })
+        {
+            // Étiquettes : gestion avancée des clients.
+            await workspace.RequireFeatureAsync(PlanFeatures.CustomersAdvanced, cancellationToken);
+        }
+
         var tenant = workspace.CurrentTenant;
         var policy = await workspace.Settings.GetContactPolicyAsync(tenant, cancellationToken);
 
@@ -99,10 +105,11 @@ public sealed record AddCustomerTagCommand(Guid CustomerId, string? Tag) : IComm
 
 public sealed class AddCustomerTagHandler(CustomersWorkspace workspace) : ICommandHandler<AddCustomerTagCommand>
 {
-    public Task HandleAsync(AddCustomerTagCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(AddCustomerTagCommand command, CancellationToken cancellationToken = default)
     {
         var tag = CustomerTag.Create(command.Tag);
-        return workspace.EditCustomerAsync(command.CustomerId, customer => customer.AddTag(tag), cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.CustomersAdvanced, cancellationToken);
+        await workspace.EditCustomerAsync(command.CustomerId, customer => customer.AddTag(tag), cancellationToken);
     }
 }
 
@@ -110,10 +117,11 @@ public sealed record RemoveCustomerTagCommand(Guid CustomerId, string? Tag) : IC
 
 public sealed class RemoveCustomerTagHandler(CustomersWorkspace workspace) : ICommandHandler<RemoveCustomerTagCommand>
 {
-    public Task HandleAsync(RemoveCustomerTagCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(RemoveCustomerTagCommand command, CancellationToken cancellationToken = default)
     {
         var tag = CustomerTag.Create(command.Tag);
-        return workspace.EditCustomerAsync(command.CustomerId, customer => customer.RemoveTag(tag), cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.CustomersAdvanced, cancellationToken);
+        await workspace.EditCustomerAsync(command.CustomerId, customer => customer.RemoveTag(tag), cancellationToken);
     }
 }
 

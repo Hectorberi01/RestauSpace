@@ -3,6 +3,7 @@ using Locations.Infrastructure;
 using Locations.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SaasRestaurant.BuildingBlocks.Api;
 
 namespace Locations.Api;
@@ -17,6 +18,8 @@ public static class LocationsModule
     {
         services.AddLocationsInfrastructure(connectionString);
         services.AddScoped<LocationEditor>();
+        services.AddScoped<LocationFreeze>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddHandlersFrom(typeof(LocationsApplicationErrors).Assembly);
         return services;
     }

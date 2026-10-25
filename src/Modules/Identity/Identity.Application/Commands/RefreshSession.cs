@@ -93,6 +93,11 @@ public sealed class RefreshSessionHandler(
                 throw new ForbiddenException(IdentityApplicationErrors.TenantAccessDenied);
             }
 
+            if (await memberships.IsFrozenAsync(user.Id, TenantId.From(requested), cancellationToken))
+            {
+                throw PlanFeatures.OverLimit("staff");
+            }
+
             tenantId = TenantId.From(requested);
         }
 

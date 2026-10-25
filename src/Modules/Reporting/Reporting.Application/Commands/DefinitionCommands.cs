@@ -72,7 +72,8 @@ public sealed class ChangeReportFiltersHandler(ReportingWorkspace workspace, ICl
 
 /// <summary>
 /// Planifie l'envoi d'un rapport par e-mail. Heure LOCALE (« HH:mm ») dans le fuseau du restaurant ; l'envoi couvre la
-/// veille, les 7 derniers jours ou le mois précédent. L'export est fait au nom de la personne qui planifie.
+/// veille, les 7 derniers jours ou le mois précédent. L'export est fait au nom de la personne qui planifie. Exige
+/// <c>automations</c>.
 /// </summary>
 public sealed record ScheduleReportCommand(
     Guid DefinitionId,
@@ -89,11 +90,13 @@ public sealed class ScheduleReportHandler(ReportingWorkspace workspace, IClock c
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var user = workspace.RequireRequester();
+        await workspace.RequireFeatureAsync(PlanFeatures.Automations, cancellationToken);
         DomainException.ThrowIf(
             !TimeOnly.TryParseExact(command.LocalTime, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var localTime),
             ReportingApplicationErrors.TimeOfDayInvalid);
 
         var definition = await workspace.LoadDefinitionAsync(command.DefinitionId, cancellationToken);
+        await workspace.RequireConsolidatedAllowedAsync(definition.Filters.Items, cancellationToken);
         var schedule = ReportSchedule.Create(
             command.Frequency,
             command.DayOfWeek,

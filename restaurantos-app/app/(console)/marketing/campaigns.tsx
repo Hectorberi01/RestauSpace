@@ -12,6 +12,8 @@ import {
   channelLabel, customerChannels, effectiveTemplate, listTemplates, loadMessageTypes, render, sampleValues, variableLabel, type MessageChannel,
 } from '@/lib/messages';
 import {useConsole} from '@/components/console';
+import {PlanBadge, UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Tabs, Textarea, cx, useAction} from '@/components/ui';
 
 /** Date et heure locales pour un champ datetime-local. */
@@ -152,6 +154,8 @@ function CampaignDialog({campaign, open, onClose, onDone}: {campaign: Campaign |
 
 function ScheduleDialog({campaign, onClose, onDone}: {campaign: Campaign | null; onClose: () => void; onDone: () => Promise<void>}) {
   const {busy, run} = useAction();
+  const {blocked} = usePlanFeatures();
+  const later = !blocked(Feature.Automations);
   const [mode, setMode] = useState<'now' | 'later'>('now');
   const [at, setAt] = useState('');
   useEffect(() => {
@@ -175,7 +179,7 @@ function ScheduleDialog({campaign, onClose, onDone}: {campaign: Campaign | null;
     }>
       <div className="space-y-3 text-sm">
         <label className="flex items-center gap-2"><input type="radio" name="when" className="size-4 accent-brand-600" checked={mode === 'now'} onChange={() => setMode('now')} />Maintenant</label>
-        <label className="flex items-center gap-2"><input type="radio" name="when" className="size-4 accent-brand-600" checked={mode === 'later'} onChange={() => setMode('later')} />Plus tard</label>
+        <label className={cx('flex items-center gap-2', !later && 'text-ink-400')}><input type="radio" name="when" className="size-4 accent-brand-600" disabled={!later} checked={mode === 'later'} onChange={() => setMode('later')} />Plus tard<PlanBadge feature={Feature.Automations} /></label>
         {mode === 'later' && <Field label="Date et heure"><Input type="datetime-local" value={at} onChange={event => setAt(event.target.value)} /></Field>}
         <p className="text-ink-500">Chaque client reçoit le message une seule fois. Ceux qui ont retiré leur accord ou reçu un message marketing récemment sont écartés.</p>
       </div>
@@ -227,7 +231,10 @@ export function Campaigns() {
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [open, setOpen] = useState(false);
   const [launching, setLaunching] = useState<Campaign | null>(null);
-  const send = can('notifications.send');
+  const {blocked} = usePlanFeatures();
+  const locked = blocked(Feature.MarketingCampaigns);
+  // Sans le droit : campagnes visibles, plus de création ni d'envoi.
+  const send = can('notifications.send') && !locked;
   const active = useMemo(() => (data ?? []).some(campaign => campaign.status === 'Sending' || campaign.status === 'Scheduled'), [data]);
   useEffect(() => {
     if (!active) return;
@@ -244,6 +251,7 @@ export function Campaigns() {
 
   return (
     <div className="space-y-4">
+      {locked && <UpgradePanel feature={Feature.MarketingCampaigns} title="Campagnes marketing">Envoyez des messages groupés à vos clients par WhatsApp, SMS ou e-mail.{data.length > 0 ? ' Vos campagnes restent consultables ; celles programmées ne partent plus.' : ''}</UpgradePanel>}
       <Rules />
       {several && (
         <Tabs label="Campagnes" value={scope} onChange={setScope} items={[

@@ -23,12 +23,16 @@ internal sealed class ReservationTenantsFromTenants(CachedTenants tenants) : IRe
             : throw new NotFoundException(Reservations.Application.ReservationsApplicationErrors.LocationNotFound);
 }
 
-/// <summary>Reservations -> Locations : l'établissement (opérationnel ?) et ses horaires d'ouverture.</summary>
+/// <summary>Reservations -> Locations : l'établissement (opérationnel ? gelé ?) et ses horaires d'ouverture.</summary>
 internal sealed class ReservationLocationsFromLocations(
     ITenantContext tenantContext,
     IQueryHandler<GetLocationByIdQuery, LocationDto> locations,
-    IQueryHandler<IsLocationOpenDuringQuery, bool> openDuring) : IReservationLocations
+    IQueryHandler<IsLocationOpenDuringQuery, bool> openDuring,
+    IQueryHandler<IsLocationFrozenQuery, bool> frozen) : IReservationLocations
 {
+    public async Task<bool> IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) =>
+        tenantContext.CurrentTenantId == tenantId && await frozen.HandleAsync(new IsLocationFrozenQuery(locationId.Value), cancellationToken);
+
     public async Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default)
     {
         if (tenantContext.CurrentTenantId != tenantId)

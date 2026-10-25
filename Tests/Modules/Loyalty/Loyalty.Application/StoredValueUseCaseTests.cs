@@ -143,4 +143,19 @@ public class StoredValueUseCaseTests
 
         public void Add(StoredValueCard card) => All.Add(card);
     }
+
+    [Fact]
+    public async Task Without_gift_cards_in_the_plan_no_card_is_sold_but_a_sold_card_and_store_credit_still_work()
+    {
+        var sold = await IssueAsync(10_000m);
+        _fixture.DeniedFeatures.Add(PlanFeatures.MarketingGiftCards);
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(() => IssueAsync());
+        var redeemed = await Redeem.HandleAsync(new RedeemStoredValueCommand(sold.Code, 4_000m, "XOF", "pay:1"));
+        await Issue.HandleAsync(new IssueStoredValueCardCommand(StoredValueKind.StoreCredit, 1_000m, "XOF"));
+
+        Assert.Equal(PlanFeatures.RequiredCode, refused.Code);
+        Assert.Equal(6_000m, redeemed.BalanceAfter);
+        Assert.Equal(2, _cards.All.Count);
+    }
 }

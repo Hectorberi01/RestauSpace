@@ -155,4 +155,119 @@ public sealed class AddOnSubscriptionTests
             [(_fixture.TenantA.Value, "Site web", 1), (_fixture.TenantB.Value, "Borne", 3)],
             all.Select(addOn => (addOn.TenantId, addOn.AddOn.Name, addOn.Quantity)).OrderBy(item => item.Item2 == "Borne"));
     }
+
+    private Task<Guid> ExtraLocationAsync() =>
+        AddOnAsync("Établissement supplémentaire", 35m, BillingInterval.Monthly, new EntitlementInput(BillingFeatures.Locations, true, 1));
+
+    private async Task TrialOnAsync(params EntitlementInput[] entitlements) =>
+        await _fixture.Start.HandleAsync(new StartSubscriptionCommand(await _fixture.PlanAsync(entitlements: entitlements)));
+
+    [Fact]
+    public async Task An_extra_location_needs_a_plan_that_allows_it()
+    {
+        await TrialOnAsync(new EntitlementInput(BillingFeatures.Locations, true, 1), new EntitlementInput(BillingFeatures.LocationsExtra, false));
+        var extra = await ExtraLocationAsync();
+
+        var refused = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(extra)));
+
+        Assert.Equal(BillingApplicationErrors.AddOnNotAvailableOnPlan, refused.Error);
+        Assert.Empty(_fixture.AddOns);
+    }
+
+    [Fact]
+    public async Task An_extra_location_adds_to_the_plan_limit_when_the_plan_allows_it()
+    {
+        await TrialOnAsync(new EntitlementInput(BillingFeatures.Locations, true, 2), new EntitlementInput(BillingFeatures.LocationsExtra, true));
+
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await ExtraLocationAsync(), 2));
+
+        Assert.Equal(4, (await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.Locations))).Limit);
+    }
+
+    [Fact]
+    public async Task An_add_on_already_included_in_the_plan_is_refused()
+    {
+        await TrialOnAsync(
+            new EntitlementInput(BillingFeatures.StorefrontWeb, true),
+            new EntitlementInput(BillingFeatures.StorefrontApi, true),
+            new EntitlementInput(BillingFeatures.IntegrationsWebhooks, true));
+        var api = await AddOnAsync(
+            "API et webhooks", 39m, BillingInterval.Monthly,
+            new EntitlementInput(BillingFeatures.StorefrontApi, true), new EntitlementInput(BillingFeatures.IntegrationsWebhooks, true));
+        var web = await SiteAsync();
+
+        var site = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(web)));
+        var both = await Assert.ThrowsAsync<DomainException>(() => _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(api)));
+
+        Assert.Equal(BillingApplicationErrors.AddOnAlreadyIncluded, site.Error);
+        Assert.Equal(BillingApplicationErrors.AddOnAlreadyIncluded, both.Error);
+    }
+
+    [Fact]
+    public async Task An_add_on_partly_included_or_adding_to_a_limit_is_accepted()
+    {
+        await TrialOnAsync(new EntitlementInput(BillingFeatures.StorefrontApi, true), new EntitlementInput(BillingFeatures.StorefrontKiosk, true, 2));
+        var api = await AddOnAsync(
+            "API et webhooks", 39m, BillingInterval.Monthly,
+            new EntitlementInput(BillingFeatures.StorefrontApi, true), new EntitlementInput(BillingFeatures.IntegrationsWebhooks, true));
+
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(api));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await KioskAsync()));
+
+        Assert.True((await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.IntegrationsWebhooks))).Enabled);
+        Assert.Equal(3, (await _fixture.GetLimit.HandleAsync(new GetFeatureLimitQuery(BillingFeatures.StorefrontKiosk))).Limit);
+    }
+
+    [Fact]
+    public async Task The_platform_follows_the_same_add_on_rules()
+    {
+        await TrialOnAsync(new EntitlementInput(BillingFeatures.Locations, true, 1), new EntitlementInput(BillingFeatures.StorefrontWeb, true));
+        var extra = await ExtraLocationAsync();
+        var site = await SiteAsync();
+        _fixture.CurrentTenantId = null;
+
+        var notAvailable = await Assert.ThrowsAsync<DomainException>(
+            () => _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, extra)));
+        var included = await Assert.ThrowsAsync<DomainException>(
+            () => _fixture.ActivateAddOn.HandleAsync(new ActivateTenantAddOnCommand(_fixture.TenantA.Value, site)));
+
+        Assert.Equal(BillingApplicationErrors.AddOnNotAvailableOnPlan, notAvailable.Error);
+        Assert.Equal(BillingApplicationErrors.AddOnAlreadyIncluded, included.Error);
+    }
+
+    [Fact]
+    public async Task Without_a_live_subscription_every_known_feature_is_disabled()
+    {
+        var features = await _fixture.GetMyFeatures.HandleAsync(new GetMyFeaturesQuery());
+
+        Assert.Null(features.PlanName);
+        Assert.Null(features.Status);
+        Assert.Null(features.TrialEndsAtUtc);
+        Assert.Equal(BillingFeatures.All, features.Features.Select(feature => feature.Code));
+        Assert.All(features.Features, feature => Assert.Equal((false, (long?)null), (feature.Enabled, feature.Limit)));
+        Assert.Null(features.Usage);
+    }
+
+    [Fact]
+    public async Task The_features_combine_the_plan_and_the_active_add_ons()
+    {
+        var started = _fixture.Clock.UtcNow;
+        await TrialOnAsync(
+            new EntitlementInput(BillingFeatures.Locations, true, 2),
+            new EntitlementInput(BillingFeatures.LocationsExtra, true),
+            new EntitlementInput(BillingFeatures.Loyalty, true));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await ExtraLocationAsync()));
+        await _fixture.SubscribeAddOn.HandleAsync(new SubscribeAddOnCommand(await SiteAsync()));
+
+        var features = await _fixture.GetMyFeatures.HandleAsync(new GetMyFeaturesQuery());
+        var byCode = features.Features.ToDictionary(feature => feature.Code);
+
+        Assert.Equal(("Essentiel", SubscriptionStatus.Trialing), (features.PlanName, features.Status));
+        Assert.Equal(started + _fixture.Settings.TrialLength, features.TrialEndsAtUtc);
+        Assert.Equal(BillingFeatures.All.Count, features.Features.Count);
+        Assert.Equal((true, (long?)3), (byCode[BillingFeatures.Locations].Enabled, byCode[BillingFeatures.Locations].Limit));
+        Assert.Equal((true, (long?)null), (byCode[BillingFeatures.StorefrontWeb].Enabled, byCode[BillingFeatures.StorefrontWeb].Limit));
+        Assert.True(byCode[BillingFeatures.Loyalty].Enabled);
+        Assert.False(byCode[BillingFeatures.MarketingCampaigns].Enabled);
+    }
 }

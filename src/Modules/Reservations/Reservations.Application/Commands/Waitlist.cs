@@ -224,7 +224,7 @@ public sealed class AcceptWaitlistOfferHandler(ReservationsWorkspace workspace, 
     {
         var tenant = workspace.CurrentTenant;
         var clock = workspace.Clock;
-        var location = await workspace.RequireLocationAsync(tenant, entry.LocationId.Value, cancellationToken);
+        var location = await workspace.RequireBookableLocationAsync(tenant, entry.LocationId.Value, cancellationToken);
         var policy = await workspace.Policies.GetAsync(tenant, location.LocationId, cancellationToken);
         var slot = policy.SlotFor(start);
         await workspace.EnsureOpenDuringAsync(tenant, location.LocationId, slot, cancellationToken);

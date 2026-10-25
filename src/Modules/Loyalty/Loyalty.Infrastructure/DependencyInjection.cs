@@ -31,6 +31,7 @@ public static class DependencyInjection
         // Hors requête (job d'expiration), le tenant du scope est celui fixé par le job.
         services.TryAddScoped<BackgroundTenant>();
         services.TryAddScoped<ITenantContext>(provider => new FixedTenantContext(provider.GetRequiredService<BackgroundTenant>().Current));
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>(); // l'hôte branche le vrai contrôle
         services.AddDbContext<LoyaltyDbContext>(options => options.UseLoyaltyNpgsql(connectionString));
         services.AddScoped<LoyaltyLedgerLookup>();
         services.AddScoped<ILoyaltyLedgerLookup>(provider => provider.GetRequiredService<LoyaltyLedgerLookup>());

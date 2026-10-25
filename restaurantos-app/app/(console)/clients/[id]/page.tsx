@@ -8,6 +8,8 @@ import {
   loadCustomer, removeTag, renameCustomer, requirementLabel, setPreferences, type Channel,
 } from '@/lib/customers';
 import {useConsole} from '@/components/console';
+import {PlanBadge, UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Field, Input, Modal, Select, Spinner, cx, useAction} from '@/components/ui';
 import {ServiceMessages} from './service-messages';
 import {Consents} from './consents';
@@ -16,7 +18,7 @@ import {CustomerLoyalty} from './loyalty';
 import {CustomerNotes} from './notes';
 import {ExportButton, MergeDialog} from './crm-actions';
 
-function Section({icon, title, description, children}: {icon: ReactNode; title: string; description?: string; children: ReactNode}) {
+function Section({icon, title, description, children}: {icon: ReactNode; title: ReactNode; description?: string; children: ReactNode}) {
   return (
     <Card className="p-5">
       <div className="mb-4 flex items-start gap-3">
@@ -41,6 +43,7 @@ export default function CustomerPage({params}: {params: Promise<{id: string}>}) 
   const policy = useResource(signal => (allowed ? loadContactPolicy(signal) : Promise.resolve(null)), [allowed]);
   const [form, setForm] = useState({name: '', email: '', phone: ''});
   const [tag, setTag] = useState('');
+  const tagsLocked = usePlanFeatures().blocked(Feature.CustomersAdvanced);
   const [language, setLanguage] = useState('fr');
   const [wanted, setWanted] = useState<Channel[]>([]);
   const [erasing, setErasing] = useState(false);
@@ -164,13 +167,13 @@ export default function CustomerPage({params}: {params: Promise<{id: string}>}) 
             </form>
           </Section>
 
-          <Section icon={<Tag className="size-5" />} title="Tags" description="Habitudes, allergies déclarées, segments : 20 au plus.">
+          <Section icon={<Tag className="size-5" />} title={<span className="inline-flex items-center gap-2">Tags<PlanBadge feature={Feature.CustomersAdvanced} /></span>} description="Habitudes, allergies déclarées, segments : 20 au plus.">
             {customer.tags.length === 0 ? <p className="text-sm text-ink-500">Aucun tag.</p> : (
               <ul className="flex flex-wrap gap-2">
                 {customer.tags.map(item => (
                   <li key={item} className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pr-1 pl-3 text-sm font-medium">
                     {item}
-                    {editable && (
+                    {editable && !tagsLocked && (
                       <button type="button" aria-label={`Retirer le tag ${item}`} disabled={busy === `tag-${item}`} onClick={() => run(`tag-${item}`, async () => {
                         await removeTag(customer.id, item);
                         await reload();
@@ -180,7 +183,8 @@ export default function CustomerPage({params}: {params: Promise<{id: string}>}) 
                 ))}
               </ul>
             )}
-            {editable && customer.tags.length < 20 && (
+            {editable && tagsLocked && <div className="mt-3"><UpgradePanel compact feature={Feature.CustomersAdvanced} title="Étiquettes et segments" /></div>}
+            {editable && !tagsLocked && customer.tags.length < 20 && (
               <form className="mt-3 flex gap-2" onSubmit={event => {
                 event.preventDefault();
                 void run('tag', async () => {

@@ -294,7 +294,8 @@ public static class StorefrontEndpoints
             .WithGroupName(DocumentName)
             .RequireAuthorization(StorefrontKeyAuthentication.Policy)
             .RequireCors(StorefrontKeyAuthentication.CorsPolicy)
-            .RequireRateLimiting(StorefrontKeyAuthentication.RateLimitPolicy);
+            .RequireRateLimiting(StorefrontKeyAuthentication.RateLimitPolicy)
+            .AddEndpointFilter(StorefrontAccessFilter.InvokeAsync);
 
         storefront.MapGet("/", async (IQueryHandler<GetStorefrontQuery, StorefrontDto> handler, CancellationToken ct) =>
             TypedResults.Ok(await handler.HandleAsync(new GetStorefrontQuery(), ct)))

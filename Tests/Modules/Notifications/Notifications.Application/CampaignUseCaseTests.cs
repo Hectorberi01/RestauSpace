@@ -203,4 +203,42 @@ public sealed class CampaignUseCaseTests
 
         await Assert.ThrowsAsync<NotFoundException>(() => _fixture.ScheduleCampaign.HandleAsync(new ScheduleCampaignCommand(campaign, null)));
     }
+
+    [Fact]
+    public async Task Without_campaigns_in_the_plan_a_campaign_is_neither_saved_scheduled_nor_sent()
+    {
+        EmailMarketingReady();
+        Consenting("awa@example.com");
+        var campaign = await DraftAsync();
+        await _fixture.ScheduleCampaign.HandleAsync(new ScheduleCampaignCommand(campaign, null));
+        _fixture.DeniedFeatures.Add(PlanFeatures.MarketingCampaigns);
+
+        var save = await Assert.ThrowsAsync<ForbiddenException>(() => DraftAsync());
+        var schedule = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.ScheduleCampaign.HandleAsync(new ScheduleCampaignCommand(campaign, null)));
+        var more = await _fixture.ProcessCampaign.HandleAsync(new ProcessCampaignCommand(campaign));
+
+        Assert.Equal((PlanFeatures.RequiredCode, PlanFeatures.RequiredCode), (save.Code, schedule.Code));
+        Assert.False(more);
+        Assert.Empty(_fixture.NotificationRows);
+        Assert.Equal(CampaignStatus.Scheduled, _fixture.CampaignRows.Single().Status); // gelée, pas annulée
+
+        _fixture.DeniedFeatures.Clear();
+        await RunToEndAsync(campaign);
+        Assert.Single(_fixture.NotificationRows);
+    }
+
+    [Fact]
+    public async Task Scheduling_a_campaign_for_later_needs_automations_in_the_plan()
+    {
+        EmailMarketingReady();
+        var campaign = await DraftAsync();
+        _fixture.DeniedFeatures.Add(PlanFeatures.Automations);
+
+        var later = await Assert.ThrowsAsync<ForbiddenException>(() =>
+            _fixture.ScheduleCampaign.HandleAsync(new ScheduleCampaignCommand(campaign, _fixture.Clock.UtcNow.AddDays(1))));
+        await _fixture.ScheduleCampaign.HandleAsync(new ScheduleCampaignCommand(campaign, null));
+
+        Assert.Equal(PlanFeatures.RequiredCode, later.Code);
+        Assert.Equal(CampaignStatus.Scheduled, _fixture.CampaignRows.Single().Status);
+    }
 }

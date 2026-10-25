@@ -34,7 +34,7 @@ public sealed class CreateReservationHandler(ReservationsWorkspace workspace, IR
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var tenant = workspace.CurrentTenant;
-        var location = await workspace.RequireLocationAsync(tenant, command.LocationId, cancellationToken);
+        var location = await workspace.RequireBookableLocationAsync(tenant, command.LocationId, cancellationToken);
         var policy = await workspace.Policies.GetAsync(tenant, location.LocationId, cancellationToken);
         var slot = ReservationsWorkspace.SlotFor(policy, command.StartAt, command.DurationMinutes);
         var contact = GuestContact.Create(

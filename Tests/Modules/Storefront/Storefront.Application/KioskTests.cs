@@ -91,6 +91,28 @@ public sealed class KioskTests
     }
 
     [Fact]
+    public async Task Beyond_the_kiosk_limit_the_last_paired_kiosk_is_frozen_and_refused()
+    {
+        _fixture.KioskLimit = 2;
+        var app = await KioskAppAsync();
+        var first = await PairAsync(app, _fixture.Cotonou.Value, "Borne 1");
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(1));
+        var second = await PairAsync(app, _fixture.Cotonou.Value, "Borne 2");
+        _fixture.KioskLimit = 1;
+
+        await _fixture.SignInAsync(app.Key, deviceToken: first);
+        await _fixture.EnsureAccess.HandleAsync(new EnsureStorefrontAccessCommand(SalesAppKind.Kiosk));
+        await _fixture.SignInAsync(app.Key, deviceToken: second);
+        var frozen = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _fixture.EnsureAccess.HandleAsync(new EnsureStorefrontAccessCommand(SalesAppKind.Kiosk)));
+        _fixture.CurrentTenantId = _fixture.TenantA;
+        var listed = await _fixture.ListKiosks.HandleAsync(new ListKiosksQuery());
+
+        Assert.Equal(PlanFeatures.OverLimitCode, frozen.Error.Code);
+        Assert.Equal(["Borne 2"], listed.Kiosks.Where(kiosk => kiosk.IsFrozen).Select(kiosk => kiosk.Name));
+    }
+
+    [Fact]
     public async Task A_wrong_or_expired_code_a_foreign_location_and_another_app_token_are_refused()
     {
         var app = await KioskAppAsync();

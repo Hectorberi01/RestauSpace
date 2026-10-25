@@ -19,7 +19,9 @@ public sealed class ReportingWorkspace(
     IMetricsStore metrics,
     IExportFileStore files,
     ReportingSettings settings,
-    IReportingUnitOfWork unitOfWork)
+    IReportingUnitOfWork unitOfWork,
+    IPlanFeatureGate plan,
+    IReportingLocations locations)
 {
     public const int MaxTake = 100;
 
@@ -44,6 +46,35 @@ public sealed class ReportingWorkspace(
         currentUser.UserId is { } user ? ExportRequester.ForUser(user)
         : currentUser.ApiCredentialId is { } credential ? ExportRequester.ForApiCredential(credential)
         : throw new ForbiddenException(ReportingApplicationErrors.UserRequired);
+
+    /// <summary>Le plan permet-il cette fonctionnalité au tenant courant ?</summary>
+    public Task<bool> AllowsAsync(string feature, CancellationToken cancellationToken) =>
+        plan.AllowsAsync(CurrentTenant, feature, cancellationToken);
+
+    /// <summary>Fonctionnalité du plan exigée (403 <c>common.plan.feature_required</c> sinon).</summary>
+    public Task RequireFeatureAsync(string feature, CancellationToken cancellationToken) =>
+        plan.RequireAsync(CurrentTenant, feature, cancellationToken);
+
+    /// <summary>
+    /// Rapport « tous établissements » (pas filtré sur un seul établissement) d'un restaurant qui en a plusieurs, sans
+    /// <c>reporting.consolidated</c> dans le plan.
+    /// </summary>
+    public async Task<bool> IsConsolidatedRefusedAsync(IEnumerable<ReportFilter> filters, CancellationToken cancellationToken)
+    {
+        var scope = ReportFilterRules.Translate(filters, DateOnly.MinValue, DateOnly.MinValue, []).Locations;
+        return scope.Include is not { Count: <= 1 }
+            && !await plan.AllowsAsync(CurrentTenant, PlanFeatures.ReportingConsolidated, cancellationToken)
+            && await locations.HasSeveralAsync(CurrentTenant, cancellationToken);
+    }
+
+    /// <summary>Lève 403 <c>common.plan.feature_required</c> pour un rapport consolidé refusé.</summary>
+    public async Task RequireConsolidatedAllowedAsync(IEnumerable<ReportFilter> filters, CancellationToken cancellationToken)
+    {
+        if (await IsConsolidatedRefusedAsync(filters, cancellationToken))
+        {
+            throw PlanFeatures.Required(PlanFeatures.ReportingConsolidated);
+        }
+    }
 
     public async Task RequireWritableTenantAsync(CancellationToken cancellationToken)
     {

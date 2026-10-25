@@ -4,6 +4,7 @@ import {useSearchParams} from 'next/navigation';
 import {ArrowRight, CheckCircle2, ChevronDown, Loader2, Send} from 'lucide-react';
 import {toast} from '@/components/toast';
 import {site} from '@/content/site';
+import {tiers} from '@/content/plans';
 
 const field = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100';
 const label = 'text-[0.8rem] font-medium text-ink-700';
@@ -142,7 +143,7 @@ export function ContactForm({initialSubjectIndex}: {initialSubjectIndex?: number
       <label className={`relative ${label}`}>Plan qui vous intéresse
         <select className={select} value={values.plan} onChange={set('plan')}>
           <option value="">Je ne sais pas encore</option>
-          {['Découverte', 'Essentiel', 'Pro', 'Groupe'].map(name => <option key={name}>{name}</option>)}
+          {tiers('fr').map(tier => <option key={tier.name}>{tier.name}</option>)}
         </select>
         {chevron}
       </label>

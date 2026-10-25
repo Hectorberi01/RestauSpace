@@ -14,7 +14,8 @@ public sealed class CustomersWorkspace(
     ICustomerRepository customers,
     IConsentRepository consents,
     ICustomerSettingsStore settings,
-    ICustomersUnitOfWork unitOfWork)
+    ICustomersUnitOfWork unitOfWork,
+    IPlanFeatureGate plan)
 {
     public ICustomerRepository Customers => customers;
 
@@ -31,6 +32,10 @@ public sealed class CustomersWorkspace(
             throw new DomainException(CustomersApplicationErrors.TenantNotWritable);
         }
     }
+
+    /// <summary>Fonctionnalité du plan exigée (403 <c>common.plan.feature_required</c> sinon).</summary>
+    public Task RequireFeatureAsync(string feature, CancellationToken cancellationToken) =>
+        plan.RequireAsync(CurrentTenant, feature, cancellationToken);
 
     public async Task<Customer> LoadCustomerAsync(TenantId tenantId, Guid id, CancellationToken cancellationToken) =>
         (id == Guid.Empty ? null : await customers.FindAsync(tenantId, CustomerId.From(id), cancellationToken))

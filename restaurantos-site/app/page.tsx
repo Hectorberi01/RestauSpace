@@ -8,10 +8,10 @@ import {ButtonLink, CallToAction, Highlight, Pill, Section} from '@/components/s
 import {HeroDevices, ModuleIcon} from '@/components/visual';
 import {homeModules, modules} from '@/content/features';
 import {stats, testimonials} from '@/content/proof';
-import {price, quota, tiers, trial} from '@/content/plans';
+import {orders, price, quota, tiers, trial} from '@/content/plans';
 
 const highlights = [
-  {icon: LayoutGrid, title: `${modules.length} modules`, count: true, text: 'Tous inclus, dans chaque plan.'},
+  {icon: LayoutGrid, title: `${modules.length} modules`, count: true, text: 'Du service à la gestion, dans un seul logiciel.'},
   {icon: Rocket, title: `${trial} d’essai`, count: true, text: 'En service réel, avant de payer.'},
   {icon: ShieldCheck, title: 'Données protégées', count: false, text: 'Chaque restaurant isolé, droits par employé.'},
   {icon: Headset, title: 'Accompagnement', count: false, text: 'Une équipe qui vous répond, du démarrage au quotidien.'},
@@ -62,7 +62,7 @@ function Proof() {
 }
 
 export default function Home() {
-  const plans = tiers('fr').filter(tier => tier.monthly.price > 0);
+  const plans = tiers('fr');
   return (
     <>
       <section className="relative -mt-16 overflow-hidden bg-cover bg-center" style={{backgroundImage: 'url(/backgrounds/hero.webp)'}}>
@@ -88,7 +88,7 @@ export default function Home() {
               </Link>
             </div>
             <ul style={{'--rise-delay': '320ms'} as CSSProperties} className="animate-rise mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-700">
-              {[`${trial} d’essai`, 'Rien à installer', 'Tous les modules inclus'].map(item => (
+              {[`${trial} d’essai`, 'Rien à installer', 'Changement de plan à tout moment'].map(item => (
                 <li key={item} className="flex items-center gap-2"><CircleCheck className="size-5 fill-brand-600 text-white" aria-hidden="true" />{item}</li>
               ))}
             </ul>
@@ -173,7 +173,7 @@ export default function Home() {
 
       <Section
         title="Des tarifs adaptés à vos besoins"
-        intro="Choisissez le plan qui correspond à votre activité. Tous les modules sont inclus dans chaque plan, avec les mises à jour."
+        intro={`Choisissez le plan qui correspond à votre activité, avec ${trial} d’essai gratuit sur le plan choisi. Les mises à jour sont incluses.`}
         action={{href: '/tarifs', label: 'Voir les tarifs'}}
       >
         <div data-reveal-stagger className="grid gap-6 md:grid-cols-3">
@@ -182,7 +182,7 @@ export default function Home() {
               key={tier.name}
               className={`card-lift relative flex flex-col rounded-2xl bg-white p-6 hover:shadow-xl hover:shadow-brand-900/10 ${tier.highlighted ? 'border-2 border-brand-600 shadow-xl shadow-brand-900/10' : 'border border-slate-200'}`}
             >
-              {tier.highlighted && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Le plus populaire</span>}
+              {tier.highlighted && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">Recommandé</span>}
               <h3 className="text-lg font-semibold text-ink-900">{tier.name}</h3>
               <p className="text-sm text-ink-500">{tier.audience}</p>
               <p className="mt-5">
@@ -192,14 +192,16 @@ export default function Home() {
               <ul className="mt-5 flex-1 space-y-2.5 text-sm text-ink-700">
                 <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />Établissements : {quota(tier.monthly, 'locations.count')}</li>
                 <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />Membres de l’équipe : {quota(tier.monthly, 'staff.count')}</li>
-                <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />Commandes par mois : {quota(tier.monthly, 'orders.monthly')}</li>
-                <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />Tous les modules inclus</li>
+                <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />Commandes par mois : {orders(tier.monthly)}</li>
+                {tier.highlights.filter(item => !item.endsWith(':')).slice(0, 2).map(item => (
+                  <li key={item} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />{item}</li>
+                ))}
               </ul>
               <Link
                 href={`${site.signupUrl}?plan=${encodeURIComponent(tier.name)}&pays=fr`}
                 className={`btn-motion mt-6 rounded-xl px-4 py-2.5 text-center text-sm font-semibold ${tier.highlighted ? 'bg-brand-600 text-white hover:bg-brand-700' : 'border border-brand-200 text-brand-700 hover:bg-brand-50'}`}
               >
-                Commencer
+                Essayer {trial} gratuitement
               </Link>
             </article>
           ))}

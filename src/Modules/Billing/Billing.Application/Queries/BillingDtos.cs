@@ -111,6 +111,16 @@ public sealed record MySubscriptionDto(
     SubscriptionDto Subscription, PlanDto Plan, IReadOnlyList<FeatureUsageDto> Usage, SubscriptionChargeDto? NextCharge = null,
     ScheduledPlanChangeDto? ScheduledPlan = null);
 
+/// <summary>Un droit effectif (plan et options) pour la console. <paramref name="Limit"/> null : illimité (si activé).</summary>
+public sealed record PlanFeatureDto(string Code, bool Enabled, long? Limit);
+
+/// <summary>Compteurs actuels du restaurant (null tant qu'ils ne sont pas fournis).</summary>
+public sealed record PlanUsageDto(long Locations, long Staff, long OrdersThisMonth);
+
+/// <summary>Les droits du restaurant pour la console : tous les codes connus, désactivés sans abonnement vivant.</summary>
+public sealed record MyFeaturesDto(
+    string? PlanName, SubscriptionStatus? Status, DateTimeOffset? TrialEndsAtUtc, IReadOnlyList<PlanFeatureDto> Features, PlanUsageDto? Usage);
+
 /// <summary>
 /// La réponse donnée aux autres modules : activé ou non, limite (null = illimité), et si le restaurant a un abonnement
 /// vivant (sans abonnement, rien n'est activé : à l'hôte de décider ce que cela signifie pour chaque fonctionnalité).

@@ -14,7 +14,7 @@ public sealed class TillTests : ITillRepository, ITimeEntryRepository, IPinHashe
 
     public TillId? TillId { get; private set; }
 
-    private TillDesk Desk => new(this, this, _fixture, this, _fixture, _fixture.Clock);
+    private TillDesk Desk => new(this, this, _fixture, this, _fixture, _fixture.Freeze, _fixture.Clock);
 
     private async Task<(LocationId Here, Guid Waiter, Guid Key)> GivenTillWithWaiterAsync()
     {
@@ -92,6 +92,19 @@ public sealed class TillTests : ITillRepository, ITimeEntryRepository, IPinHashe
         var revoked = await Assert.ThrowsAsync<UnauthenticatedException>(
             () => new UnlockTillHandler(Desk, this, _fixture).HandleAsync(new UnlockTillCommand(waiter, "2580")));
         Assert.Equal(StaffApplicationErrors.TillKeyInvalid, revoked.Error);
+    }
+
+    [Fact]
+    public async Task A_frozen_member_cannot_open_the_till_with_her_pin()
+    {
+        var (_, waiter, _) = await GivenTillWithWaiterAsync();
+        _fixture.MaxStaffMembers = 1;
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(
+            () => new UnlockTillHandler(Desk, this, _fixture).HandleAsync(new UnlockTillCommand(waiter, "2580")));
+
+        Assert.Equal(PlanFeatures.OverLimitCode, refused.Error.Code);
+        Assert.Empty(_sessions);
     }
 
     [Fact]

@@ -172,6 +172,7 @@ public sealed class UnlockTillHandler(TillDesk desk, IOperatorSessions sessions,
     {
         var till = await desk.RequireTillAsync(cancellationToken);
         var member = await desk.VerifyPinAsync(till, command.StaffMemberId, command.Pin, cancellationToken);
+        await desk.EnsureNotFrozenAsync(till, member, cancellationToken);
         var tokens = await sessions.StartAsync(member.UserId, till.TenantId, till.Id, till.LocationId, $"Caisse partagée · {till.Name}", cancellationToken)
             ?? throw new ForbiddenException(StaffApplicationErrors.SessionRefused);
         var names = await users.DisplayNamesAsync([member.UserId], cancellationToken);
@@ -227,7 +228,8 @@ public sealed class ClockOnTillHandler(TillDesk desk, StaffWorkspace workspace, 
 /// La caisse de la requête (authentifiée par sa clé) et la vérification d'un PIN : le membre doit travailler dans
 /// l'établissement de la caisse ; un essai manqué est enregistré avant d'être refusé.
 /// </summary>
-public sealed class TillDesk(ITillClient client, ITillRepository tills, IStaffMemberRepository members, IPinHasher pins, IStaffUnitOfWork unitOfWork, IClock clock)
+public sealed class TillDesk(
+    ITillClient client, ITillRepository tills, IStaffMemberRepository members, IPinHasher pins, IStaffUnitOfWork unitOfWork, StaffFreeze freeze, IClock clock)
 {
     public async Task<Till> RequireTillAsync(CancellationToken cancellationToken)
     {
@@ -247,6 +249,17 @@ public sealed class TillDesk(ITillClient client, ITillRepository tills, IStaffMe
         till.MarkUsed(clock);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return accepted ? member : throw new UnauthenticatedException(StaffApplicationErrors.PinWrong);
+    }
+
+    /// <summary>Un membre gelé (au-delà de la limite du plan) n'ouvre pas la caisse : 403 <c>common.plan.over_limit</c>.</summary>
+    public async Task EnsureNotFrozenAsync(Till till, StaffMember member, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(till);
+        ArgumentNullException.ThrowIfNull(member);
+        if (await freeze.IsFrozenAsync(till.TenantId, member.Id, cancellationToken))
+        {
+            throw PlanFeatures.OverLimit("staff");
+        }
     }
 }
 

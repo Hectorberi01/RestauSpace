@@ -11,6 +11,7 @@ import {
   setTenantRole, statusLabel, statusTone, suspend, unassign, type Role, type StaffMember, type StaffStatus,
 } from '@/lib/staff';
 import {useConsole} from '@/components/console';
+import {FrozenBadge, FrozenNote} from '@/components/plan';
 import {accentOf, Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, StatCard, cx, useAction} from '@/components/ui';
 
 type Tab = 'members' | 'roles' | 'tills' | 'time';
@@ -84,8 +85,10 @@ function MemberDialog({member, roles, onClose, onDone}: {member: StaffMember | n
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-2 text-sm text-ink-600">
           <Badge tone={statusTone[member.status]}>{statusLabel[member.status]}</Badge>
+          {member.isFrozen && <FrozenBadge />}
           Invité le {dateTime(member.invitedAtUtc)}
         </div>
+        {member.isFrozen && <p className="rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">Membre gelé : au-delà de la limite de votre plan, il ne peut ni ouvrir le restaurant ni la caisse.</p>}
 
         <section>
           <h3 className="mb-2 font-semibold">Rôle dans tout le restaurant</h3>
@@ -212,6 +215,9 @@ function Members({members, roles, me, onChanged}: {members: StaffMember[]; roles
 
   return (
     <>
+      {members.some(member => member.isFrozen && member.status !== 'Left') && (
+        <div className="mb-4"><FrozenNote what="Membres gelés" action="Ils restent listés, mais ne peuvent ni ouvrir le restaurant ni la caisse par code." fix="retirez un membre qui ne travaille plus chez vous" /></div>
+      )}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <label className="relative block flex-1">
           <span className="sr-only">Rechercher un membre</span>
@@ -264,7 +270,7 @@ function Members({members, roles, me, onChanged}: {members: StaffMember[]; roles
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-3"><Badge tone={statusTone[member.status]}>{statusLabel[member.status]}</Badge></td>
+                  <td className="px-3 py-3"><span className="flex flex-wrap gap-1"><Badge tone={statusTone[member.status]}>{statusLabel[member.status]}</Badge>{member.isFrozen && <FrozenBadge />}</span></td>
                   <td className="px-3 py-3"><RowMenu member={member} me={me} onEdit={() => setEditing(member.id)} onChanged={onChanged} /></td>
                 </tr>
               ))}

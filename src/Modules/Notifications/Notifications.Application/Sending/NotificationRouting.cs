@@ -11,12 +11,14 @@ public sealed record NotificationRoute(NotificationProviderCode Provider, Restau
 /// qui servent l'établissement, dont le prestataire est encore proposé par la plateforme, autorise le mode, délivre dans
 /// le pays de l'établissement, accepte la longueur du contenu et a une intégration dans le code ; la plus prioritaire
 /// dans l'établissement d'abord, puis la plus ancienne. Pour la plateforme, son premier prestataire du canal qui accepte
-/// un compte de la plateforme. In-app : toujours le prestataire interne.
+/// un compte de la plateforme. In-app : toujours le prestataire interne. Une configuration en mode restaurant est
+/// ignorée si le plan n'a plus <c>notifications.byok</c>.
 /// </summary>
 public sealed class NotificationRouting(
     INotificationProviderRepository providers,
     IRestaurantNotificationConfigurationRepository configurations,
-    INotificationSenderResolver resolver)
+    INotificationSenderResolver resolver,
+    IPlanFeatureGate plan)
 {
     public async Task<IReadOnlyList<NotificationRoute>> CandidatesAsync(
         TenantId? tenantId, NotificationChannel channel, LocationReference? location, int contentLength, CancellationToken cancellationToken)
@@ -44,8 +46,12 @@ public sealed class NotificationRouting(
         }
 
         var locationId = location?.LocationId;
-        return (await configurations.ListForChannelAsync(tenant, channel, cancellationToken))
-            .Where(configuration => configuration.CanServe(locationId)
+        var configured = await configurations.ListForChannelAsync(tenant, channel, cancellationToken);
+        var ownAccount = configured.Any(configuration => configuration.Mode == NotificationProviderMode.TenantManaged)
+            && await plan.AllowsAsync(tenant, PlanFeatures.NotificationsOwnAccount, cancellationToken);
+        return configured
+            .Where(configuration => (ownAccount || configuration.Mode != NotificationProviderMode.TenantManaged)
+                && configuration.CanServe(locationId)
                 && catalog.TryGetValue(configuration.NotificationProviderId, out var provider)
                 && Usable(provider)
                 && configuration.Mode.IsAllowedBy(provider.ConfigurationType))

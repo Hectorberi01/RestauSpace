@@ -31,6 +31,7 @@ public static class IntegrationsModule
         services.TryAddScoped<IIntegrationsActor, HttpIntegrationsActor>();
         services.AddIntegrationsInfrastructure(connectionString, configure);
         services.AddScoped<IntegrationsWorkspace>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddHandlersFrom(typeof(IntegrationsApplicationErrors).Assembly);
         return services;
     }

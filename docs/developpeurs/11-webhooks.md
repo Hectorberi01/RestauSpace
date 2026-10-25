@@ -5,6 +5,9 @@
 
 ## Configurer
 
+Les webhooks sont inclus dans les plans Pro et Multi-sites, et en option (« API et webhooks ») sur Essentiel. Si le
+restaurant perd ce droit, ses webhooks restent visibles mais ne sont plus livrés.
+
 **Console › Intégrations › Webhooks › Nouveau webhook** (droit « Gérer les intégrations ») :
 
 - une adresse **HTTPS publique** (pas d'adresse locale ni privée, pas d'identifiants dans l'adresse) ;

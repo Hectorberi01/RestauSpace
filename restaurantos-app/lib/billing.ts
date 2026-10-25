@@ -172,12 +172,14 @@ export const suspensionLabel: Record<string, string> = {
 const features: Record<string, string> = {
   'orders.monthly': 'Commandes par mois',
   'locations.count': 'Établissements',
+  'locations.extra': 'Établissements supplémentaires en option',
   'staff.count': 'Membres du personnel',
   'notifications.email.monthly': 'Emails par mois',
   'notifications.sms.monthly': 'SMS par mois',
   'notifications.whatsapp.monthly': 'Messages WhatsApp par mois',
   'notifications.push.monthly': 'Notifications push par mois',
   'notifications.inapp.monthly': 'Notifications dans l’application par mois',
+  'notifications.byok': 'Envoi par votre propre compte (sans quota)',
   reservations: 'Réservations',
   delivery: 'Livraison',
   loyalty: 'Fidélité',
@@ -186,11 +188,29 @@ const features: Record<string, string> = {
   reviews: 'Avis clients',
   reporting: 'Rapports',
   integrations: 'Intégrations et API',
+  'customers.advanced': 'Clients : import, étiquettes et segments',
+  'marketing.campaigns': 'Campagnes marketing',
+  'marketing.gift_cards': 'Cartes cadeaux',
+  automations: 'Automatisations (rapports planifiés, campagnes programmées)',
+  'reporting.advanced': 'Exports, comptabilité et rapprochement',
+  'reporting.consolidated': 'Rapports tous établissements',
   'storefront.web': 'Commande en ligne : site web',
   'storefront.mobile_app': 'Commande en ligne : application mobile',
   'storefront.kiosk': 'Bornes de commande',
-  'storefront.api': 'API de vente en ligne',
+  'storefront.api': 'API et clés d’API',
+  'integrations.webhooks': 'Webhooks',
+  'support.priority': 'Support prioritaire',
 };
+
+/** Ordre du comparatif des plans : limites, puis fonctions. */
+export const comparedLimits = [
+  'locations.count', 'locations.extra', 'staff.count', 'orders.monthly',
+  'notifications.email.monthly', 'notifications.sms.monthly', 'notifications.whatsapp.monthly', 'notifications.push.monthly', 'notifications.inapp.monthly',
+];
+export const comparedFeatures = [
+  'loyalty', 'customers.advanced', 'marketing.campaigns', 'marketing.gift_cards', 'automations', 'reporting.advanced', 'reporting.consolidated',
+  'storefront.web', 'storefront.mobile_app', 'storefront.kiosk', 'storefront.api', 'integrations.webhooks', 'notifications.byok', 'support.priority',
+];
 
 export const featureLabel = (code: string) => features[code] ?? code;
 
@@ -232,3 +252,38 @@ export const loadInvoice = (paymentId: string) => api<Invoice>(`/billing/payment
 
 /** Une option dont la quantité compte (ex. nombre de bornes) : un de ses droits porte une limite. */
 export const isCounted = (plan: Plan) => plan.entitlements.some(item => item.enabled && item.limit !== null);
+
+/** Le plan donne-t-il déjà tout ce que donne l'option (même règle que l'API) ? */
+export function includedInPlan(plan: Plan, addOn: Plan): boolean {
+  const granted = addOn.entitlements.filter(item => item.enabled);
+  return granted.length > 0 && granted.every(item => {
+    const own = plan.entitlements.find(entry => entry.featureCode === item.featureCode);
+    return !!own?.enabled && (own.limit === null || (item.limit !== null && own.limit >= item.limit));
+  });
+}
+
+/** L'option Établissement supplémentaire exige `locations.extra` dans le plan. */
+export function addOnUnavailable(plan: Plan, addOn: Plan): boolean {
+  const extraLocation = addOn.entitlements.some(item => item.enabled && item.featureCode === 'locations.count');
+  return extraLocation && !plan.entitlements.some(item => item.featureCode === 'locations.extra' && item.enabled);
+}
+
+export interface PlanLoss {
+  code: string;
+  /** Limite actuelle (null : illimité ou simple fonction). */
+  from: number | null;
+  /** Nouvelle limite ; null quand le droit disparaît. */
+  to: number | null;
+  lost: boolean;
+}
+
+/** Ce que le plan cible retire au plan actuel : droits perdus et limites plus basses. */
+export function downgradeLosses(current: Plan, target: Plan): PlanLoss[] {
+  return current.entitlements.flatMap<PlanLoss>(item => {
+    if (!item.enabled) return [];
+    const next = target.entitlements.find(entry => entry.featureCode === item.featureCode);
+    if (!next?.enabled) return [{code: item.featureCode, from: item.limit, to: null, lost: true}];
+    if (next.limit !== null && (item.limit === null || next.limit < item.limit)) return [{code: item.featureCode, from: item.limit, to: next.limit, lost: false}];
+    return [];
+  });
+}

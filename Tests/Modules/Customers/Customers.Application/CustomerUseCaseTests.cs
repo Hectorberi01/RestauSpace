@@ -213,4 +213,24 @@ public sealed class CustomerUseCaseTests
         Assert.Equal(new CustomerReferenceDto(_fixture.TenantA.Value, id, false), reference);
         Assert.Equal(3, typeof(CustomerReferenceDto).GetProperties().Length);
     }
+
+    [Fact]
+    public async Task Tags_and_import_are_refused_without_advanced_customers_in_the_plan()
+    {
+        var id = await CreateAsync();
+        _fixture.DeniedFeatures.Add(PlanFeatures.CustomersAdvanced);
+
+        var refused = new[]
+        {
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.AddTag.HandleAsync(new AddCustomerTagCommand(id, "vip"))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.RemoveTag.HandleAsync(new RemoveCustomerTagCommand(id, "vip"))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => CreateAsync("Koffi", "koffi@example.com", tags: ["vip"])),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Import.HandleAsync(new ImportCustomersCommand(
+                [new CustomerImportRow("Koffi", "koffi@example.com", null)]))),
+        };
+
+        Assert.True(refused.All(error => error.Code == PlanFeatures.RequiredCode));
+        await CreateAsync("Sans tag", "sans.tag@example.com");
+        Assert.Equal(2, _fixture.Customers.Count);
+    }
 }

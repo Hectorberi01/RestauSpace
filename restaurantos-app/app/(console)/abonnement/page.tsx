@@ -1,17 +1,18 @@
 'use client';
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState, type ReactNode} from 'react';
 import {usePathname, useRouter, useSearchParams} from 'next/navigation';
-import {CalendarClock, Check, CreditCard, ExternalLink, FileText, Globe, Loader2, MonitorSmartphone, Plus, Receipt, Smartphone, Sparkles, X} from 'lucide-react';
+import {Building2, CalendarClock, Check, CreditCard, ExternalLink, FileText, Globe, Loader2, MonitorSmartphone, Plug, Plus, Receipt, Smartphone, Snowflake, Sparkles, X} from 'lucide-react';
 import {openInvoice} from '@/lib/invoice';
 import {money} from '@/lib/format';
 import {useResource} from '@/lib/hooks';
 import {
-  cancelAddOn, changeAddOnQuantity, changePlan, featureLabel, isCounted, isMonthly, listAddOns, listPayments, listPlans, loadOnlinePayment,
+  addOnUnavailable, cancelAddOn, changeAddOnQuantity, changePlan, comparedFeatures, comparedLimits, downgradeLosses, featureLabel, includedInPlan, isCounted, isMonthly, listAddOns, listPayments, listPlans, loadOnlinePayment,
   loadSubscription, methodName, providerName, pushesToPhone, refreshCheckout, scheduleCancellation, startCheckout, statusLabel, statusTone, subscribe,
   subscribeAddOn, suspensionLabel, unscheduleCancellation, unschedulePlanChange, type Charge, type Checkout, type MyAddOns, type MySubscription, type OnlinePayment, type PaymentOption,
   type Plan, type TenantAddOn,
 } from '@/lib/billing';
 import {useConsole} from '@/components/console';
+import {usePlanFeatures} from '@/components/plan';
 import {Alert, Badge, Button, Card, Field, Input, Modal, Spinner, cx, useAction, useToast} from '@/components/ui';
 
 const day = (iso: string) => new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}).format(new Date(iso));
@@ -29,6 +30,7 @@ async function mine(signal: AbortSignal): Promise<MySubscription | null> {
 
 function Usage({data}: {data: MySubscription}) {
   const {locations} = useConsole();
+  const staff = usePlanFeatures().data?.usage?.staff ?? null;
   const rows = data.usage.filter(item => item.enabled && item.limit !== null || item.featureCode.endsWith('.count') || isMonthly(item.featureCode));
   if (rows.length === 0) return null;
   return (
@@ -37,8 +39,9 @@ function Usage({data}: {data: MySubscription}) {
       <p className="mb-4 text-sm text-ink-500">Les quotas mensuels repartent à zéro le 1er de chaque mois.</p>
       <ul className="space-y-4">
         {rows.map(item => {
-          const used = item.featureCode === 'locations.count' ? locations.length : item.used;
-          const known = isMonthly(item.featureCode) || item.featureCode === 'locations.count';
+          const used = item.featureCode === 'locations.count' ? locations.length : item.featureCode === 'staff.count' && staff !== null ? staff : item.used;
+          const known = isMonthly(item.featureCode) || item.featureCode === 'locations.count' || (item.featureCode === 'staff.count' && staff !== null);
+          const frozen = item.featureCode.endsWith('.count') && item.limit !== null ? Math.max(0, used - item.limit) : 0;
           const ratio = item.limit ? Math.min(1, used / item.limit) : 0;
           return (
             <li key={item.featureCode} className="text-sm">
@@ -54,7 +57,7 @@ function Usage({data}: {data: MySubscription}) {
                 </div>
               )}
               {item.enabled && item.limit !== null && known && ratio >= 0.8 && (
-                <p className={cx('mt-1 text-xs', ratio >= 1 ? 'text-red-700' : 'text-amber-700')}>{ratio >= 1 ? 'Quota atteint : passez à un plan supérieur.' : 'Bientôt atteint.'}</p>
+                <p className={cx('mt-1 text-xs', ratio >= 1 ? 'text-red-700' : 'text-amber-700')}>{frozen > 0 ? `Limite dépassée : ${frozen} gelé${frozen > 1 ? 's' : ''}. Passez à un plan supérieur ou archivez-en.` : ratio >= 1 ? 'Quota atteint : passez à un plan supérieur.' : 'Bientôt atteint.'}</p>
               )}
             </li>
           );
@@ -64,54 +67,117 @@ function Usage({data}: {data: MySubscription}) {
   );
 }
 
-const addMonths = (iso: string, months: number) => {
-  const date = new Date(iso);
-  date.setUTCMonth(date.getUTCMonth() + months);
-  return date;
-};
+const baseName = (plan: Plan) => plan.name.replace(/ annuel$/i, '');
 
-function Plans({current, plans, canChange, freeAllowed, onChoose}: {current: MySubscription | null; plans: Plan[]; canChange: boolean; freeAllowed: boolean; onChoose: (plan: Plan) => void}) {
+const isQuota = (code: string) => code.endsWith('.count') || isMonthly(code);
+
+/** Option du catalogue qui donne ce droit, si le plan peut la prendre. */
+const optionGranting = (plan: Plan, code: string, addOns: Plan[]) =>
+  addOns.find(addOn => addOn.entitlements.some(item => item.enabled && item.featureCode === code) && !addOnUnavailable(plan, addOn));
+
+function Cell({plan, code, addOns}: {plan: Plan; code: string; addOns: Plan[]}): ReactNode {
+  const item = plan.entitlements.find(entry => entry.featureCode === code);
+  const option = optionGranting(plan, code, addOns);
+  if (item?.enabled) {
+    if (item.limit !== null) return <span className="font-semibold tabular-nums">{count(item.limit)}{option && <span className="block text-xs font-normal text-ink-500">+ en option</span>}</span>;
+    if (isQuota(code)) return <span className="font-semibold">Illimité</span>;
+    return <Check className="mx-auto size-4 text-emerald-600" aria-label="Inclus" />;
+  }
+  if (option) return <span className="text-xs font-medium text-ink-500">En option</span>;
+  return <X className="mx-auto size-4 text-ink-300" aria-label="Non inclus" />;
+}
+
+/** Cartes des plans de base et comparatif fonction par fonction, d'après les droits renvoyés par l'API. */
+function Plans({current, plans, addOns, canChange, onChoose}: {current: MySubscription | null; plans: Plan[]; addOns: Plan[]; canChange: boolean; onChoose: (plan: Plan) => void}) {
   const scheduled = current?.scheduledPlan ?? null;
-  const codes = [...new Set(plans.flatMap(plan => plan.entitlements.map(item => item.featureCode)))].sort();
+  // Plan gratuit retiré du catalogue : affiché seulement s'il est encore le plan actuel.
+  const base = plans.filter(plan => plan.kind !== 'AddOn' && (plan.price > 0 || plan.id === current?.plan.id));
+  const intervals = [...new Set(base.map(plan => plan.billingInterval))];
+  const [interval, setBilling] = useState<'Monthly' | 'Yearly'>(current?.plan.billingInterval ?? 'Monthly');
+  const shown = base.filter(plan => plan.billingInterval === interval || (intervals.length === 1)).sort((a, b) => a.price - b.price);
+  const known = new Set([...comparedLimits, ...comparedFeatures]);
+  const others = [...new Set(shown.flatMap(plan => plan.entitlements.map(item => item.featureCode)))].filter(code => !known.has(code)).sort();
+  const present = (codes: string[]) => codes.filter(code => shown.some(plan => plan.entitlements.some(item => item.featureCode === code)) || shown.some(plan => optionGranting(plan, code, addOns)));
+  const groups: [string, string[]][] = [['Limites', present(comparedLimits)], ['Fonctions', [...present(comparedFeatures), ...others]]];
+  const quota = (plan: Plan, code: string) => {
+    const item = plan.entitlements.find(entry => entry.featureCode === code);
+    return !item?.enabled ? '—' : item.limit === null ? 'Illimité' : count(item.limit);
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {plans.map(plan => {
-        const isCurrent = current?.plan.id === plan.id;
-        const isScheduled = scheduled?.planId === plan.id;
-        return (
-          <Card key={plan.id} className={cx('flex flex-col p-5', isCurrent && 'border-brand-500 ring-1 ring-brand-500')}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-lg font-semibold">{plan.name}</p>
-              {isCurrent && <Badge tone="brand">Plan actuel</Badge>}
-              {isScheduled && <Badge tone="blue">À partir du {day(scheduled.effectiveAtUtc)}</Badge>}
-            </div>
-            <p className="mt-2"><span className="text-[1.75rem] leading-tight font-bold tracking-tight text-ink-900">{money(plan.price, plan.currencyCode)}</span><span className="text-ink-500"> / {per(plan)}</span></p>
-            <ul className="mt-4 flex-1 space-y-1.5 text-sm">
-              {codes.map(code => {
-                const item = plan.entitlements.find(entry => entry.featureCode === code);
-                const enabled = item?.enabled ?? false;
-                return (
-                  <li key={code} className={cx('flex items-start gap-2', !enabled && 'text-ink-400')}>
-                    {enabled ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden="true" /> : <X className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
-                    <span>{featureLabel(code)}{enabled && item?.limit !== null && item?.limit !== undefined ? ` : ${count(item.limit)}` : enabled && (isMonthly(code) || code.endsWith('.count')) ? ' : illimité' : ''}</span>
-                  </li>
-                );
-              })}
-            </ul>
-            {plan.price === 0 && <p className="mt-3 text-xs text-ink-500">Un mois, une seule fois, au début de l’abonnement.</p>}
-            {canChange && !isCurrent && !isScheduled && (plan.price > 0 || freeAllowed) && (
-              <Button className="mt-5" variant={current ? 'secondary' : 'primary'} onClick={() => onChoose(plan)}>{current ? 'Passer à ce plan' : 'Choisir ce plan'}</Button>
-            )}
-          </Card>
-        );
-      })}
+    <div className="space-y-4">
+      {intervals.length > 1 && (
+        <div role="radiogroup" aria-label="Facturation" className="inline-flex rounded-xl bg-slate-100 p-1">
+          {(['Monthly', 'Yearly'] as const).map(value => (
+            <button key={value} type="button" role="radio" aria-checked={interval === value} onClick={() => setBilling(value)}
+              className={cx('rounded-lg px-4 py-1.5 text-sm font-semibold transition', interval === value ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800')}>
+              {value === 'Monthly' ? 'Mensuel' : 'Annuel'}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {shown.map(plan => {
+          const isCurrent = current?.plan.id === plan.id;
+          const isScheduled = scheduled?.planId === plan.id;
+          return (
+            <Card key={plan.id} className={cx('flex flex-col p-5', isCurrent && 'border-brand-500 ring-1 ring-brand-500')}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-lg font-semibold">{baseName(plan)}</p>
+                {isCurrent && <Badge tone="brand">Plan actuel</Badge>}
+                {isScheduled && <Badge tone="blue">À partir du {day(scheduled.effectiveAtUtc)}</Badge>}
+              </div>
+              <p className="mt-2"><span className="text-[1.75rem] leading-tight font-bold tracking-tight text-ink-900">{money(plan.price, plan.currencyCode)}</span><span className="text-ink-500"> / {per(plan)}</span></p>
+              <dl className="mt-4 flex-1 space-y-1.5 text-sm">
+                {[['locations.count', 'Établissements'], ['staff.count', 'Membres de l’équipe'], ['orders.monthly', 'Commandes par mois']].map(([code, label]) => (
+                  <div key={code} className="flex justify-between gap-2"><dt className="text-ink-600">{label}</dt><dd className="font-semibold tabular-nums">{quota(plan, code)}</dd></div>
+                ))}
+              </dl>
+              {canChange && !isCurrent && !isScheduled && (
+                <Button className="mt-5" variant={current ? 'secondary' : 'primary'} onClick={() => onChoose(plan)}>{current ? 'Passer à ce plan' : 'Choisir ce plan'}</Button>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="overflow-hidden">
+        <h3 className="border-b border-slate-100 px-5 py-3 font-semibold">Comparer les plans</h3>
+        <div className="relative overflow-x-auto">
+          <table className="w-full min-w-[34rem] text-sm">
+            <thead>
+              <tr className="text-xs text-ink-500">
+                <th scope="col" className="sticky left-0 bg-white px-5 py-2.5 text-left font-medium"><span className="sr-only">Droit</span></th>
+                {shown.map(plan => (
+                  <th key={plan.id} scope="col" className={cx('w-32 px-3 py-2.5 text-center font-semibold text-ink-900', current?.plan.id === plan.id && 'bg-brand-50/60')}>{baseName(plan)}</th>
+                ))}
+              </tr>
+            </thead>
+            {groups.filter(([, codes]) => codes.length > 0).map(([title, codes]) => (
+              <tbody key={title} className="divide-y divide-slate-100 border-t border-slate-100">
+                <tr><th scope="rowgroup" colSpan={shown.length + 1} className="bg-slate-50 px-5 py-1.5 text-left text-[11px] font-semibold tracking-widest text-ink-500 uppercase">{title}</th></tr>
+                {codes.map(code => (
+                  <tr key={code}>
+                    <th scope="row" className="sticky left-0 bg-white px-5 py-2 text-left font-normal text-ink-700">{featureLabel(code)}</th>
+                    {shown.map(plan => (
+                      <td key={plan.id} className={cx('px-3 py-2 text-center', current?.plan.id === plan.id && 'bg-brand-50/60')}><Cell plan={plan} code={code} addOns={addOns} /></td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+          </table>
+        </div>
+        <p className="border-t border-slate-100 px-5 py-3 text-xs text-ink-500">Les SMS, WhatsApp et emails comptés sont ceux envoyés par le compte de la plateforme ; avec votre propre compte, pas de quota.</p>
+      </Card>
     </div>
   );
 }
 
-const optionIcon = (plan: Plan) =>
-  plan.entitlements.some(item => item.featureCode === 'storefront.kiosk') ? MonitorSmartphone
-    : plan.entitlements.some(item => item.featureCode === 'storefront.mobile_app') ? Smartphone : Globe;
+const optionIcon = (plan: Plan) => {
+  const has = (code: string) => plan.entitlements.some(item => item.enabled && item.featureCode === code);
+  return has('storefront.kiosk') ? MonitorSmartphone : has('storefront.mobile_app') ? Smartphone : has('locations.count') ? Building2 : has('storefront.api') || has('integrations.webhooks') ? Plug : Globe;
+};
 
 const optionHint = (plan: Plan) => plan.entitlements.filter(item => item.enabled).map(item => featureLabel(item.featureCode)).join(' · ');
 
@@ -138,7 +204,7 @@ function NextCharge({charge}: {charge: Charge}) {
 
 type OptionAction = {kind: 'subscribe'; plan: Plan} | {kind: 'quantity'; addOn: TenantAddOn} | {kind: 'cancel'; addOn: TenantAddOn};
 
-function Options({data, canChange, onChanged}: {data: MyAddOns; canChange: boolean; onChanged: () => Promise<void>}) {
+function Options({data, plan: base, canChange, onChanged}: {data: MyAddOns; plan: Plan; canChange: boolean; onChanged: () => Promise<void>}) {
   const {busy, run} = useAction();
   const [action, setAction] = useState<OptionAction | null>(null);
   const [quantity, setQuantity] = useState('1');
@@ -157,25 +223,35 @@ function Options({data, canChange, onChanged}: {data: MyAddOns; canChange: boole
     <section id="options" className="scroll-mt-24 space-y-3">
       <div>
         <h2 className="text-lg font-semibold">Options</h2>
-        <p className="text-sm text-ink-500">Vente en ligne et bornes : actives tout de suite, facturées avec votre abonnement à la prochaine échéance.</p>
+        <p className="text-sm text-ink-500">Vente en ligne, bornes, API et établissements supplémentaires : actives tout de suite, facturées avec votre abonnement à la prochaine échéance.</p>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {plans.map(plan => {
           const active = data.active.find(item => item.addOn.id === plan.id);
           const Icon = optionIcon(plan);
+          // Une option comptée (bornes, établissements) s'ajoute à la limite du plan : jamais « incluse ».
+          const unavailable = addOnUnavailable(base, plan);
+          const included = !unavailable && !isCounted(plan) && includedInPlan(base, plan);
           return (
-            <Card key={plan.id} className={cx('flex flex-col p-5', active && 'border-emerald-300')}>
+            <Card key={plan.id} className={cx('flex flex-col p-5', active && 'border-emerald-300', !active && (included || unavailable) && 'bg-slate-50/60')}>
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700" aria-hidden="true"><Icon className="size-5" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 font-semibold">{plan.name}{active && <Badge tone="green">Active</Badge>}</p>
+                  <p className="flex flex-wrap items-center gap-2 font-semibold">
+                    {plan.name}
+                    {active && <Badge tone="green">Active</Badge>}
+                    {!active && included && <Badge tone="green">Inclus dans votre plan</Badge>}
+                    {!active && !included && unavailable && <Badge>Plans Pro et Multi-sites</Badge>}
+                  </p>
                   <p className="text-sm text-ink-500">{optionHint(plan)}</p>
                 </div>
               </div>
               <p className="mt-3"><span className="text-2xl font-bold tracking-tight">{money(plan.price, plan.currencyCode)}</span><span className="text-ink-500"> / {per(plan)}{isCounted(plan) ? ' par unité' : ''}</span></p>
+              {!active && !included && unavailable && <p className="mt-1 text-sm text-ink-600">Indisponible sur votre plan : passez au plan Pro ou Multi-sites pour ajouter des établissements.</p>}
+              {active && included && <p className="mt-1 text-sm text-ink-600">Votre plan l’inclut désormais : vous pouvez résilier cette option.</p>}
               {active && isCounted(plan) && <p className="mt-1 text-sm text-ink-600">Quantité : <strong>{count(active.quantity)}</strong> · {money(plan.price * active.quantity, plan.currencyCode)} / {per(plan)}</p>}
               <div className="mt-4 flex flex-1 flex-wrap items-end gap-2">
-                {canChange && !active && <Button size="sm" onClick={() => open({kind: 'subscribe', plan})}><Plus className="size-4" aria-hidden="true" />Souscrire</Button>}
+                {canChange && !active && !included && !unavailable && <Button size="sm" onClick={() => open({kind: 'subscribe', plan})}><Plus className="size-4" aria-hidden="true" />Souscrire</Button>}
                 {canChange && active && isCounted(plan) && <Button size="sm" variant="secondary" onClick={() => open({kind: 'quantity', addOn: active})}>Modifier la quantité</Button>}
                 {canChange && active && <Button size="sm" variant="ghost" className="text-red-600" onClick={() => open({kind: 'cancel', addOn: active})}>Résilier</Button>}
               </div>
@@ -348,6 +424,34 @@ function PayOnline({info, manage, onPaid, autoOpen = false}: {info: OnlinePaymen
   );
 }
 
+/** Avant un plan inférieur : ce qui dépasse sera gelé, jamais supprimé. */
+function Downgrade({current, target, usage}: {current: Plan; target: Plan; usage: {locations: number | null; staff: number | null}}) {
+  const losses = downgradeLosses(current, target);
+  if (losses.length === 0) return null;
+  const over = (code: string, limit: number | null) => {
+    const used = code === 'locations.count' ? usage.locations : code === 'staff.count' ? usage.staff : null;
+    return used !== null && limit !== null && used > limit ? used - limit : 0;
+  };
+  return (
+    <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sky-950">
+      <p className="flex items-center gap-2 font-semibold"><Snowflake className="size-4 shrink-0" aria-hidden="true" />Plan inférieur : ce qui dépasse sera gelé</p>
+      <ul className="list-disc space-y-0.5 pl-5">
+        {losses.map(loss => {
+          const frozen = over(loss.code, loss.to);
+          const unit = loss.code === 'locations.count' ? 'établissement' : 'membre';
+          return (
+            <li key={loss.code}>
+              {featureLabel(loss.code)} : {loss.lost ? 'non inclus' : `${loss.from === null ? 'illimité' : count(loss.from)} → ${count(loss.to!)}`}
+              {frozen > 0 && <strong> ({frozen} {unit}{frozen > 1 ? 's' : ''} gelé{frozen > 1 ? 's' : ''})</strong>}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-sky-900">Rien n’est supprimé : les éléments gelés restent consultables, sans nouvelles actions. Ils se dégèlent en repassant à un plan supérieur ou en archivant ce qui dépasse.</p>
+    </div>
+  );
+}
+
 function Payments() {
   const {busy, run} = useAction();
   const [page, setPage] = useState(1);
@@ -398,8 +502,9 @@ function Payments() {
 }
 
 export default function SubscriptionPage() {
-  const {can, tenant} = useConsole();
+  const {can, tenant, locations} = useConsole();
   const {busy, run} = useAction();
+  const planFeatures = usePlanFeatures();
   const allowed = can('billing.view');
   const subscription = useResource(signal => (allowed ? mine(signal) : Promise.resolve(null)), [allowed]);
   const plans = useResource(signal => (allowed ? listPlans(signal) : Promise.resolve([])), [allowed]);
@@ -426,12 +531,10 @@ export default function SubscriptionPage() {
   if (subscription.loading || !plans.data) return <Spinner />;
   const data = subscription.data ?? null;
   const sub = data?.subscription;
-  // Après un essai expiré (Découverte compris), choisir un plan payant reste possible.
+  // Après un essai expiré, choisir un plan reste possible.
   const trialExpired = sub?.status === 'Suspended' && sub.suspensionReason === 'TrialExpired';
   const canChangeOptions = manage && (!sub || sub.status === 'Trialing' || sub.status === 'Active');
   const canChange = canChangeOptions || (manage && trialExpired);
-  // Le serveur vérifie aussi que c'est le premier abonnement.
-  const freeAllowed = !sub || (sub.status === 'Trialing' && new Date(sub.currentPeriodEndUtc) <= addMonths(sub.startedAtUtc, 1));
   const offered = !!sub?.isComplimentary;
   // Période payée : le changement de plan s'applique à l'échéance.
   const paidPeriod = sub?.status === 'Active' && !offered;
@@ -442,6 +545,8 @@ export default function SubscriptionPage() {
     await plans.reload();
     await addOns.reload();
     await online.reload();
+    // Droits rechargés pour toute la console (badges, panneaux, barre latérale).
+    await planFeatures.reload();
   };
   const payable = online.data?.available && (online.data.due || online.data.pending);
 
@@ -540,7 +645,7 @@ export default function SubscriptionPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{data ? 'Changer de plan' : 'Choisir un plan'}</h2>
         {plans.data.length === 0 ? <p className="text-sm text-ink-500">Aucun plan disponible dans votre devise.</p> : (
-          <Plans current={data} plans={plans.data} canChange={canChange && !offered} freeAllowed={freeAllowed} onChoose={setChoosing} />
+          <Plans current={data} plans={plans.data} addOns={[...(addOns.data?.offered ?? []), ...(addOns.data?.active.map(item => item.addOn) ?? [])]} canChange={canChange && !offered} onChoose={setChoosing} />
         )}
         {paidPeriod && canChange && <p className="text-sm text-ink-500">Votre période est payée jusqu’au {day(sub!.currentPeriodEndUtc)} : un nouveau plan s’applique à cette date.</p>}
         {data && offered && manage && <p className="text-sm text-ink-500">Votre plan est offert : pour en changer, contactez l’équipe RestauSpace.</p>}
@@ -548,7 +653,7 @@ export default function SubscriptionPage() {
       </section>
 
       {data && addOns.data && (
-        <Options data={addOns.data} canChange={canChangeOptions && !forever} onChanged={refresh} />
+        <Options data={addOns.data} plan={data.plan} canChange={canChangeOptions && !forever} onChanged={refresh} />
       )}
       {data && addOns.data && addOns.data.offered.length + addOns.data.active.length > 0 && !canChangeOptions && manage && (
         <p className="text-sm text-ink-500">Les options se modifient pendant l’essai ou une période payée.</p>
@@ -574,6 +679,7 @@ export default function SubscriptionPage() {
         {choosing && (
           <div className="space-y-2 text-sm text-ink-700">
             <p><strong>{choosing.name}</strong> : {money(choosing.price, choosing.currencyCode)} / {per(choosing)}.</p>
+            {data && <Downgrade current={data.plan} target={choosing} usage={{locations: planFeatures.data?.usage?.locations ?? locations.length, staff: planFeatures.data?.usage?.staff ?? null}} />}
             {paidPeriod ? (
               <>
                 <p>Le plan {choosing.name} s’appliquera le <strong>{day(sub!.currentPeriodEndUtc)}</strong>, à la fin de votre période payée. D’ici là, vous gardez le plan {data!.plan.name} et ses limites.</p>

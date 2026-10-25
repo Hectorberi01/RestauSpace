@@ -38,6 +38,9 @@ public sealed class ReservationsFixture
     /// <summary>Établissements fermés pendant tout créneau demandé.</summary>
     public HashSet<LocationId> Closed { get; } = [];
 
+    /// <summary>Établissements gelés (au-delà de la limite du plan), selon le faux module Locations.</summary>
+    public HashSet<LocationId> Frozen { get; } = [];
+
     /// <summary>Places des tables en service par établissement (module Floor) ; 10 par défaut.</summary>
     public Dictionary<LocationId, int> Seats { get; } = [];
 
@@ -186,6 +189,9 @@ public sealed class ReservationsFixture
 
     Task<bool> IReservationLocations.IsOpenDuringAsync(TenantId tenantId, LocationId locationId, Period slot, CancellationToken cancellationToken) =>
         Task.FromResult(Locations.Any(location => location.TenantId == tenantId && location.LocationId == locationId) && !Closed.Contains(locationId));
+
+    Task<bool> IReservationLocations.IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
+        Task.FromResult(Frozen.Contains(locationId));
 
     Task<FloorOccupancy> IReservationFloor.GetOccupancyAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken) =>
         Task.FromResult(new FloorOccupancy(

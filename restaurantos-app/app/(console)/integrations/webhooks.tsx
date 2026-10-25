@@ -7,6 +7,8 @@ import {
   setEndpointEnabled, subscribeEvent, testEndpoint, unsubscribeEvent, type Catalog, type DeliveryStatus, type WebhookEndpoint,
 } from '@/lib/integrations';
 import {useConsole} from '@/components/console';
+import {UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, cx, useAction, useToast} from '@/components/ui';
 import {SecretOnce, day, stamp} from './shared';
 
@@ -224,13 +226,16 @@ export function Webhooks({catalog}: {catalog: Catalog}) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const opened = data?.find(item => item.id === openId) ?? null;
+  // Sans le droit : webhooks visibles, plus de création ; les livraisons sont suspendues.
+  const locked = usePlanFeatures().blocked(Feature.IntegrationsWebhooks);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p className="flex-1 text-sm text-ink-600">Un webhook prévient votre serveur à chaque événement (commande passée, paiement, réservation…). Chaque envoi est signé avec un secret propre au webhook.</p>
-        {can('integrations.manage') && <Button onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />Nouveau webhook</Button>}
+        {can('integrations.manage') && !locked && <Button onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />Nouveau webhook</Button>}
       </div>
+      {locked && <UpgradePanel feature={Feature.IntegrationsWebhooks} title="Webhooks">Prévenez votre serveur à chaque événement.{(data ?? []).length > 0 ? ' Les envois aux webhooks existants sont suspendus.' : ''}</UpgradePanel>}
       {error ? <Alert>{error}</Alert> : !data ? <Spinner /> : data.length === 0 ? (
         <Card className="p-6"><Empty icon={<Webhook className="size-8" />} title="Aucun webhook">Ajoutez l’adresse de votre serveur pour recevoir les événements en temps réel.</Empty></Card>
       ) : (

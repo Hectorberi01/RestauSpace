@@ -28,6 +28,7 @@ public static class StorefrontModule
         services.TryAddScoped<Storefront.Application.Abstractions.IStorefrontReviews, NoReviews>();
         services.AddStorefrontInfrastructure(connectionString, configure);
         services.AddScoped<StorefrontWorkspace>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddHandlersFrom(typeof(StorefrontApplicationErrors).Assembly);
         services.AddStorefrontCors();
         services.AddStorefrontRateLimiting();

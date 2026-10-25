@@ -163,6 +163,8 @@ public sealed class BillingFixture
 
     public GetFeatureLimitHandler GetLimit => new(Workspace);
 
+    public GetMyFeaturesHandler GetMyFeatures => new(Workspace);
+
     public ListSubscriptionsHandler ListSubscriptions => new(Workspace);
 
     public GetSubscriptionHandler GetSubscription => new(Workspace);

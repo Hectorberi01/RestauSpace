@@ -39,6 +39,9 @@ public sealed class IdentityFixture :
     /// <summary>Paires (utilisateur, tenant) autorisées à agir pour le tenant.</summary>
     public HashSet<(UserId UserId, TenantId TenantId)> Memberships { get; } = [];
 
+    /// <summary>Membres gelés (au-delà de la limite du plan du restaurant).</summary>
+    public HashSet<(UserId UserId, TenantId TenantId)> Frozen { get; } = [];
+
     public HashSet<(UserId UserId, TenantId TenantId)> SoleOwnerships { get; } = [];
 
     public List<(UserId UserId, string Email)> Forgotten { get; } = [];
@@ -228,6 +231,9 @@ public sealed class IdentityFixture :
 
     public Task<bool> CanActForTenantAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Memberships.Contains((userId, tenantId)));
+
+    public Task<bool> IsFrozenAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Frozen.Contains((userId, tenantId)));
 
     public Task<IReadOnlyList<TenantId>> SoleOwnerTenantsAsync(UserId userId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<TenantId>>(SoleOwnerships.Where(entry => entry.UserId == userId).Select(entry => entry.TenantId).ToList());

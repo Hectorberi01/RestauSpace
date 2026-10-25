@@ -14,6 +14,7 @@ public sealed class CreateRewardHandler(LoyaltyWorkspace workspace, IClock clock
         var cost = Points.Of(command.PointCost);
         var value = Money.Of(command.DiscountAmount, Currency.FromCode(command.CurrencyCode));
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
 
         var reward = Reward.Create(workspace.CurrentTenant, command.Name ?? string.Empty, cost, value, clock);
         workspace.Rewards.Add(reward);
@@ -27,10 +28,11 @@ public sealed record ChangeRewardCostCommand(Guid RewardId, int PointCost) : ICo
 
 public sealed class ChangeRewardCostHandler(LoyaltyWorkspace workspace, IClock clock) : ICommandHandler<ChangeRewardCostCommand>
 {
-    public Task HandleAsync(ChangeRewardCostCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(ChangeRewardCostCommand command, CancellationToken cancellationToken = default)
     {
         var cost = Points.Of(command.PointCost);
-        return workspace.EditRewardAsync(command.RewardId, reward => reward.ChangeCost(cost, clock), cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
+        await workspace.EditRewardAsync(command.RewardId, reward => reward.ChangeCost(cost, clock), cancellationToken);
     }
 }
 
@@ -38,10 +40,11 @@ public sealed record ChangeRewardDiscountValueCommand(Guid RewardId, decimal Dis
 
 public sealed class ChangeRewardDiscountValueHandler(LoyaltyWorkspace workspace, IClock clock) : ICommandHandler<ChangeRewardDiscountValueCommand>
 {
-    public Task HandleAsync(ChangeRewardDiscountValueCommand command, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(ChangeRewardDiscountValueCommand command, CancellationToken cancellationToken = default)
     {
         var value = Money.Of(command.DiscountAmount, Currency.FromCode(command.CurrencyCode));
-        return workspace.EditRewardAsync(command.RewardId, reward => reward.ChangeDiscountValue(value, clock), cancellationToken);
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
+        await workspace.EditRewardAsync(command.RewardId, reward => reward.ChangeDiscountValue(value, clock), cancellationToken);
     }
 }
 
@@ -49,8 +52,11 @@ public sealed record ActivateRewardCommand(Guid RewardId) : ICommand;
 
 public sealed class ActivateRewardHandler(LoyaltyWorkspace workspace, IClock clock) : ICommandHandler<ActivateRewardCommand>
 {
-    public Task HandleAsync(ActivateRewardCommand command, CancellationToken cancellationToken = default) =>
-        workspace.EditRewardAsync(command.RewardId, reward => reward.Activate(clock), cancellationToken);
+    public async Task HandleAsync(ActivateRewardCommand command, CancellationToken cancellationToken = default)
+    {
+        await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
+        await workspace.EditRewardAsync(command.RewardId, reward => reward.Activate(clock), cancellationToken);
+    }
 }
 
 public sealed record DeactivateRewardCommand(Guid RewardId) : ICommand;
@@ -61,7 +67,10 @@ public sealed class DeactivateRewardHandler(LoyaltyWorkspace workspace, IClock c
         workspace.EditRewardAsync(command.RewardId, reward => reward.Deactivate(clock), cancellationToken);
 }
 
-/// <summary>Remplace le barème du restaurant (voir <see cref="LoyaltyProgram"/>). Vaut pour les commandes terminées ensuite.</summary>
+/// <summary>
+/// Remplace le barème du restaurant (voir <see cref="LoyaltyProgram"/>). Vaut pour les commandes terminées ensuite.
+/// Activer exige la fidélité dans le plan ; désactiver reste toujours permis.
+/// </summary>
 public sealed record SetLoyaltyProgramCommand(bool IsEnabled, decimal PointsPerCurrencyUnit, bool AutoEnroll, int? InactivityExpiryDays) : ICommand;
 
 public sealed class SetLoyaltyProgramHandler(LoyaltyWorkspace workspace, IClock clock) : ICommandHandler<SetLoyaltyProgramCommand>
@@ -70,6 +79,11 @@ public sealed class SetLoyaltyProgramHandler(LoyaltyWorkspace workspace, IClock 
     {
         var program = LoyaltyProgram.Create(command.IsEnabled, command.PointsPerCurrencyUnit, command.AutoEnroll, command.InactivityExpiryDays);
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        if (command.IsEnabled)
+        {
+            await workspace.RequireFeatureAsync(PlanFeatures.Loyalty, cancellationToken);
+        }
+
         await workspace.Program.SetAsync(workspace.CurrentTenant, program, clock.UtcNow, cancellationToken);
         await workspace.SaveAsync(cancellationToken);
     }

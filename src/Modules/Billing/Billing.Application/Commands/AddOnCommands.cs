@@ -104,6 +104,7 @@ internal static class TenantAddOns
     {
         var plan = await workspace.LoadPlanAsync(planId, cancellationToken);
         await workspace.EnsurePlanCurrencyAsync(tenant, plan, cancellationToken);
+        await EnsureFitsBasePlanAsync(workspace, tenant, plan, cancellationToken);
         var addOn = TenantAddOn.Activate(
             tenant,
             plan.ToReference(),
@@ -113,6 +114,31 @@ internal static class TenantAddOns
         workspace.AddOns.Add(addOn);
         await workspace.SaveAsync(cancellationToken);
         return addOn.Id.Value;
+    }
+
+    /// <summary>
+    /// L'option doit apporter quelque chose au plan de base de l'abonnement vivant : un établissement supplémentaire exige
+    /// <c>locations.extra</c> ; une option dont tous les droits sont déjà illimités dans le plan est refusée (les limites
+    /// d'une option s'ajoutent à celles du plan, donc seul un droit illimité la rend inutile).
+    /// </summary>
+    private static async Task EnsureFitsBasePlanAsync(BillingWorkspace workspace, TenantId tenant, Plan addOn, CancellationToken cancellationToken)
+    {
+        if (addOn.Kind != PlanKind.AddOn
+            || await workspace.Subscriptions.FindLiveAsync(tenant, cancellationToken) is not { } subscription
+            || await workspace.Plans.FindAsync(subscription.PlanId, cancellationToken) is not { } basePlan)
+        {
+            return;
+        }
+
+        var granted = addOn.Entitlements.Where(entitlement => entitlement.Enabled).ToList();
+        var locations = FeatureCode.Create(BillingFeatures.Locations);
+        DomainException.ThrowIf(
+            granted.Any(entitlement => entitlement.FeatureCode == locations)
+            && !basePlan.EntitlementFor(FeatureCode.Create(BillingFeatures.LocationsExtra)).Enabled,
+            BillingApplicationErrors.AddOnNotAvailableOnPlan);
+        DomainException.ThrowIf(
+            granted.Count > 0 && granted.All(entitlement => basePlan.EntitlementFor(entitlement.FeatureCode).IsUnlimited),
+            BillingApplicationErrors.AddOnAlreadyIncluded);
     }
 
     /// <summary>Un abonnement en essai ou en période payée : sinon le restaurant doit d'abord régulariser.</summary>

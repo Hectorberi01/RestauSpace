@@ -2,7 +2,7 @@ using Locations.Application.Abstractions;
 
 namespace Locations.Application.Queries;
 
-/// <summary>Un établissement du tenant courant. Lisible quel que soit le statut du tenant ou de l'établissement.</summary>
+/// <summary>Un établissement du tenant courant. Lisible quel que soit le statut du tenant ou de l'établissement, même gelé.</summary>
 public sealed record GetLocationByIdQuery(Guid LocationId) : IQuery<LocationDto>;
 
 public sealed class GetLocationByIdHandler(ITenantContext tenantContext, ILocationRepository locations)
@@ -13,6 +13,17 @@ public sealed class GetLocationByIdHandler(ITenantContext tenantContext, ILocati
         var location = await LocationEditor.FindAsync(tenantContext.RequireTenant(), query.LocationId, locations, cancellationToken);
         return LocationDto.From(location);
     }
+}
+
+/// <summary>Pour les autres modules (commandes, réservations), via l'hôte : l'établissement du tenant courant est-il gelé ?</summary>
+public sealed record IsLocationFrozenQuery(Guid LocationId) : IQuery<bool>;
+
+public sealed class IsLocationFrozenHandler(ITenantContext tenantContext, LocationFreeze freeze) : IQueryHandler<IsLocationFrozenQuery, bool>
+{
+    public Task<bool> HandleAsync(IsLocationFrozenQuery query, CancellationToken cancellationToken = default) =>
+        query.LocationId == Guid.Empty
+            ? Task.FromResult(false)
+            : freeze.IsFrozenAsync(tenantContext.RequireTenant(), LocationId.From(query.LocationId), cancellationToken);
 }
 
 /// <summary>Établissements du tenant courant, par nom. Les archivés seulement sur demande.</summary>
@@ -26,7 +37,7 @@ public sealed record ListLocationsQuery(int Page = 1, int PageSize = ListLocatio
     public const int MaxPage = 100_000;
 }
 
-public sealed class ListLocationsHandler(ITenantContext tenantContext, ILocationRepository locations)
+public sealed class ListLocationsHandler(ITenantContext tenantContext, ILocationRepository locations, LocationFreeze freeze)
     : IQueryHandler<ListLocationsQuery, PagedResult<LocationSummaryDto>>
 {
     public async Task<PagedResult<LocationSummaryDto>> HandleAsync(ListLocationsQuery query, CancellationToken cancellationToken = default)
@@ -36,14 +47,16 @@ public sealed class ListLocationsHandler(ITenantContext tenantContext, ILocation
             throw new DomainException(LocationsApplicationErrors.PagingInvalid);
         }
 
+        var tenant = tenantContext.RequireTenant();
         var page = await locations.ListAsync(
-            tenantContext.RequireTenant(),
+            tenant,
             query.IncludeArchived,
             (query.Page - 1) * query.PageSize,
             query.PageSize,
             cancellationToken);
+        var frozen = await freeze.FrozenAsync(tenant, cancellationToken);
         return PagedResult<LocationSummaryDto>.Counted(
-            page.Items.Select(LocationSummaryDto.From).ToList(), query.Page, query.PageSize, page.TotalCount);
+            page.Items.Select(location => LocationSummaryDto.From(location, frozen.Contains(location.Id))).ToList(), query.Page, query.PageSize, page.TotalCount);
     }
 }
 

@@ -10,6 +10,8 @@ import {
   type Frequency, type ReportDefinition, type ReportKind, type Weekday,
 } from '@/lib/reports';
 import {useConsole} from '@/components/console';
+import {UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, cx, useAction} from '@/components/ui';
 import {MetricPicker} from '../metric-picker';
 
@@ -194,6 +196,7 @@ const ratioMetrics = new Set([...rateMetrics, 'sales.average_ticket', 'kitchen.a
 function RunDialog({definition, onClose}: {definition: ReportDefinition | null; onClose: () => void}) {
   const {can, currency} = useConsole();
   const {busy, run} = useAction();
+  const exportable = !usePlanFeatures().blocked(Feature.ReportingAdvanced);
   const [preset, setPreset] = useState('7d');
   const period = (presets.find(item => item.key === preset) ?? presets[0]).period();
   const result = useResource(
@@ -209,7 +212,7 @@ function RunDialog({definition, onClose}: {definition: ReportDefinition | null; 
     moneyMetrics.has(metric) ? money(amount, currency) : rateMetrics.has(metric) ? `${Math.round(amount * 1000) / 10} %` : new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 1}).format(amount);
 
   return (
-    <Modal wide open={definition !== null} onClose={onClose} title={definition?.name ?? ''} footer={can('reporting.export') && definition ? (
+    <Modal wide open={definition !== null} onClose={onClose} title={definition?.name ?? ''} footer={can('reporting.export') && exportable && definition ? (
       <Button variant="secondary" busy={busy === 'csv'} onClick={() => run('csv', async () => {
         const id = await exportDefinition(definition.id, period);
         await downloadFile(`/reporting/exports/${id}/file`, `${definition.name}.csv`);
@@ -294,6 +297,9 @@ export default function ScheduledReportsPage() {
   const [scheduling, setScheduling] = useState<ReportDefinition | null>(null);
   const [viewing, setViewing] = useState<ReportDefinition | null>(null);
   const manage = can('reporting.manage');
+  const {blocked} = usePlanFeatures();
+  // Sans le droit : rapports visibles, plus de programmation ni d'envoi.
+  const automated = !blocked(Feature.Automations);
 
   if (!can('reporting.view')) {
     return <Empty icon={<CalendarClock className="size-8" />} title="Rapports non disponibles">Réservé aux membres qui ont accès aux rapports.</Empty>;
@@ -310,6 +316,8 @@ export default function ScheduledReportsPage() {
         </div>
         {manage && <Button onClick={() => setEditing('new')}><Plus className="size-4" aria-hidden="true" />Nouveau rapport</Button>}
       </div>
+
+      {!automated && <UpgradePanel feature={Feature.Automations} title="Envoi automatique des rapports">Recevez vos rapports par e-mail chaque jour, semaine ou mois.{definitions.some(item => item.schedule) ? ' Les envois programmés sont suspendus.' : ''}</UpgradePanel>}
 
       {error ? <Alert>{error}</Alert> : !data ? <Spinner /> : definitions.length === 0 ? (
         <Card className="p-6">
@@ -331,7 +339,7 @@ export default function ScheduledReportsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 font-semibold">
                       {definition.name}
-                      {schedule ? <Badge tone="green">Envoi automatique</Badge> : <Badge>Manuel</Badge>}
+                      {schedule ? (automated ? <Badge tone="green">Envoi automatique</Badge> : <Badge tone="amber">Envoi suspendu</Badge>) : <Badge>Manuel</Badge>}
                     </p>
                     <p className="mt-0.5 text-sm text-ink-600">{kind ? kindLabel[kind] : `Personnalisé (${definition.metrics.length} mesures)`} · {site}</p>
                     {schedule && (
@@ -350,7 +358,7 @@ export default function ScheduledReportsPage() {
                     {manage && (
                       <>
                         <Button size="sm" variant="ghost" aria-label={`Modifier ${definition.name}`} title="Modifier" onClick={() => setEditing(definition)}><Pencil className="size-4" /></Button>
-                        <Button size="sm" variant="secondary" onClick={() => setScheduling(definition)}><CalendarClock className="size-4" aria-hidden="true" />{schedule ? 'Programmation' : 'Programmer'}</Button>
+                        {automated && <Button size="sm" variant="secondary" onClick={() => setScheduling(definition)}><CalendarClock className="size-4" aria-hidden="true" />{schedule ? 'Programmation' : 'Programmer'}</Button>}
                       </>
                     )}
                   </div>

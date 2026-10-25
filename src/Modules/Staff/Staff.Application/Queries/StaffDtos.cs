@@ -13,9 +13,11 @@ public sealed record StaffMemberDto(
     IReadOnlyList<StaffAssignmentDto> Assignments,
     DateTimeOffset InvitedAtUtc,
     string? Email = null,
-    bool HasPin = false)
+    bool HasPin = false,
+    bool IsFrozen = false)
 {
-    public static StaffMemberDto From(StaffMember member, string? email = null)
+    /// <param name="isFrozen">Au-delà de la limite du plan (<see cref="StaffFreeze"/>).</param>
+    public static StaffMemberDto From(StaffMember member, string? email = null, bool isFrozen = false)
     {
         ArgumentNullException.ThrowIfNull(member);
         return new StaffMemberDto(
@@ -26,7 +28,8 @@ public sealed record StaffMemberDto(
             member.Assignments.Select(assignment => new StaffAssignmentDto(assignment.LocationId.Value, assignment.RoleId.Value)).ToList(),
             member.InvitedAtUtc,
             email,
-            member.HasPin);
+            member.HasPin,
+            isFrozen);
     }
 }
 

@@ -39,7 +39,19 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Quelle différence entre les plans ?',
-        a: 'Tous les modules sont inclus dans tous les plans. Les plans diffèrent par les volumes : nombre d’établissements, de membres de l’équipe, de commandes par mois et de messages envoyés.',
+        a: 'Essentiel couvre le service : commandes, caisse, cuisine, carte, réservations, salle, stock, équipe et programme de fidélité. Pro ajoute le site de commande en ligne, les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks, et le support prioritaire. Multi-sites ajoute les rapports consolidés de tous vos établissements. Les volumes (établissements, équipe, commandes, messages) augmentent aussi d’un plan à l’autre.',
+      },
+      {
+        q: 'Comment fonctionne l’essai gratuit ?',
+        a: `Vous profitez de ${trial} d’essai gratuit sur le plan choisi, en service réel. Vous pouvez changer de plan pendant l’essai.`,
+      },
+      {
+        q: 'Quelles options puis-je ajouter ?',
+        a: 'Site web, application mobile, borne (prix par borne), API et webhooks, et établissement supplémentaire. Le site web, l’API et les webhooks sont déjà inclus dans Pro et Multi-sites. L’établissement supplémentaire est disponible à partir de Pro.',
+      },
+      {
+        q: 'Les messages à mes clients sont-ils limités ?',
+        a: 'Les emails, SMS et messages WhatsApp envoyés par le compte de la plateforme suivent le volume mensuel de votre plan. Avec votre propre compte d’envoi, configuré dans la console, les envois sont sans limite, sur tous les plans.',
       },
       {
         q: 'Que se passe-t-il si je dépasse une limite ?',
@@ -48,6 +60,10 @@ export const faq: QuestionGroup[] = [
       {
         q: 'Puis-je changer de plan ou résilier ?',
         a: 'Oui. Le changement de plan est possible pendant l’essai et pendant une période payée. La résiliation prend effet à la fin de la période en cours.',
+      },
+      {
+        q: 'Que se passe-t-il si je passe à un plan inférieur ?',
+        a: 'Rien n’est supprimé. Ce qui dépasse le nouveau plan est gelé : par exemple, un établissement au-delà de la limite reste consultable mais ne prend plus de nouvelles commandes, et une campagne programmée n’est plus envoyée. Le gel est levé dès que vous repassez au plan supérieur ou que vous archivez l’élément en trop.',
       },
       {
         q: 'Dans quelle devise suis-je facturé ?',
@@ -62,15 +78,15 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Quels modules sont inclus dans mon plan ?',
-        a: 'Tous. Chaque plan donne accès à tous les modules : commandes, cuisine, réservations, carte, salle, stock, personnel, clients, marketing, rapports, encaissement, vente en ligne et API. Les plans ne diffèrent que par les volumes.',
+        a: 'Tous les plans incluent les commandes, la caisse, la cuisine, la carte, les réservations, la salle, le stock, l’équipe, les fiches clients et le programme de fidélité. Le site de commande, les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks sont inclus à partir de Pro ; les rapports consolidés, dans Multi-sites. Le comparatif complet est sur la page Tarifs.',
       },
       {
         q: 'Mes clients peuvent-ils commander en ligne ?',
-        a: 'Oui : site de commande à vos couleurs, application mobile, borne en libre-service et commande à table par QR code. Le client paie en ligne ou au comptoir, et suit sa commande en direct.',
+        a: 'Oui : site de commande à vos couleurs, application mobile, borne en libre-service et commande à table par QR code. Le client paie en ligne ou au comptoir, et suit sa commande en direct. Le site est inclus dans Pro et Multi-sites, en option sur Essentiel ; l’application et la borne sont des options sur tous les plans.',
       },
       {
         q: 'Puis-je gérer plusieurs établissements ?',
-        a: 'Oui, depuis un seul compte. Chaque établissement garde ses horaires, ses prix et son stock, et vos rapports sont consolidés ou par établissement. Le nombre d’établissements dépend de votre plan.',
+        a: 'Oui, depuis un seul compte. Chaque établissement garde ses horaires, ses prix et son stock, et vos rapports se lisent par établissement. Essentiel inclut 1 établissement, Pro 2 et Multi-sites 5 ; à partir de Pro, vous pouvez en ajouter en option. Multi-sites ajoute les rapports consolidés de tous vos établissements.',
       },
     ],
   },
@@ -119,7 +135,7 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Puis-je relier RestauSpace à mes autres logiciels ?',
-        a: 'Oui. L’API d’intégration alimente votre caisse, votre comptabilité ou vos tableaux de bord, et des webhooks signés vous préviennent des commandes, paiements, réservations et mouvements de stock. Chaque clé d’API a des droits limités.',
+        a: 'Oui. L’API d’intégration alimente votre caisse, votre comptabilité ou vos tableaux de bord, et des webhooks signés vous préviennent des commandes, paiements, réservations et mouvements de stock. Chaque clé d’API a des droits limités. L’API et les webhooks sont inclus dans Pro et Multi-sites, en option sur Essentiel.',
       },
       {
         q: 'Puis-je créer mon propre site ou ma propre application ?',

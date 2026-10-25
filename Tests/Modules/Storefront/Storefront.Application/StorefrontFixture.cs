@@ -104,6 +104,8 @@ public sealed class StorefrontFixture
 
     public ListKiosksHandler ListKiosks => new(Workspace, this);
 
+    public EnsureStorefrontAccessHandler EnsureAccess => new(Workspace, this, this);
+
     public RevokeKioskHandler RevokeKiosk => new(Workspace, this, Clock);
 
     public GetStorefrontHandler Storefront => new(Workspace, this, this, Clock);

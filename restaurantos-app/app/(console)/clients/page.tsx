@@ -10,10 +10,13 @@ import {
 } from '@/lib/customers';
 import {ImportDialog} from './import';
 import {useConsole} from '@/components/console';
+import {PlanBadge, UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, Spinner, cx, useAction} from '@/components/ui';
 
 function CreateDialog({open, requirement, onClose}: {open: boolean; requirement: ContactRequirement | undefined; onClose: () => void}) {
   const router = useRouter();
+  const tagsLocked = usePlanFeatures().blocked(Feature.CustomersAdvanced);
   const {busy, run} = useAction();
   const [form, setForm] = useState({name: '', email: '', phone: '', tags: '', language: 'fr'});
   const [wanted, setWanted] = useState<Channel[]>([]);
@@ -41,7 +44,7 @@ function CreateDialog({open, requirement, onClose}: {open: boolean; requirement:
             name: form.name.trim(),
             email: form.email.trim() || null,
             phone: form.phone.trim() || null,
-            tags: form.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+            tags: tagsLocked ? [] : form.tags.split(',').map(tag => tag.trim()).filter(Boolean),
             preferences: {language: form.language, marketingChannels: wanted},
           });
           onClose();
@@ -54,9 +57,11 @@ function CreateDialog({open, requirement, onClose}: {open: boolean; requirement:
           <Field label="Téléphone" hint="Format international."><Input type="tel" autoComplete="off" value={form.phone} onChange={set('phone')} placeholder="+229 01 97 00 00 00" /></Field>
         </div>
         {requirement && requirement !== 'None' && <p className={cx('text-xs', missing ? 'text-amber-700' : 'text-ink-500')}>Exigé par votre réglage : {requirementLabel[requirement].toLowerCase()}.</p>}
-        <Field label="Tags (facultatif)" hint="Séparés par des virgules : VIP, Allergie arachide, Entreprise…">
-          <Input value={form.tags} onChange={set('tags')} placeholder="VIP, Habitué" />
-        </Field>
+        {!tagsLocked && (
+          <Field label="Tags (facultatif)" hint="Séparés par des virgules : VIP, Allergie arachide, Entreprise…">
+            <Input value={form.tags} onChange={set('tags')} placeholder="VIP, Habitué" />
+          </Field>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Langue">
             <Select value={form.language} onChange={set('language')}>
@@ -123,6 +128,7 @@ export default function CustomersPage() {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [configuring, setConfiguring] = useState(false);
+  const importLocked = usePlanFeatures().blocked(Feature.CustomersAdvanced);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -159,7 +165,7 @@ export default function CustomersPage() {
       <PageHeader title="Clients" description="Vos clients, leurs coordonnées, leurs consentements et leur historique." actions={
         <>
           {can('customers.configure') && <Button variant="secondary" onClick={() => setConfiguring(true)}><Settings2 className="size-4" aria-hidden="true" />Coordonnées exigées</Button>}
-          {can('customers.manage') && <Button variant="secondary" onClick={() => setImporting(true)}><FileUp className="size-4" aria-hidden="true" />Importer</Button>}
+          {can('customers.manage') && <Button variant="secondary" onClick={() => setImporting(true)}><FileUp className="size-4" aria-hidden="true" />Importer<PlanBadge feature={Feature.CustomersAdvanced} /></Button>}
           {can('customers.manage') && <Button onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />Nouveau client</Button>}
         </>
       } />
@@ -261,7 +267,10 @@ export default function CustomersPage() {
         </Card>
       )}
 
-      <ImportDialog open={importing} onClose={() => setImporting(false)} onDone={reload} />
+      <ImportDialog open={importing && !importLocked} onClose={() => setImporting(false)} onDone={reload} />
+      <Modal open={importing && importLocked} onClose={() => setImporting(false)} title="Importer des clients">
+        <UpgradePanel feature={Feature.CustomersAdvanced} title="Import de clients">Importez votre fichier clients (CSV) avec leurs tags et consentements.</UpgradePanel>
+      </Modal>
       <CreateDialog open={creating} requirement={requirement} onClose={() => setCreating(false)} />
       <PolicyDialog open={configuring} current={requirement} onClose={() => setConfiguring(false)} onDone={policy.reload} />
     </div>

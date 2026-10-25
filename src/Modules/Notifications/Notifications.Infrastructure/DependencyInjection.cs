@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.TryAddScoped<BackgroundTenant>();
         services.TryAddScoped<ITenantContext>(provider => new BackgroundTenantContext(provider.GetRequiredService<BackgroundTenant>()));
         services.TryAddScoped<INotificationsCurrentUser, NoCurrentUser>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>(); // l'hôte branche le vrai contrôle
 
         services.AddDbContext<NotificationsDbContext>(builder => builder.UseNotificationsNpgsql(connectionString));
         services.AddScoped<INotificationsUnitOfWork, NotificationsUnitOfWork>();
@@ -123,6 +124,29 @@ public static class DependencyInjection
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", Schema));
 
+    private static readonly NotificationFeature[] EmailFeatures = [NotificationFeature.Text, NotificationFeature.Html];
+    private static readonly NotificationFeature[] TextFeatures = [NotificationFeature.Text];
+    private static readonly NotificationFeature[] PushFeatures = [NotificationFeature.Text, NotificationFeature.Title, NotificationFeature.DeepLink];
+
+    /// <summary>Les intégrations livrées avec l'API, proposées aux restaurants (code, nom affiché, canal, fonctionnalités).</summary>
+    private static readonly (string Code, string Name, NotificationChannel Channel, NotificationFeature[] Features)[] BuiltInProviders =
+    [
+        (MailjetSenderFactory.Code, "Mailjet", NotificationChannel.Email, EmailFeatures),
+        (BrevoSenderFactory.Code, "Brevo", NotificationChannel.Email, EmailFeatures),
+        (ResendSenderFactory.Code, "Resend", NotificationChannel.Email, EmailFeatures),
+        (AmazonSesSenderFactory.Code, "Amazon SES", NotificationChannel.Email, EmailFeatures),
+        (SmtpSenderFactory.Code, "Serveur SMTP", NotificationChannel.Email, EmailFeatures),
+        (BrevoSenderFactory.SmsCode, "Brevo SMS", NotificationChannel.Sms, TextFeatures),
+        (TwilioSenderFactory.Code, "Twilio SMS", NotificationChannel.Sms, TextFeatures),
+        (InfobipSenderFactory.Code, "Infobip", NotificationChannel.Sms, TextFeatures),
+        (TermiiSenderFactory.Code, "Termii", NotificationChannel.Sms, TextFeatures),
+        (AfricasTalkingSenderFactory.Code, "Africa's Talking", NotificationChannel.Sms, TextFeatures),
+        (WhatsAppMetaSenderFactory.Code, "WhatsApp Business (Meta)", NotificationChannel.WhatsApp, TextFeatures),
+        (TwilioSenderFactory.WhatsAppCode, "Twilio WhatsApp", NotificationChannel.WhatsApp, TextFeatures),
+        (FirebaseSenderFactory.Code, "Firebase Cloud Messaging", NotificationChannel.Push, PushFeatures),
+        (OneSignalSenderFactory.Code, "OneSignal", NotificationChannel.Push, PushFeatures),
+    ];
+
     /// <summary>
     /// Pose ce que la plateforme fournit d'office s'il manque : le prestataire interne IN_APP (actif), Mailjet (proposé aux
     /// restaurants sur leur propre compte) et les templates
@@ -153,20 +177,26 @@ public static class DependencyInjection
             providers.Add(inApp);
         }
 
-        // Mailjet : proposé d'office aux restaurants, sur LEUR compte (la plateforme peut le retirer ou le modifier).
-        var mailjet = NotificationProviderCode.Create(MailjetSenderFactory.Code);
-        if (await providers.FindByCodeAsync(mailjet, cancellationToken) is null)
+        // Prestataires proposés d'office aux restaurants, sur LEUR compte. Seulement s'ils manquent : la plateforme peut
+        // ensuite les modifier, les désactiver ou ouvrir le mode « compte de la plateforme ».
+        foreach (var (code, name, channel, features) in BuiltInProviders)
         {
-            var mailjetProvider = NotificationProvider.Create(
-                mailjet,
-                "Mailjet",
-                NotificationChannel.Email,
+            var providerCode = NotificationProviderCode.Create(code);
+            if (await providers.FindByCodeAsync(providerCode, cancellationToken) is not null)
+            {
+                continue;
+            }
+
+            var builtIn = NotificationProvider.Create(
+                providerCode,
+                name,
+                channel,
                 NotificationProviderConfigurationType.TenantOnly,
-                NotificationProviderCapability.Create(NotificationChannel.Email, [NotificationFeature.Text, NotificationFeature.Html]),
+                NotificationProviderCapability.Create(channel, features),
                 isCodeUnique: true,
                 clock);
-            mailjetProvider.Enable(clock);
-            providers.Add(mailjetProvider);
+            builtIn.Enable(clock);
+            providers.Add(builtIn);
         }
 
         foreach (var (key, channel, language, subject, body) in BuiltInTemplates)

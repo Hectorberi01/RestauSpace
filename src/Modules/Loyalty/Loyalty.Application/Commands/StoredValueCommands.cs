@@ -11,7 +11,8 @@ public sealed record IssuedStoredValueCardDto(Guid Id, string Code, string CodeH
 
 /// <summary>
 /// Émet une carte cadeau ou un avoir. <paramref name="CustomerId"/> : facultatif, le client à qui l'avoir est rendu
-/// (contrôlé dans le tenant). <paramref name="ExpiresAtUtc"/> : facultatif.
+/// (contrôlé dans le tenant). <paramref name="ExpiresAtUtc"/> : facultatif. Une carte cadeau exige l'option cartes
+/// cadeaux du plan ; un avoir, jamais. L'utilisation d'une carte déjà émise n'est jamais contrôlée.
 /// </summary>
 public sealed record IssueStoredValueCardCommand(
     StoredValueKind Kind,
@@ -29,6 +30,11 @@ public sealed class IssueStoredValueCardHandler(
     {
         var amount = Money.Of(command.Amount, Currency.FromCode(command.CurrencyCode));
         await workspace.RequireWritableTenantAsync(cancellationToken);
+        if (command.Kind == StoredValueKind.GiftCard)
+        {
+            await workspace.RequireFeatureAsync(PlanFeatures.MarketingGiftCards, cancellationToken);
+        }
+
         var tenant = workspace.CurrentTenant;
 
         CustomerId? customer = null;

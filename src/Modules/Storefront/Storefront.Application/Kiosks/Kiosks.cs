@@ -178,10 +178,33 @@ internal static class KioskLimits
             DomainException.ThrowIf(used >= limit, KioskApplicationErrors.LimitReached);
         }
     }
+
+    /// <summary>
+    /// Gel des bornes, calculé à l'usage : les bornes actives sont rangées par date d'appairage ; au-delà de la limite de
+    /// l'option, elles sont gelées (authentification refusée).
+    /// </summary>
+    public static async Task<IReadOnlySet<KioskDeviceId>> FrozenAsync(
+        StorefrontWorkspace workspace, IKioskDeviceRepository devices, TenantId tenant, CancellationToken cancellationToken)
+    {
+        if (await workspace.Entitlements.LimitAsync(tenant, SalesAppKind.Kiosk, cancellationToken) is not { } limit)
+        {
+            return new HashSet<KioskDeviceId>();
+        }
+
+        return (await devices.ListAsync(tenant, cancellationToken))
+            .Where(device => device.IsActive)
+            .OrderBy(device => device.PairedAtUtc)
+            .ThenBy(device => device.Id.Value)
+            .Skip((int)Math.Clamp(limit, 0, int.MaxValue))
+            .Select(device => device.Id)
+            .ToHashSet();
+    }
 }
 
+/// <param name="IsFrozen">Au-delà de la limite de l'option borne : elle ne s'authentifie plus.</param>
 public sealed record KioskDto(
-    Guid Id, Guid AppId, string AppName, Guid LocationId, string Name, KioskDeviceStatus Status, string TokenHint, DateTimeOffset PairedAtUtc, DateTimeOffset? RevokedAtUtc);
+    Guid Id, Guid AppId, string AppName, Guid LocationId, string Name, KioskDeviceStatus Status, string TokenHint, DateTimeOffset PairedAtUtc, DateTimeOffset? RevokedAtUtc,
+    bool IsFrozen = false);
 
 /// <param name="Limit">Nombre de bornes de l'option ; null = sans limite.</param>
 public sealed record KiosksDto(long? Limit, int Active, IReadOnlyList<KioskDto> Kiosks);
@@ -195,12 +218,13 @@ public sealed class ListKiosksHandler(StorefrontWorkspace workspace, IKioskDevic
         var tenant = workspace.CurrentTenant;
         var apps = (await workspace.Apps.ListAsync(tenant, cancellationToken)).ToDictionary(app => app.Id);
         var list = await devices.ListAsync(tenant, cancellationToken);
+        var frozen = await KioskLimits.FrozenAsync(workspace, devices, tenant, cancellationToken);
         return new KiosksDto(
             await workspace.Entitlements.LimitAsync(tenant, SalesAppKind.Kiosk, cancellationToken),
             list.Count(device => device.IsActive),
             list.Select(device => new KioskDto(
                     device.Id.Value, device.AppId.Value, apps.GetValueOrDefault(device.AppId)?.Name ?? string.Empty, device.LocationId.Value, device.Name,
-                    device.Status, device.TokenHint, device.PairedAtUtc, device.RevokedAtUtc))
+                    device.Status, device.TokenHint, device.PairedAtUtc, device.RevokedAtUtc, frozen.Contains(device.Id)))
                 .ToList());
     }
 }

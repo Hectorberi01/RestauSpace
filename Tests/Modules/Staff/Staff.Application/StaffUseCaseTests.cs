@@ -178,6 +178,26 @@ public sealed class StaffUseCaseTests
     }
 
     [Fact]
+    public async Task Beyond_the_plan_limit_the_last_invited_members_are_frozen_but_never_the_owner()
+    {
+        var owner = await _fixture.GivenOnboardedTenantAsync();
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(1));
+        await _fixture.Invite.HandleAsync(new InviteStaffCommand("waiter@example.com"));
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(1));
+        var cook = await _fixture.Invite.HandleAsync(new InviteStaffCommand("cook@example.com"));
+        _fixture.MaxStaffMembers = 2;
+
+        var list = await _fixture.List.HandleAsync(new ListStaffQuery());
+        var cookFrozen = await _fixture.IsFrozen.HandleAsync(new IsStaffMemberFrozenQuery(_fixture.Account("cook@example.com").Value, _fixture.TenantA.Value));
+        _fixture.MaxStaffMembers = 1;
+        var ownerFrozen = await _fixture.IsFrozen.HandleAsync(new IsStaffMemberFrozenQuery(_fixture.Member(owner).UserId.Value, _fixture.TenantA.Value));
+
+        Assert.Equal(new[] { cook }, list.Items.Where(item => item.IsFrozen).Select(item => item.Id));
+        Assert.True(cookFrozen);
+        Assert.False(ownerFrozen);
+    }
+
+    [Fact]
     public async Task The_platform_onboards_the_owner_whatever_the_plan_limit()
     {
         _fixture.MaxStaffMembers = 0;

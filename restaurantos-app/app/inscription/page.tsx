@@ -58,8 +58,9 @@ export default function SignUpPage() {
         const chosenCountry = loaded.countries.find(item => item.code === code) ?? loaded.countries[0];
         const currency = chosenCountry?.currencyCode;
         const requestedPlan = normalize(params.get('plan') ?? '');
-        const inCurrency = loaded.plans.filter(plan => plan.currencyCode === currency);
-        const chosenPlan = inCurrency.find(plan => normalize(plan.name) === requestedPlan) ?? inCurrency.find(plan => plan.billingInterval === 'Monthly' && plan.price > 0) ?? inCurrency[0];
+        // Plus de plan gratuit : l'essai se fait sur un plan payant.
+        const inCurrency = loaded.plans.filter(plan => plan.currencyCode === currency && plan.price > 0);
+        const chosenPlan = inCurrency.find(plan => normalize(plan.name) === requestedPlan) ?? inCurrency.find(plan => plan.billingInterval === 'Monthly') ?? inCurrency[0];
         setOptions(loaded);
         if (chosenCountry) setCountry(chosenCountry.code);
         if (chosenPlan) {
@@ -74,19 +75,19 @@ export default function SignUpPage() {
   }, []);
 
   const currency = options?.countries.find(item => item.code === country)?.currencyCode;
-  const inCurrency = useMemo(() => options?.plans.filter(plan => plan.currencyCode === currency) ?? [], [options, currency]);
+  const inCurrency = useMemo(() => options?.plans.filter(plan => plan.currencyCode === currency && plan.price > 0) ?? [], [options, currency]);
   const hasYearly = inCurrency.some(plan => plan.billingInterval === 'Yearly');
-  const shown = inCurrency.filter(plan => plan.billingInterval === interval || (interval === 'Yearly' && plan.price === 0));
+  const shown = inCurrency.filter(plan => plan.billingInterval === interval).sort((a, b) => a.price - b.price);
   const plan = inCurrency.find(item => item.id === planId);
   const trialDays = options?.trialDays ?? 30;
 
   // Changer de pays ou de rythme garde, si possible, le même plan (même nom de base).
   const pick = (nextCountry: string, nextInterval: 'Monthly' | 'Yearly') => {
     const nextCurrency = options?.countries.find(item => item.code === nextCountry)?.currencyCode;
-    const candidates = options?.plans.filter(item => item.currencyCode === nextCurrency) ?? [];
+    const candidates = options?.plans.filter(item => item.currencyCode === nextCurrency && item.price > 0) ?? [];
     const base = plan ? normalize(plan.name).replace(/ annuel$/, '') : '';
-    const sameTier = candidates.find(item => normalize(item.name).replace(/ annuel$/, '') === base && (item.billingInterval === nextInterval || item.price === 0));
-    const fallback = candidates.find(item => item.billingInterval === nextInterval && item.price > 0) ?? candidates[0];
+    const sameTier = candidates.find(item => normalize(item.name).replace(/ annuel$/, '') === base && item.billingInterval === nextInterval);
+    const fallback = candidates.find(item => item.billingInterval === nextInterval) ?? candidates[0];
     setCountry(nextCountry);
     setBilling(nextInterval);
     setPlanId((sameTier ?? fallback)?.id ?? '');
@@ -113,7 +114,7 @@ export default function SignUpPage() {
     }
   };
 
-  if (sent) return <CheckInbox email={sent.email} trialDays={sent.trialDays} free={plan?.price === 0} />;
+  if (sent) return <CheckInbox email={sent.email} trialDays={sent.trialDays} />;
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-brand-50 to-slate-50 px-4 py-8 sm:py-12">
@@ -125,9 +126,9 @@ export default function SignUpPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
           <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-brand-900/5 sm:p-7">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"><Sparkles className="size-3.5" aria-hidden="true" />{trialLabel(trialDays)} d’essai gratuit</p>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700"><Sparkles className="size-3.5" aria-hidden="true" />{trialLabel(trialDays)} d’essai gratuit sur le plan choisi</p>
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">Créez votre restaurant</h1>
-            <p className="mt-1 text-sm text-ink-500">Choisissez votre plan : vous ne payez rien pendant l’essai, et vous pouvez en changer à tout moment.</p>
+            <p className="mt-1 text-sm text-ink-500">Choisissez votre plan : vous l’essayez gratuitement, sans rien payer, et vous pouvez en changer à tout moment.</p>
 
             {loadError ? (
               <div className="mt-6"><Alert>{loadError}</Alert></div>
@@ -156,7 +157,7 @@ export default function SignUpPage() {
                 {shown.length === 0 ? (
                   <Alert tone="amber">Aucun plan n’est encore proposé dans ce pays : contactez-nous pour ouvrir votre restaurant.</Alert>
                 ) : (
-                  <div role="radiogroup" aria-label="Plan" className="grid gap-3 sm:grid-cols-2">
+                  <div role="radiogroup" aria-label="Plan" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                     {shown.map(item => {
                       const active = item.id === planId;
                       return (
@@ -169,8 +170,8 @@ export default function SignUpPage() {
                             </span>
                           </span>
                           <span className="mt-1 block text-lg font-bold text-ink-900">
-                            {item.price === 0 ? 'Gratuit' : money(item.price, item.currencyCode)}
-                            {item.price > 0 && <span className="text-sm font-normal text-ink-500"> / {item.billingInterval === 'Yearly' ? 'an' : 'mois'}{item.currencyCode === 'EUR' ? ' HT' : ''}</span>}
+                            {money(item.price, item.currencyCode)}
+                            <span className="text-sm font-normal text-ink-500"> / {item.billingInterval === 'Yearly' ? 'an' : 'mois'}{item.currencyCode === 'EUR' ? ' HT' : ''}</span>
                           </span>
                           <span className="mt-3 block space-y-1 text-xs text-ink-600">
                             {quotas.map(([code, label]) => (
@@ -184,7 +185,7 @@ export default function SignUpPage() {
                 )}
 
                 <ul className="space-y-1.5 text-sm text-ink-600">
-                  {[`${trialLabel(trialDays)} pour tout essayer, sans carte bancaire`, 'Paiement en ligne quand vous le décidez, depuis la console', 'Changement de plan à tout moment'].map(line => (
+                  {[`${trialLabel(trialDays)} d’essai gratuit sur le plan choisi, sans carte bancaire`, 'Paiement en ligne quand vous le décidez, depuis la console', 'Changement de plan à tout moment'].map(line => (
                     <li key={line} className="flex items-center gap-2"><Check className="size-4 shrink-0 text-brand-600" aria-hidden="true" />{line}</li>
                   ))}
                 </ul>
@@ -225,10 +226,10 @@ export default function SignUpPage() {
               </label>
               {error && <Alert>{error}</Alert>}
               <Button type="submit" size="lg" busy={busy} disabled={!options || !plan} className="w-full">
-                {plan?.price === 0 ? 'Créer mon compte gratuit' : `Démarrer mon essai${plan ? ` ${plan.name.replace(/ annuel$/i, '')}` : ''}`}
+                {`Démarrer mon essai${plan ? ` ${plan.name.replace(/ annuel$/i, '')}` : ''}`}
                 {!busy && <ArrowRight className="size-4" aria-hidden="true" />}
               </Button>
-              {plan && plan.price > 0 && (
+              {plan && (
                 <p className="text-center text-xs text-ink-500">Ensuite {money(plan.price, plan.currencyCode)} / {plan.billingInterval === 'Yearly' ? 'an' : 'mois'}, si vous continuez.</p>
               )}
             </div>
@@ -244,7 +245,7 @@ function trialLabel(days: number): string {
   return days >= 28 && days <= 31 ? '1 mois' : `${days} jours`;
 }
 
-function CheckInbox({email, trialDays, free}: {email: string; trialDays: number; free: boolean}) {
+function CheckInbox({email, trialDays}: {email: string; trialDays: number}) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const resend = async () => {
@@ -268,7 +269,7 @@ function CheckInbox({email, trialDays, free}: {email: string; trialDays: number;
           Votre restaurant est créé. Nous avons envoyé un lien de confirmation à <strong className="break-all text-ink-900">{email}</strong> : ouvrez-le, confirmez avec votre mot de passe, puis connectez-vous.
         </p>
         <p className="mt-3 text-sm text-ink-600">
-          {free ? 'Votre plan gratuit démarre tout de suite, pour un mois. Ensuite, choisissez un plan payant pour continuer.' : `Votre essai de ${trialLabel(trialDays)} a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
+          {`Votre essai gratuit de ${trialLabel(trialDays)} sur le plan choisi a commencé. Vous pourrez payer en ligne depuis la page Abonnement quand vous le souhaitez.`}
         </p>
         <div className="mt-6 space-y-3">
           <Link href="/connexion" className="flex h-11 w-full items-center justify-center rounded-xl bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">Aller à la connexion</Link>

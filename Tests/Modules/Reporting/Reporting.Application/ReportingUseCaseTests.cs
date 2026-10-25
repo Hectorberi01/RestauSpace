@@ -449,4 +449,52 @@ public sealed class ReportingUseCaseTests
         Assert.Equal(Utc(2, 3, 8), next);
         Assert.Equal((new DateOnly(2026, 1, 1), new DateOnly(2026, 1, 31)), covered);
     }
+
+    // --- Plan
+
+    [Fact]
+    public async Task Exports_need_advanced_reporting_and_schedules_need_automations()
+    {
+        var id = await _fixture.Create.HandleAsync(new CreateReportDefinitionCommand("Ventes", [M.Revenue]));
+        await _fixture.Schedule.HandleAsync(new ScheduleReportCommand(id, ReportFrequency.Daily, null, null, "08:00", ["gerant@example.com"]));
+        _fixture.DeniedFeatures.UnionWith([PlanFeatures.ReportingAdvanced, PlanFeatures.Automations]);
+
+        var refused = new[]
+        {
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.RequestExport.HandleAsync(new RequestExportCommand(null, [M.Revenue], null, Jan15, Jan15))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.RequestAccounting.HandleAsync(new RequestAccountingExportCommand(Jan15, Jan15))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Schedule.HandleAsync(
+                new ScheduleReportCommand(id, ReportFrequency.Daily, null, null, "09:00", ["gerant@example.com"]))),
+        };
+        Clock.Set(Utc(1, 16, 7));
+        var run = await _fixture.RunScheduled.HandleAsync(new RunScheduledReportCommand(id));
+
+        Assert.True(refused.All(error => error.Code == PlanFeatures.RequiredCode));
+        Assert.Equal(ScheduledRunOutcome.Skipped, run);
+        Assert.Empty(_fixture.Exports);
+        Assert.Equal(Utc(1, 17, 7), Assert.Single(_fixture.Deliveries).NextRunAtUtc); // le suivant reste prévu
+    }
+
+    [Fact]
+    public async Task All_locations_reports_need_consolidated_reporting_only_with_several_locations()
+    {
+        var paris = Guid.NewGuid().ToString();
+        _fixture.DeniedFeatures.Add(PlanFeatures.ReportingConsolidated);
+        var single = await RunAsync(Jan15, Jan15, ReportGranularity.Total, M.Revenue); // un seul établissement : permis
+        _fixture.SeveralLocations = true;
+
+        var refused = new[]
+        {
+            await Assert.ThrowsAsync<ForbiddenException>(() => RunAsync(Jan15, Jan15, ReportGranularity.Total, M.Revenue)),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Dashboard.HandleAsync(new GetDashboardQuery(Jan15, Jan15))),
+            await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.RequestExport.HandleAsync(new RequestExportCommand(null, [M.Revenue], null, Jan15, Jan15))),
+        };
+        var oneLocation = await _fixture.Run.HandleAsync(new RunReportQuery(
+            [M.Revenue], [new ReportFilterInput(M.LocationField, FilterOperator.EqualTo, paris)], Jan15, Jan15, ReportGranularity.Total, ByLocation: true));
+        await _fixture.Dashboard.HandleAsync(new GetDashboardQuery(Jan15, Jan15, Guid.Parse(paris)));
+
+        Assert.NotNull(single);
+        Assert.NotNull(oneLocation);
+        Assert.True(refused.All(error => error.Code == PlanFeatures.RequiredCode));
+    }
 }

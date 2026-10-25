@@ -25,6 +25,7 @@ function ModuleCard({module}: {module: Module}) {
         </div>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-ink-600">{module.summary}</p>
+      {module.plans && <p className="mt-2 text-xs font-medium text-brand-700">{module.plans}</p>}
       <ul className="mt-4 grid flex-1 content-start gap-x-6 gap-y-2 sm:grid-cols-2">
         {module.points.map(point => (
           <li key={point} className="flex gap-2.5 text-sm text-ink-800"><CircleCheck className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />{point}</li>
@@ -51,14 +52,14 @@ export default function Features() {
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-600">
               Une solution complète pour simplifier votre quotidien, gagner du temps en service et offrir une meilleure
-              expérience à vos clients. Chaque module est inclus dans chaque plan.
+              expérience à vos clients. Certains modules, comme le site de commande, les campagnes ou l’API, sont inclus à partir du plan Pro.
             </p>
             <Link href="/decouvrir" className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
               <span className="grid size-9 place-items-center rounded-full bg-white text-brand-600 shadow-md shadow-brand-900/10 ring-1 ring-brand-100 transition group-hover:scale-110"><Play className="ml-0.5 size-4 fill-current" aria-hidden="true" /></span>
               Voir les modules en situation : la visite guidée
             </Link>
             <dl className="mt-8 grid max-w-md grid-cols-3 gap-4 border-t border-slate-200 pt-6">
-              {[[`${modules.length}`, 'modules inclus'], [`${tiers('fr').length}`, 'plans au choix'], ['1', 'mois d’essai']].map(([value, label]) => (
+              {[[`${modules.length}`, 'modules'], [`${tiers('fr').length}`, 'plans au choix'], ['1', 'mois d’essai']].map(([value, label]) => (
                 <div key={label} className="flex flex-col-reverse">
                   <dt className="mt-0.5 text-sm text-ink-500">{label}</dt>
                   <dd className="text-3xl font-bold tracking-tight text-ink-900"><CountUp value={value} /></dd>

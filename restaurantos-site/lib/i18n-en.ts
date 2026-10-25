@@ -244,6 +244,7 @@ export const en: Record<string, string> = {
   'Le restaurant a déjà accepté la commande : contactez-le pour l’annuler.': 'The restaurant has already accepted the order: contact it to cancel.',
   'Le restaurant confirme votre commande d’ici': 'The restaurant will confirm your order within',
   'Le restaurant ne prend pas de commandes en ligne pour le moment.': 'The restaurant is not taking online orders at the moment.',
+  'Cet établissement ne prend pas de commandes ni de réservations en ligne pour le moment.': 'This restaurant is not taking online orders or bookings at the moment.',
   'Le restaurant ne prend plus de commandes en ligne ce mois-ci.': 'The restaurant is no longer taking online orders this month.',
   'Le service est injoignable. Vérifiez votre connexion.': 'The service cannot be reached. Check your connection.',
   'Le service est momentanément indisponible. Réessayez dans quelques instants.': 'The service is temporarily unavailable. Try again in a moment.',

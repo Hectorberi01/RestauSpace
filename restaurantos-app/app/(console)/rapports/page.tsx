@@ -12,6 +12,8 @@ import {addDays} from '@/lib/dashboard';
 import {loadCatalog} from '@/lib/menu';
 import {METRICS, exportFormats, exportReport, extensionOf, presets, previous, runReport, salesBreakdown, total, type ExportFormat, type Granularity, type Period} from '@/lib/reports';
 import {useConsole} from '@/components/console';
+import {PlanBadge, UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {Alert, Button, Card, Empty, Field, Input, Select, Spinner, cx, useAction} from '@/components/ui';
 import {AccountingExport} from './accounting';
 import {MetricPicker} from './metric-picker';
@@ -107,9 +109,13 @@ function Reports() {
   const [scope, setScope] = useState<'location' | 'all'>('location');
   const [granularity, setGranularity] = useState<Granularity>('Day');
   const [format, setFormat] = useState<ExportFormat>('Xlsx');
+  const {blocked} = usePlanFeatures();
+  const advanced = !blocked(Feature.ReportingAdvanced);
+  const consolidated = !blocked(Feature.ReportingConsolidated);
 
   const period = useMemo<Period>(() => custom ?? presets.find(item => item.key === preset)!.period(), [preset, custom]);
-  const locationId = scope === 'location' ? location?.id ?? null : null;
+  // Sans le droit, la vue tous établissements n'est pas proposée.
+  const locationId = scope === 'location' || !consolidated ? location?.id ?? null : null;
   const key = `${isoDate(period.from)}_${isoDate(period.to)}_${locationId ?? 'all'}`;
 
   const data = useResource<ReportData>(
@@ -159,9 +165,9 @@ function Reports() {
           {locations.length > 1 && (
             <label className="relative">
               <span className="sr-only">Établissements</span>
-              <select value={scope} onChange={event => setScope(event.target.value as 'location' | 'all')} className="h-10 appearance-none rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-sm font-medium focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none">
+              <select value={consolidated ? scope : 'location'} onChange={event => setScope(event.target.value as 'location' | 'all')} className="h-10 appearance-none rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-sm font-medium focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none">
                 <option value="location">{location?.name ?? 'Cet établissement'}</option>
-                <option value="all">Tous les établissements</option>
+                <option value="all" disabled={!consolidated}>Tous les établissements{consolidated ? '' : ' (plan Multi-sites)'}</option>
               </select>
               <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-500" aria-hidden="true" />
             </label>
@@ -192,9 +198,14 @@ function Reports() {
             </span>
           )}
           <Link href="/rapports/planifies" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-ink-800 hover:bg-slate-50">
-            <CalendarClock className="size-4" aria-hidden="true" />Planifiés
+            <CalendarClock className="size-4" aria-hidden="true" />Planifiés<PlanBadge feature={Feature.Automations} />
           </Link>
-          {can('reporting.export') && tab !== 'reconciliation' && (
+          {can('reporting.export') && tab !== 'reconciliation' && !advanced && (
+            <Link href="/abonnement" title="Les exports sont inclus dans le plan Pro" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-ink-800 hover:bg-slate-50">
+              <Download className="size-4" aria-hidden="true" />Exporter<PlanBadge feature={Feature.ReportingAdvanced} />
+            </Link>
+          )}
+          {can('reporting.export') && tab !== 'reconciliation' && advanced && (
             <span className="flex items-center">
               <select aria-label="Format de l’export" value={format} onChange={event => setFormat(event.target.value as ExportFormat)}
                 className="h-10 rounded-l-xl border border-r-0 border-slate-300 bg-white px-2 text-sm font-medium focus:border-brand-500 focus:outline-none">
@@ -220,7 +231,7 @@ function Reports() {
             aria-selected={tab === item.value}
             onClick={() => setTab(item.value)}
             className={cx('-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition', tab === item.value ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-800')}>
-            <item.icon className="size-4" aria-hidden="true" />{item.label}
+            <item.icon className="size-4" aria-hidden="true" />{item.label}{item.value === 'reconciliation' && <PlanBadge feature={Feature.ReportingAdvanced} />}
           </button>
         ))}
       </div>
@@ -267,12 +278,12 @@ function Reports() {
             </Panel>
             <Panel title="Rapport personnalisé" className="xl:col-span-2 2xl:col-span-1">
               <p className="-mt-2 mb-4 text-sm text-ink-500">Téléchargez un rapport détaillé (Excel, PDF ou CSV) selon vos besoins.</p>
-              <CustomReport period={period} locationId={locationId} />
+              {advanced ? <CustomReport period={period} locationId={locationId} /> : <UpgradePanel compact feature={Feature.ReportingAdvanced} title="Rapports à télécharger" />}
             </Panel>
             {can('reporting.export') && (
               <Panel title="Export comptable" className="xl:col-span-2 2xl:col-span-1">
                 <p className="-mt-2 mb-4 text-sm text-ink-500">Le journal des ventes et des encaissements, pour votre comptable.</p>
-                <AccountingExport period={period} />
+                {advanced ? <AccountingExport period={period} /> : <UpgradePanel compact feature={Feature.ReportingAdvanced} title="Export comptable" />}
               </Panel>
             )}
           </div>
@@ -361,7 +372,8 @@ function Reports() {
         </>
       )}
 
-      {tab === 'reconciliation' && <Reconciliation period={period} locationId={locationId} locations={locations} currency={currency} />}
+      {tab === 'reconciliation' && !advanced && <UpgradePanel feature={Feature.ReportingAdvanced} title="Rapprochement des encaissements">Comparez les encaissements de la caisse et des prestataires avec vos commandes.</UpgradePanel>}
+      {tab === 'reconciliation' && advanced && <Reconciliation period={period} locationId={locationId} locations={locations} currency={currency} />}
 
       {d && tab === 'payments' && (
         <>

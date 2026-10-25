@@ -84,6 +84,7 @@ internal static partial class HostComposition
             reportingSettings => reportingSettings.ExportRetention = reporting.GetValue("ExportRetention", reportingSettings.ExportRetention));
         builder.Services.AddScoped<IReportingTenants, ReportingTenantsFromTenants>();
         builder.Services.AddScoped<IReportingLocationNames, ReportingLocationNamesFromLocations>();
+        builder.Services.AddScoped<IReportingLocations, ReportingLocationsFromLocations>();
         builder.Services.AddScoped<IOutboxConsumer, ReportingFeed>();
         builder.Services.AddScoped<IOutboxConsumer, ReportingPlatformFeed>();
         builder.Services.AddScoped<IOutboxConsumer, ReportingDeliveryFlow>();

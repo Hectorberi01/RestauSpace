@@ -4,14 +4,13 @@ import {ArrowRight, Calculator, CalendarCheck, CircleCheck, LayoutGrid, Tag} fro
 import {Accordion} from '@/components/accordion';
 import {ButtonLink, Highlight, Pill} from '@/components/section';
 import {Capture} from '@/components/visual';
-import {modules} from '@/content/features';
 import {faq} from '@/content/faq';
 import {price, tiers, trial} from '@/content/plans';
 import {Pricing} from './pricing';
 
 export const metadata: Metadata = {
   title: 'Tarifs',
-  description: 'Quatre plans en euros HT ou en francs CFA, tous les modules inclus, un mois d’essai.',
+  description: 'Trois plans, Essentiel, Pro et Multi-sites, en euros HT ou en francs CFA, avec 1 mois d’essai gratuit sur le plan choisi.',
   alternates: {canonical: '/tarifs'},
 };
 
@@ -30,7 +29,8 @@ function Tile({icon: Icon, value, label, className}: {icon: typeof Tag; value: s
 export default function Prices() {
   const questions = faq.find(group => group.title === 'Tarifs et abonnement')?.questions ?? [];
   const half = Math.ceil(questions.length / 2);
-  const from = tiers('fr').find(tier => tier.monthly.price > 0);
+  const list = tiers('fr');
+  const from = list[0];
   return (
     <>
       <section className="relative -mt-16 overflow-hidden bg-cover bg-center" style={{backgroundImage: 'url(/backgrounds/hero.webp)'}}>
@@ -38,13 +38,13 @@ export default function Prices() {
           <div>
             <div className="animate-rise"><Pill>Tarifs</Pill></div>
             <h1 className="animate-rise mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-ink-900 [--rise-delay:80ms] sm:text-5xl">
-              Un prix clair, <span className="block"><Highlight>tous les modules inclus</Highlight></span>
+              Un prix clair, <span className="block"><Highlight>à la taille de votre restaurant</Highlight></span>
             </h1>
             <p className="animate-rise mt-5 max-w-xl text-lg leading-relaxed text-ink-600 [--rise-delay:160ms]">
-              Des plans simples, adaptés à chaque étape de votre activité. Ils ne diffèrent que par les volumes : établissements, équipe, commandes et messages.
+              Essentiel pour bien tenir le service, Pro pour vendre en ligne et fidéliser, Multi-sites pour piloter plusieurs établissements. Mensuel ou annuel, avec 2 mois offerts sur l’année.
             </p>
             <ul className="animate-rise mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-700 [--rise-delay:240ms]">
-              {[`${trial} d’essai gratuit`, 'Changement de plan à tout moment'].map(item => (
+              {[`${trial} d’essai gratuit sur le plan choisi`, 'Changement de plan à tout moment'].map(item => (
                 <li key={item} className="flex items-center gap-2"><CircleCheck className="size-5 fill-brand-600 text-white" aria-hidden="true" />{item}</li>
               ))}
             </ul>
@@ -54,7 +54,7 @@ export default function Prices() {
               <Capture visual={{src: '/captures/rapports.webp', focus: '0% 0%'}} alt="Rapports de RestauSpace" sizes="(min-width: 1024px) 520px, 90vw" className="aspect-[16/11] rounded-xl" />
             </div>
             {from && <Tile icon={Tag} value={`${price(from.monthly.price, 'EUR')} HT`} label="par mois, à partir de" className="-left-6 top-10 [--float-delay:-1s]" />}
-            <Tile icon={LayoutGrid} value={`${modules.length} modules`} label="inclus dans chaque plan" className="-right-4 top-1/3 [--float-delay:-3s]" />
+            <Tile icon={LayoutGrid} value={`${list.length} plans`} label="mensuels ou annuels" className="-right-4 top-1/3 [--float-delay:-3s]" />
             <Tile icon={CalendarCheck} value={trial} label="d’essai en service réel" className="bottom-0 left-10 [--float-delay:-4.5s]" />
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function Prices() {
             <div>
               <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20">Prêt à commencer ?</span>
               <h2 className="mt-4 max-w-xl text-3xl font-bold tracking-tight text-white sm:text-[2.2rem] sm:leading-tight">Choisissez le plan qui correspond à votre restaurant</h2>
-              <p className="mt-3 max-w-xl text-brand-100">Testez gratuitement pendant {trial}, en service réel. Tous les modules sont inclus.</p>
+              <p className="mt-3 max-w-xl text-brand-100">Testez gratuitement pendant {trial} le plan choisi, en service réel.</p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:w-64">
               <ButtonLink href="/contact" demo>Demander une démo</ButtonLink>

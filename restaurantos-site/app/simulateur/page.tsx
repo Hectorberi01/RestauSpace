@@ -4,7 +4,7 @@ import {Simulator} from './simulator';
 
 export const metadata: Metadata = {
   title: 'Simulateur de prix',
-  description: 'Indiquez vos établissements, votre équipe et vos commandes : le simulateur vous conseille le plan RestauSpace adapté et son prix.',
+  description: 'Indiquez vos établissements, votre équipe, vos commandes et vos besoins (site, campagnes, API) : le simulateur vous conseille le plan RestauSpace adapté et son prix, options comprises.',
   alternates: {canonical: '/simulateur'},
 };
 
@@ -19,7 +19,7 @@ export default function Simulation() {
             Quel plan pour <Highlight>votre restaurant</Highlight> ?
           </h1>
           <p className="animate-rise mt-5 max-w-2xl text-lg leading-relaxed text-ink-600 [--rise-delay:160ms]">
-            Réglez votre activité : le plan conseillé et son prix se calculent en direct, à partir de la grille tarifaire publiée.
+            Réglez votre activité et cochez vos besoins : le plan conseillé et son prix, options comprises, se calculent en direct à partir de la grille tarifaire publiée.
           </p>
         </div>
       </section>

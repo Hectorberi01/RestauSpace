@@ -33,6 +33,21 @@ public sealed class StorefrontUseCaseTests
     }
 
     [Fact]
+    public async Task A_valid_key_whose_channel_option_was_lost_is_refused_with_feature_required()
+    {
+        var issued = await WebsiteAsync();
+        await _fixture.SignInAsync(issued.Key, "https://chezawa.bj");
+        await _fixture.EnsureAccess.HandleAsync(new EnsureStorefrontAccessCommand(SalesAppKind.Web));
+        _fixture.Options.Remove((_fixture.TenantA, SalesAppKind.Web));
+
+        var refused = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _fixture.EnsureAccess.HandleAsync(new EnsureStorefrontAccessCommand(SalesAppKind.Web)));
+
+        Assert.Equal(PlanFeatures.RequiredCode, refused.Error.Code);
+        Assert.Contains(StorefrontFeatures.Web, refused.Error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_channel_needs_its_option_and_locations_come_from_the_restaurant()
     {
         var kiosk = await Assert.ThrowsAsync<DomainException>(() =>

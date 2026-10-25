@@ -94,6 +94,21 @@ public sealed class ReservationUseCaseTests
     }
 
     [Fact]
+    public async Task A_frozen_location_takes_no_new_reservation_from_the_staff_nor_online()
+    {
+        _fixture.Frozen.Add(LocationId.From(_fixture.Location));
+
+        var staff = await Assert.ThrowsAsync<ForbiddenException>(() => _fixture.Create.HandleAsync(_fixture.NewReservation()));
+        var online = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _fixture.BookOnline.HandleAsync(new BookOnlineCommand(_fixture.Location, _fixture.Tomorrow8Pm, 2, "Awa", "+22997000001")));
+
+        Assert.Equal(PlanFeatures.OverLimitCode, staff.Error.Code);
+        Assert.Equal(PlanFeatures.OverLimitCode, online.Error.Code);
+        Assert.Empty(_fixture.Reservations.Items);
+        Assert.Equal(0, _fixture.LocksTaken);
+    }
+
+    [Fact]
     public async Task The_location_policy_drives_the_booking_window_and_party_size()
     {
         await _fixture.SetPolicy.HandleAsync(new SetReservationPolicyCommand(

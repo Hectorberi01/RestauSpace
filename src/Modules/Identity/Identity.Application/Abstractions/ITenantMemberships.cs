@@ -8,6 +8,9 @@ public interface ITenantMemberships
 {
     Task<bool> CanActForTenantAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default);
 
+    /// <summary>Membre gelé (au-delà de la limite du plan) : il ne peut pas sélectionner ce restaurant. Sans hôte branché : jamais.</summary>
+    Task<bool> IsFrozenAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     /// <summary>Restaurants dont l'utilisateur est le SEUL propriétaire actif : son départ les laisserait sans propriétaire.</summary>
     Task<IReadOnlyList<TenantId>> SoleOwnerTenantsAsync(UserId userId, CancellationToken cancellationToken = default);
 }

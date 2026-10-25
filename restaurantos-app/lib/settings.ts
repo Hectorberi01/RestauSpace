@@ -140,6 +140,67 @@ const notificationFields: Record<string, Record<string, NotificationField>> = {
     template_name: {label: 'Nom du modèle de message approuvé', secret: false},
     template_language: {label: 'Langue du modèle', secret: false, hint: 'Par exemple fr ou en_US.'},
   },
+  BREVO: {
+    api_key: {label: 'Clé API', secret: true, hint: 'Brevo › SMTP et API › Clés API.'},
+    from_email: {label: 'Adresse d’expédition', secret: false, type: 'email', hint: 'Adresse ou domaine validé chez le prestataire.'},
+    from_name: {label: 'Nom d’expéditeur', secret: false, hint: 'Ce que vos clients voient, par exemple le nom du restaurant.'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  BREVO_SMS: {
+    api_key: {label: 'Clé API', secret: true, hint: 'Brevo › SMTP et API › Clés API.'},
+    sms_sender: {label: 'Expéditeur SMS', secret: false, hint: 'Nom d’expéditeur (11 caractères, validé par le prestataire) ou numéro au format +229…'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  RESEND: {
+    api_key: {label: 'Clé API', secret: true, hint: 'Resend › API Keys (droit d’envoi).'},
+    from_email: {label: 'Adresse d’expédition', secret: false, type: 'email', hint: 'Adresse ou domaine validé chez le prestataire.'},
+    from_name: {label: 'Nom d’expéditeur', secret: false, hint: 'Ce que vos clients voient, par exemple le nom du restaurant.'},
+    webhook_secret: {label: 'Clé de signature du webhook', secret: true, hint: 'Fournie par le prestataire quand vous déclarez l’adresse de webhook.'},
+  },
+  SES: {
+    region: {label: 'Région AWS', secret: false, hint: 'Par exemple eu-west-3 (Paris).'},
+    access_key_id: {label: 'Access key ID', secret: false, hint: 'Utilisateur IAM limité à ses:SendEmail.'},
+    secret_access_key: {label: 'Secret access key', secret: true},
+    from_email: {label: 'Adresse d’expédition', secret: false, type: 'email', hint: 'Adresse ou domaine validé chez le prestataire.'},
+    from_name: {label: 'Nom d’expéditeur', secret: false, hint: 'Ce que vos clients voient, par exemple le nom du restaurant.'},
+  },
+  TWILIO: {
+    account_sid: {label: 'Account SID', secret: false, hint: 'Console Twilio › Account Info.'},
+    auth_token: {label: 'Auth token', secret: true},
+    from: {label: 'Numéro ou expéditeur', secret: false, hint: 'Numéro Twilio au format +1…, ou identifiant d’un Messaging Service (MG…).'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  TWILIO_WHATSAPP: {
+    account_sid: {label: 'Account SID', secret: false, hint: 'Console Twilio › Account Info.'},
+    auth_token: {label: 'Auth token', secret: true},
+    from: {label: 'Numéro WhatsApp', secret: false, hint: 'Numéro WhatsApp validé chez Twilio, au format +…'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  INFOBIP: {
+    base_url: {label: 'Adresse de l’API', secret: false, hint: 'Votre adresse personnelle Infobip, par exemple https://xxxxx.api.infobip.com'},
+    api_key: {label: 'Clé API', secret: true},
+    sender: {label: 'Expéditeur SMS', secret: false, hint: 'Nom d’expéditeur (11 caractères, validé par le prestataire) ou numéro au format +229…'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  TERMII: {
+    base_url: {label: 'Adresse de l’API', secret: false, hint: 'Indiquée dans votre tableau de bord Termii.'},
+    api_key: {label: 'Clé API', secret: true},
+    sender_id: {label: 'Sender ID', secret: false, hint: 'Expéditeur approuvé par Termii.'},
+    webhook_secret: {label: 'Clé de signature du webhook', secret: true, hint: 'Fournie par le prestataire quand vous déclarez l’adresse de webhook.'},
+  },
+  AFRICASTALKING: {
+    username: {label: 'Nom d’utilisateur', secret: false, hint: 'Celui de votre application Africa’s Talking (pas « sandbox » en production).'},
+    api_key: {label: 'Clé API', secret: true},
+    sender_id: {label: 'Sender ID', secret: false, hint: 'Expéditeur approuvé, ou vide selon le pays.'},
+    webhook_password: {label: 'Mot de passe du webhook', secret: true, hint: 'Choisissez-le librement : il figure dans l’adresse de webhook à déclarer chez le prestataire.'},
+  },
+  FCM: {
+    service_account: {label: 'Compte de service (JSON)', secret: true, hint: 'Firebase › Paramètres du projet › Comptes de service › Générer une clé : collez tout le contenu du fichier.'},
+  },
+  ONESIGNAL: {
+    app_id: {label: 'App ID', secret: false, hint: 'OneSignal › Settings › Keys & IDs.'},
+    rest_api_key: {label: 'Clé REST API', secret: true},
+  },
 };
 
 export function notificationField(provider: string, field: string): NotificationField {
@@ -156,7 +217,7 @@ export const smtpPresets: {label: string; values: Record<string, string>}[] = [
 export function notificationWebhookUrl(apiUrl: string, provider: string, configurationId: string, password?: string): string {
   const url = new URL(`${apiUrl}/v1/notifications/webhooks/${provider}/${configurationId}`);
   if (password !== undefined) {
-    url.username = 'mailjet';
+    url.username = provider === 'MAILJET' ? 'mailjet' : 'webhook';
     url.password = password || 'MOT_DE_PASSE';
   }
   return url.toString();

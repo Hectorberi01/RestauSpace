@@ -89,7 +89,7 @@ public sealed class BookOnlineHandler(ReservationsWorkspace workspace, IReservat
         ArgumentNullException.ThrowIfNull(command);
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var tenant = workspace.CurrentTenant;
-        var location = await workspace.RequireLocationAsync(tenant, command.LocationId, cancellationToken);
+        var location = await workspace.RequireBookableLocationAsync(tenant, command.LocationId, cancellationToken);
         var policy = await workspace.Policies.GetAsync(tenant, location.LocationId, cancellationToken);
         DomainException.ThrowIf(!policy.AcceptsOnlineBookings, ReservationsApplicationErrors.OnlineBookingDisabled);
         DomainException.ThrowIf(string.IsNullOrWhiteSpace(command.GuestPhone), ReservationsApplicationErrors.ContactRequired);

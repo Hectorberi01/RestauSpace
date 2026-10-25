@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Integrations.Application.Commands;
 using Integrations.Application.Queries;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,6 +32,25 @@ public static class ApiKeyAuthentication
         authentication.AddPolicyScheme(SelectorScheme, "Access token or API key", options =>
             options.ForwardDefaultSelector = context => context.Request.Headers.ContainsKey(HeaderName) ? Scheme : tokenScheme);
         return authentication;
+    }
+
+    /// <summary>
+    /// Une requête authentifiée par clé d'API exige l'option API du plan : sinon 403 <c>common.plan.feature_required</c>
+    /// (pas 401 : la clé est valide). À placer après <c>UseAuthentication</c>, le tenant est alors dans le contexte.
+    /// </summary>
+    public static IApplicationBuilder UseApiKeyPlanCheck(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        return app.Use(async (HttpContext context, RequestDelegate next) =>
+        {
+            if (ApiKeyClaims.IsApiKey(context.User))
+            {
+                await context.RequestServices.GetRequiredService<ICommandHandler<EnsureApiKeyPlanCommand>>()
+                    .HandleAsync(new EnsureApiKeyPlanCommand(), context.RequestAborted);
+            }
+
+            await next(context);
+        });
     }
 }
 

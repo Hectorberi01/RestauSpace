@@ -28,10 +28,14 @@ internal sealed class OrderTenantsFromTenants(CachedTenants tenants) : IOrderTen
     }
 }
 
-/// <summary>Orders -> Locations : l'établissement de la commande (opérationnel ?).</summary>
+/// <summary>Orders -> Locations : l'établissement de la commande (opérationnel ? gelé ?).</summary>
 internal sealed class OrderLocationsFromLocations(
-    ITenantContext tenantContext, IQueryHandler<GetLocationByIdQuery, LocationDto> locations) : IOrderLocations
+    ITenantContext tenantContext, IQueryHandler<GetLocationByIdQuery, LocationDto> locations, IQueryHandler<IsLocationFrozenQuery, bool> frozen)
+    : IOrderLocations
 {
+    public async Task<bool> IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) =>
+        tenantContext.CurrentTenantId == tenantId && await frozen.HandleAsync(new IsLocationFrozenQuery(locationId.Value), cancellationToken);
+
     public async Task<LocationReference?> FindAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default)
     {
         if (tenantContext.CurrentTenantId != tenantId)

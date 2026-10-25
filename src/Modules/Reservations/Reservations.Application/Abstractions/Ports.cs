@@ -114,6 +114,9 @@ public interface IReservationLocations
 
     /// <summary>Ouvert pendant toute la plage (horaires et exceptions, à l'heure locale de l'établissement) ?</summary>
     Task<bool> IsOpenDuringAsync(TenantId tenantId, LocationId locationId, Period slot, CancellationToken cancellationToken = default);
+
+    /// <summary>Établissement gelé (au-delà de la limite du plan) : aucune nouvelle réservation. Sans hôte branché : jamais.</summary>
+    Task<bool> IsFrozenAsync(TenantId tenantId, LocationId locationId, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }
 
 /// <summary>La salle d'un établissement, fournie par l'hôte depuis le module Floor.</summary>

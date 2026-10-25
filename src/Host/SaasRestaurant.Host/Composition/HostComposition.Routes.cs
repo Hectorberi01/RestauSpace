@@ -88,6 +88,7 @@ internal static partial class HostComposition
         app.UseCors();
         app.UseAuthentication();
         app.UseApiKeyRestrictions();
+        app.UseApiKeyPlanCheck();
         app.UseTillSessionRestrictions();
         app.UseRequestLogScope();
         app.UseAuthorization();

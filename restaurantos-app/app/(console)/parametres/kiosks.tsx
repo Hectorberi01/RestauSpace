@@ -6,6 +6,7 @@ import {listKiosks, pairKiosk, revokeKiosk, type Kiosk, type StorefrontOverview}
 import {dateTime} from '@/lib/format';
 import {useResource} from '@/lib/hooks';
 import {Badge, Button, Card, Field, Input, Modal, Select, Spinner, useAction} from '@/components/ui';
+import {FrozenBadge, FrozenNote} from '@/components/plan';
 
 function PairDialog({open, overview, onClose, onPaired}: {
   open: boolean;
@@ -67,6 +68,7 @@ function KioskRow({kiosk, locationName, editable, onChanged}: {kiosk: Kiosk; loc
         <p className="flex flex-wrap items-center gap-2 font-medium">
           {kiosk.name}
           <Badge tone={active ? 'green' : 'neutral'}>{active ? 'Appairée' : 'Révoquée'}</Badge>
+          {active && kiosk.isFrozen && <FrozenBadge />}
         </p>
         <p className="text-sm text-ink-500">
           {locationName} · {kiosk.appName} · jeton …{kiosk.tokenHint} · {active ? `depuis le ${dateTime(kiosk.pairedAtUtc)}` : `révoquée le ${dateTime(kiosk.revokedAtUtc ?? kiosk.pairedAtUtc)}`}
@@ -111,6 +113,9 @@ export function KioskDevices({overview, editable}: {overview: StorefrontOverview
       </div>
       {!hasKioskApp && <p className="mt-3 text-sm text-ink-500">Créez d’abord une application de type « Borne » : sa clé est à placer dans l’adresse de la borne.</p>}
       {full && <p className="mt-3 text-sm text-amber-700">Toutes les bornes de votre option sont appairées : révoquez-en une ou <Link href="/abonnement#options" className="font-medium underline">ajoutez des bornes</Link> à votre abonnement.</p>}
+      {data.data?.kiosks.some(kiosk => kiosk.status === 'Active' && kiosk.isFrozen) && (
+        <div className="mt-3"><FrozenNote what="Bornes gelées" action="Elles restent listées mais ne prennent plus de commande." fix="révoquez-en une" /></div>
+      )}
       {data.error && <p className="mt-3 text-sm text-red-700">{data.error}</p>}
       {!data.data && !data.error && <Spinner label="Chargement des bornes…" />}
       {data.data && data.data.kiosks.length > 0 && (

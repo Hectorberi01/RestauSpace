@@ -11,6 +11,8 @@ import {
   type AccountStatus, type LoyaltyAccount, type LoyaltyProgram, type Reward,
 } from '@/lib/marketing';
 import {useConsole} from '@/components/console';
+import {UpgradePanel, usePlanFeatures} from '@/components/plan';
+import {Feature} from '@/lib/plan';
 import {CustomerPickerDialog} from '@/components/customer-picker';
 import {Alert, Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cx, useAction} from '@/components/ui';
 
@@ -357,8 +359,10 @@ function Accounts() {
 }
 
 export function Loyalty() {
+  const locked = usePlanFeatures().blocked(Feature.Loyalty);
   return (
     <div className="space-y-4">
+      {locked && <UpgradePanel feature={Feature.Loyalty} title="Programme de fidélité">Points et récompenses pour vos clients réguliers.</UpgradePanel>}
       <ProgramCard />
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <Accounts />

@@ -8,6 +8,7 @@ import {useResource} from '@/lib/hooks';
 import {changeAddress, countries, lifecycle, loadLocation, renameLocation, setCapacity, setContact, setTimeZone} from '@/lib/locations';
 import {timeZones} from '@/lib/profile';
 import {useConsole} from '@/components/console';
+import {FrozenBadge, FrozenNote} from '@/components/plan';
 import {Alert, Badge, Button, Card, Field, Input, Modal, Select, Spinner, Textarea, useAction} from '@/components/ui';
 import {Exceptions} from './exceptions';
 import {HoursEditor} from './hours';
@@ -30,7 +31,7 @@ function Section({icon, title, description, children, className}: {icon: ReactNo
 export default function LocationPage({params}: {params: Promise<{id: string}>}) {
   const {id} = use(params);
   const router = useRouter();
-  const {can, reloadLocations, location: selected, setLocationId} = useConsole();
+  const {can, reloadLocations, location: selected, setLocationId, locations} = useConsole();
   const manage = can('locations.manage');
   const {busy, run} = useAction();
   const {data: location, error, reload} = useResource(signal => loadLocation(id, signal), [id]);
@@ -93,6 +94,7 @@ export default function LocationPage({params}: {params: Promise<{id: string}>}) 
     }, () => setLocating(false), {enableHighAccuracy: true, timeout: 10000});
   };
   const clean = (value: string) => value.trim() || null;
+  const frozen = !archived && (location.isFrozen ?? locations.find(item => item.id === location.id)?.isFrozen ?? false);
   const tone = location.status === 'Active' ? 'green' : location.status === 'Draft' ? 'neutral' : location.status === 'Archived' ? 'red' : 'amber';
 
   return (
@@ -103,6 +105,7 @@ export default function LocationPage({params}: {params: Promise<{id: string}>}) 
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="truncate text-[1.75rem] leading-tight font-bold tracking-tight text-ink-900">{location.name}</h1>
             <Badge tone={tone}>{locationStatusLabel[location.status]}</Badge>
+            {frozen && <FrozenBadge />}
           </div>
           <p className="mt-1 text-sm text-ink-500">{location.address.street}, {location.address.city} · {location.seats} places · {location.timeZoneId}</p>
         </div>
@@ -125,6 +128,7 @@ export default function LocationPage({params}: {params: Promise<{id: string}>}) 
         </div>
       </div>
 
+      {frozen && <FrozenNote what="Établissement gelé" action="Il reste consultable, mais ne prend plus de nouvelles commandes ni réservations." fix="archivez un établissement" />}
       {location.status === 'TemporarilyClosed' && <Alert tone="amber">Fermé temporairement{location.temporaryClosureReason ? ` : ${location.temporaryClosureReason}` : ''}. Aucune commande ni réservation n’est acceptée.</Alert>}
       {location.status === 'Draft' && <Alert tone="blue">Brouillon : ouvrez l’établissement pour prendre des commandes et des réservations.</Alert>}
       {archived && <Alert>Établissement archivé : plus aucune modification n’est possible.</Alert>}

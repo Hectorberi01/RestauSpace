@@ -29,6 +29,8 @@ public static class StaffModule
         services.TryAddScoped<Staff.Application.Abstractions.IStaffActor, HttpStaffActor>();
         services.TryAddScoped<Staff.Application.Abstractions.IOperatorSessions, NoOperatorSessions>();
         services.AddStaffInfrastructure(connectionString);
+        services.AddScoped<StaffFreeze>();
+        services.TryAddScoped<IPlanFeatureGate, AllowAllPlanFeatures>();
         services.AddScoped<TillDesk>();
         services.AddTillRateLimiting();
         services.AddSingleton(KnownPermissions.Of(modulePermissions));

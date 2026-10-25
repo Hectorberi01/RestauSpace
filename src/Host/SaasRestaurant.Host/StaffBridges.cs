@@ -169,13 +169,37 @@ internal sealed class StaffInvitationFlow(IServiceScopeFactory scopes, ILogger<S
 /// <summary>
 /// Identity -> Staff + Tenants : un utilisateur peut agir pour un tenant tant que son profil de membre du personnel
 /// est ACTIF et que le tenant n'est pas fermé (un tenant suspendu reste lisible). Un restaurant fermé ou introuvable ne
-/// retient pas non plus son seul propriétaire.
+/// retient pas non plus son seul propriétaire. Un membre gelé (au-delà de la limite du plan) ne le sélectionne pas.
 /// </summary>
 internal sealed class TenantMembershipsFromStaff(
     IQueryHandler<IsActiveStaffMemberQuery, bool> staff,
     IQueryHandler<ListSoleOwnershipsQuery, IReadOnlyList<Guid>> soleOwnerships,
-    IQueryHandler<GetTenantByIdQuery, TenantDto> tenants) : ITenantMemberships
+    IQueryHandler<GetTenantByIdQuery, TenantDto> tenants,
+    IServiceScopeFactory scopes) : ITenantMemberships
 {
+    /// <summary>
+    /// Le tenant demandé n'est pas encore celui du jeton : lu dans un scope à part, hors du contexte HTTP (non transmis),
+    /// qui agit pour CE tenant (<see cref="BackgroundTenant"/>). La limite du plan est donc la sienne.
+    /// </summary>
+    public async Task<bool> IsFrozenAsync(UserId userId, TenantId tenantId, CancellationToken cancellationToken = default)
+    {
+        Task<bool> check;
+        using (ExecutionContext.SuppressFlow())
+        {
+            check = Task.Run(
+                async () =>
+                {
+                    await using var scope = scopes.CreateAsyncScope();
+                    scope.ServiceProvider.GetRequiredService<BackgroundTenant>().ActFor(tenantId);
+                    return await scope.ServiceProvider.GetRequiredService<IQueryHandler<IsStaffMemberFrozenQuery, bool>>()
+                        .HandleAsync(new IsStaffMemberFrozenQuery(userId.Value, tenantId.Value), cancellationToken);
+                },
+                cancellationToken);
+        }
+
+        return await check;
+    }
+
     public async Task<IReadOnlyList<TenantId>> SoleOwnerTenantsAsync(UserId userId, CancellationToken cancellationToken = default)
     {
         var result = new List<TenantId>();
