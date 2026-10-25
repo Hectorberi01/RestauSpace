@@ -7,7 +7,6 @@ export type SectionName = 'hero' | 'featured' | 'booking' | 'hours' | 'reviews';
 interface RawConfig {
   apiUrl?: string;
   publishableKey?: string;
-  demo?: boolean;
   theme?: Partial<Record<'primary' | 'accent' | 'dark' | 'background', string>>;
   texts?: Partial<Record<'heroTitle' | 'heroAccent' | 'heroText' | 'featuredTitle' | 'featuredText', string>>;
   sections?: string[];
@@ -21,12 +20,9 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const color = (value: string | undefined, fallback: string) => (value && HEX.test(value) ? value : fallback);
 const known: SectionName[] = ['hero', 'featured', 'booking', 'hours', 'reviews'];
 
-const envDemo = process.env.NEXT_PUBLIC_DEMO;
-
 export const config = {
   apiUrl: (process.env.NEXT_PUBLIC_API_URL || file.apiUrl || '').replace(/\/+$/, ''),
   publishableKey: process.env.NEXT_PUBLIC_STOREFRONT_KEY || file.publishableKey || '',
-  demo: envDemo !== undefined && envDemo !== '' ? envDemo === '1' || envDemo === 'true' : file.demo === true,
   turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null,
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '',
   theme: {

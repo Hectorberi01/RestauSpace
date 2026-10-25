@@ -386,7 +386,6 @@ export function Checkout() {
                 }))}
                 {!location.payment.payAtCounter && quote.onlinePaymentOptions.length === 0 && <Notice tone="warning">Aucun moyen de paiement n’est disponible pour ce montant.</Notice>}
               </div>
-              {config.demo && choice.payment === 'Online' && <p className="mt-2 text-xs text-muted">Démonstration : la page de paiement est simulée, aucun débit n’a lieu.</p>}
             </fieldset>
           )}
         </form>

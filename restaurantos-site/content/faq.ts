@@ -53,8 +53,8 @@ export const faq: QuestionGroup[] = [
       },
       {
         q: 'Hébergez-vous le site de mon restaurant ?',
-        a: 'Non : votre site reste chez vous (ou chez votre prestataire) et se branche sur l’API RestauSpace avec une clé publique. Carte, prix, horaires, commandes et paiements viennent de la console. Si vous n’avez pas de site, partez d’un de nos modèles prêts à brancher, ou notre équipe en réalise un sur mesure, sur devis.',
-        link: {href: '/modeles', label: 'Voir les modèles de site'},
+        a: 'Non : votre site reste chez vous (ou chez votre prestataire) et se branche sur l’API RestauSpace avec une clé publique. Carte, prix, horaires, commandes et paiements viennent de la console. Si vous n’avez pas de site, notre équipe peut vous en réaliser un sur mesure, sur devis.',
+        link: {href: '/site-sur-mesure', label: 'Découvrir le site sur mesure'},
       },
       {
         q: 'Les messages à mes clients sont-ils limités ?',

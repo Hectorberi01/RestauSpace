@@ -1,7 +1,6 @@
 {
   "apiUrl": "https://api.restauspace.com",
   "publishableKey": "pk_live_à_remplacer",
-  "demo": false,
   "theme": {"primary": "#b4441a", "accent": "#f4b23c", "dark": "#7a2e12", "background": "#fbf3e6"},
   "texts": {
     "heroTitle": "La cuisine de Cotonou,",

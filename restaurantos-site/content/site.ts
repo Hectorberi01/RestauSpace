@@ -8,8 +8,6 @@ export const site = {
   // Inscription en ligne dans la console : plan et pays y sont repris de l'adresse.
   signupUrl: process.env.NEXT_PUBLIC_SIGNUP_URL ?? 'http://localhost:3001/inscription',
   apiUrl: (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5080').replace(/\/+$/, ''),
-  // Démos des modèles de site : <demoBaseUrl>/<slug>/ (en local : http://localhost:3005).
-  demoBaseUrl: (process.env.NEXT_PUBLIC_DEMO_BASE_URL || 'https://demo.restauspace.com').replace(/\/+$/, ''),
   tagline: 'Le logiciel de gestion qui fait tourner votre restaurant.',
   description:
     'Commandes, cuisine, salle, réservations, stocks, clients et fidélité dans un seul logiciel, pour les restaurants au Bénin, en zone UEMOA et en France.',
@@ -43,7 +41,7 @@ export const nav = [
   {href: '/', label: 'Accueil'},
   {href: '/fonctionnalites', label: 'Fonctionnalités'},
   {href: '/tarifs', label: 'Tarifs'},
-  {href: '/modeles', label: 'Modèles'},
+  {href: '/site-sur-mesure', label: 'Site web'},
   {href: '/faq', label: 'Questions'},
   {href: '/developpeurs', label: 'Développeurs'},
   {href: '/contact', label: 'Contact'},

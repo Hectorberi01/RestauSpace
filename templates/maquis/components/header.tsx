@@ -105,13 +105,3 @@ export function Header() {
     </header>
   );
 }
-
-export function DemoBanner() {
-  if (!config.demo) return null;
-  return (
-    <div className="bg-ink px-4 py-2 text-center text-[13px] leading-snug text-cream">
-      <strong className="font-semibold">Démonstration :</strong> aucune commande n’est réelle, le paiement est simulé.{' '}
-      <a href="https://restauspace.com/modeles/maquis" target="_top" className="whitespace-nowrap font-semibold text-accent underline underline-offset-2 hover:no-underline">Obtenir ce modèle</a>
-    </div>
-  );
-}

@@ -1,4 +1,4 @@
-# Construction des 5 images (Jenkins, ou deploy.sh sans IMAGE_REGISTRY).
+# Construction des 4 images (Jenkins, ou deploy.sh sans IMAGE_REGISTRY).
 # NEXT_PUBLIC_* : figées au build, lues dans le fichier passé en --env-file (build.env côté Jenkins, .env sur le VPS).
 #   docker compose --env-file build.env -f docker-compose.build.yml build && ... push
 name: restauspace
@@ -56,14 +56,3 @@ services:
         NEXT_PUBLIC_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
         NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
     image: ${IMAGE_REGISTRY:-}restauspace-admin:${RELEASE:-latest}
-
-  # Démos publiques des modèles de sites, branchées sur le restaurant de démonstration (scripts/seed-demo.py).
-  demo:
-    <<: *platform
-    build:
-      context: ../../templates
-      dockerfile: Dockerfile.demo
-      args:
-        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
-        NEXT_PUBLIC_DEMO_STOREFRONT_KEY: ${DEMO_STOREFRONT_KEY:-}
-    image: ${IMAGE_REGISTRY:-}restauspace-demo:${RELEASE:-latest}

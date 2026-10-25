@@ -35,20 +35,11 @@ const apiOrigin = (() => {
 
 const turnstile = 'https://challenges.cloudflare.com';
 
-// Démos des modèles de site, intégrées en iframe sur /modeles/<slug>.
-const demoOrigin = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_DEMO_BASE_URL || 'https://demo.restauspace.com').origin;
-  } catch {
-    return '';
-  }
-})();
-
 function policy(scriptSrc: string, isDev: boolean) {
   return [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
-    `frame-src ${turnstile} ${demoOrigin}${isDev ? ' http://localhost:3005' : ''}`.trim(),
+    `frame-src ${turnstile}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",

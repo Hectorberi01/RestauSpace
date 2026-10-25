@@ -6,7 +6,7 @@ import '@fontsource/lora/600-italic.css';
 import '@fontsource/lora/700-italic.css';
 import {config} from '@/lib/config';
 import {SiteProvider} from '@/components/site-provider';
-import {DemoBanner, Header} from '@/components/header';
+import {Header} from '@/components/header';
 import {Footer} from '@/components/footer';
 import {TopBar} from '@/components/top-bar';
 import './globals.css';
@@ -14,7 +14,6 @@ import './globals.css';
 export const metadata: Metadata = {
   title: {default: 'Commander en ligne', template: '%s'},
   description: 'Commandez en ligne, à emporter ou en livraison, et réservez votre table.',
-  robots: config.demo ? {index: false, follow: false} : undefined,
 };
 
 export const viewport: Viewport = {themeColor: config.theme.background};
@@ -35,7 +34,6 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         </a>
         <SiteProvider>
           <TopBar>
-            <DemoBanner />
             <Header />
           </TopBar>
           <main id="contenu" className="flex-1">{children}</main>

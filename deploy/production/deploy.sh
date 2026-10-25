@@ -54,7 +54,7 @@ docker compose up -d --remove-orphans
 docker compose ps
 
 # Images des versions précédentes : on garde les 3 dernières de chaque application.
-for image in restauspace-api restauspace-console restauspace-site restauspace-admin restauspace-demo; do
+for image in restauspace-api restauspace-console restauspace-site restauspace-admin; do
   docker image ls "${registry}${image}" --format '{{.Tag}}' | grep -v -e '^latest$' -e "^${release}$" | tail -n +3 \
     | xargs -r -I{} docker image rm "${registry}${image}:{}" >/dev/null 2>&1 || true
 done

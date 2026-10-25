@@ -11,16 +11,11 @@ export function Legal() {
   const {front, location} = useSite();
   const name = front?.restaurant.name ?? 'le restaurant';
   const contact = location?.place?.contact;
-  const value = (text: string | null) => text ?? (config.demo ? 'Restaurant fictif de démonstration' : missing);
+  const value = (text: string | null) => text ?? missing;
 
   return (
     <PageShell title="Mentions légales et confidentialité">
       <div className="space-y-8 leading-relaxed text-muted [&_h2]:mb-2 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-ink">
-        {config.demo && (
-          <p className="rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink">
-            Ce site est une démonstration : le restaurant, la carte, les commandes et les paiements sont fictifs.
-          </p>
-        )}
         <section>
           <h2>Éditeur du site</h2>
           <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[200px_1fr]">

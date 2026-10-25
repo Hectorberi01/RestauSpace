@@ -55,7 +55,7 @@ export function Tracking() {
     return () => controller.abort();
   }, [token, load]);
 
-  // Tant que la commande vit, elle est relue toutes les 5 secondes (en démo, elle avance seule).
+  // Tant que la commande vit, elle est relue toutes les 5 secondes.
   const live = order && order.status !== 'Completed' && order.status !== 'Cancelled';
   useEffect(() => {
     if (!live) return;
@@ -132,7 +132,7 @@ export function Tracking() {
           </ol>
         )}
         {cancelled && <p className="mt-4 flex items-center gap-2 text-sm text-red-700"><XCircle className="size-4" aria-hidden="true" />Cette commande ne sera pas préparée.</p>}
-        {live && <p className="mt-4 text-xs text-muted" aria-live="polite">Cette page se met à jour toute seule.{config.demo ? ' En démonstration, la commande avance automatiquement.' : ''}</p>}
+        {live && <p className="mt-4 text-xs text-muted" aria-live="polite">Cette page se met à jour toute seule.</p>}
       </div>
 
       <div className="mt-4 space-y-3">

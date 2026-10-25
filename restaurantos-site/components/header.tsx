@@ -12,7 +12,7 @@ import {Brand} from './brand';
 import {DemoLink} from './demo-modal';
 import {ModuleIcon} from './icon';
 
-const navIcons: Record<string, LucideIcon> = {'/': Home, '/fonctionnalites': LayoutGrid, '/tarifs': Tag, '/modeles': LayoutTemplate, '/faq': CircleHelp, '/developpeurs': Code2, '/contact': Mail};
+const navIcons: Record<string, LucideIcon> = {'/': Home, '/fonctionnalites': LayoutGrid, '/tarifs': Tag, '/site-sur-mesure': LayoutTemplate, '/faq': CircleHelp, '/developpeurs': Code2, '/contact': Mail};
 const groupIcons: Record<(typeof featureMenu)[number]['icon'], LucideIcon> = {service: UtensilsCrossed, gestion: Settings2, croissance: BarChart3};
 const groups = featureMenu.map(group => ({...group, items: group.modules.flatMap(id => modules.filter(module => module.id === id))}));
 

@@ -150,7 +150,7 @@ public sealed class SetPlatformCredentialsHandler(
 /// </summary>
 public sealed record CreatePaymentConfigurationCommand(string? Provider, PaymentMode Mode = PaymentMode.TenantManaged) : ICommand<Guid>;
 
-public sealed class CreatePaymentConfigurationHandler(PaymentsWorkspace workspace, IClock clock, IDemoTenants? demo = null)
+public sealed class CreatePaymentConfigurationHandler(PaymentsWorkspace workspace, IClock clock)
     : ICommandHandler<CreatePaymentConfigurationCommand, Guid>
 {
     public async Task<Guid> HandleAsync(CreatePaymentConfigurationCommand command, CancellationToken cancellationToken = default)
@@ -158,7 +158,6 @@ public sealed class CreatePaymentConfigurationHandler(PaymentsWorkspace workspac
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var tenant = workspace.CurrentTenant;
         var code = PaymentProviderCode.Create(command.Provider);
-        SandboxGuard.Ensure(demo, tenant, code);
         var provider = await workspace.Providers.FindByCodeAsync(code, cancellationToken)
             ?? throw new NotFoundException(PaymentsApplicationErrors.ProviderNotFound);
 
@@ -225,14 +224,12 @@ public sealed class ChangePaymentModeHandler(PaymentsWorkspace workspace, IClock
 
 public sealed record EnablePaymentConfigurationCommand(Guid ConfigurationId) : ICommand;
 
-public sealed class EnablePaymentConfigurationHandler(PaymentsWorkspace workspace, IClock clock, IDemoTenants? demo = null)
-    : ICommandHandler<EnablePaymentConfigurationCommand>
+public sealed class EnablePaymentConfigurationHandler(PaymentsWorkspace workspace, IClock clock) : ICommandHandler<EnablePaymentConfigurationCommand>
 {
     public async Task HandleAsync(EnablePaymentConfigurationCommand command, CancellationToken cancellationToken = default)
     {
         await workspace.RequireWritableTenantAsync(cancellationToken);
         var configuration = await workspace.LoadConfigurationAsync(workspace.CurrentTenant, command.ConfigurationId, cancellationToken);
-        SandboxGuard.Ensure(demo, configuration.TenantId, configuration.Provider);
         var provider = await workspace.Providers.FindByCodeAsync(configuration.Provider, cancellationToken);
         var available = provider is { IsEnabled: true }
             && (configuration.ProviderType == PaymentProviderType.OnSite || workspace.Integrations.Find(configuration.Provider) is not null);

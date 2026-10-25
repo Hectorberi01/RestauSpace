@@ -39,9 +39,6 @@ public enum NotificationSkipReason
 
     /// <summary>Plafond horaire des SMS/WhatsApp anonymes du restaurant atteint.</summary>
     AnonymousPhoneLimitReached = 13,
-
-    /// <summary>Restaurant de démonstration : rien n'est envoyé aux visiteurs (sauf le code de connexion par e-mail).</summary>
-    DemoTenant = 14,
 }
 
 /// <param name="Notification">À ajouter et sauvegarder par l'appelant ; null si l'envoi est écarté.</param>
@@ -69,8 +66,7 @@ public sealed class NotificationPolicy(
     IClock clock,
     IMarketingRulesRepository marketingRules,
     IMarketingHistory marketingHistory,
-    INotificationLocations locations,
-    IDemoTenants? demo = null)
+    INotificationLocations locations)
 {
     public static readonly TimeSpan AnonymousWindow = TimeSpan.FromHours(1);
 
@@ -95,14 +91,6 @@ public sealed class NotificationPolicy(
         if (intent.IdempotencyKey is { } key && await notifications.ExistsAsync(tenant, key, cancellationToken))
         {
             return NotificationDecision.Skip(NotificationSkipReason.Duplicate);
-        }
-
-        // Démo : seulement l'in-app de l'équipe et le code de connexion par e-mail.
-        if (demo is not null && tenant is { } demoTenant && demo.IsDemo(demoTenant)
-            && channel != NotificationChannel.InApp
-            && !(channel == NotificationChannel.Email && type.Key == NotificationTypes.SecurityOtp.Key))
-        {
-            return NotificationDecision.Skip(NotificationSkipReason.DemoTenant);
         }
 
         if (await AnonymousPhoneRefusalAsync(intent, cancellationToken) is { } anonymousRefusal)

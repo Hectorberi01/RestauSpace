@@ -38,7 +38,6 @@ builder.AddStorefrontComposition(connectionString);
 builder.AddPrintingComposition(connectionString);
 builder.AddFiscalComposition(connectionString);
 builder.AddBackupsComposition(connectionString);
-builder.AddDemoComposition();
 
 var app = builder.Build();
 

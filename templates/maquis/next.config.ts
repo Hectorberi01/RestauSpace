@@ -1,6 +1,6 @@
 import type {NextConfig} from 'next';
 
-// Chemin de publication : vide pour un site à la racine, « /maquis » pour la démo.
+// Chemin de publication : vide pour un site à la racine, ou un sous-dossier.
 const basePath = (process.env.TEMPLATE_BASE_PATH ?? '').replace(/\/+$/, '');
 
 const nextConfig: NextConfig = {

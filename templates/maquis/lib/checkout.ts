@@ -1,5 +1,3 @@
-import {config} from './config';
-
 /** Adresse de paiement acceptée seulement en https:, sinon null. */
 export function safeCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -10,15 +8,7 @@ export function safeCheckoutUrl(url: string | null | undefined): string | null {
   }
 }
 
-/**
- * Redirige vers la page du prestataire. En démo, la page de paiement simulé (même origine) relit d'abord
- * sessionStorage['restauspace-demo-payment'] pour savoir où revenir et quelle API appeler.
- */
-export function goToCheckout(checkoutUrl: string, returnUrl: string) {
-  if (config.demo) {
-    try {
-      window.sessionStorage.setItem('restauspace-demo-payment', JSON.stringify({returnUrl, apiUrl: config.apiUrl, publishableKey: config.publishableKey}));
-    } catch {}
-  }
+/** Redirige vers la page du prestataire ; il renvoie le client vers la page de retour déclarée au paiement. */
+export function goToCheckout(checkoutUrl: string, _returnUrl: string) {
   window.location.assign(checkoutUrl);
 }

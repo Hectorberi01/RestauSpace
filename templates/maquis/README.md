@@ -28,7 +28,6 @@ C'est le seul fichier à modifier.
 |---|---|
 | `apiUrl` | Adresse de l'API (`https://api.restauspace.com`). |
 | `publishableKey` | Clé publique de l'application « Site web » (`pk_live_…`). Ce n'est pas un secret. |
-| `demo` | `true` : bandeau « Démonstration » et paiement simulé (réservé à la démo RestauSpace). Laissez `false`. |
 | `theme` | Couleurs hexadécimales : `primary` (boutons), `accent` (étoiles, motif), `dark` (bloc réservation), `background` (fond). |
 | `texts` | Titre d'accueil (`heroTitle`, `heroAccent` en italique), texte affiché si le restaurant n'a pas d'accroche (`heroText`), titre et sous-titre des plats mis en avant. |
 | `sections` | Blocs de l'accueil, dans l'ordre : `hero`, `featured`, `booking`, `hours`, `reviews`. Retirez ceux dont vous ne voulez pas. |
@@ -37,9 +36,9 @@ C'est le seul fichier à modifier.
 | `legal` | Mentions légales : raison sociale, immatriculation, adresse, directeur de la publication, hébergeur. |
 
 Variables de build qui remplacent le fichier si elles sont définies : `NEXT_PUBLIC_API_URL`,
-`NEXT_PUBLIC_STOREFRONT_KEY`, `NEXT_PUBLIC_DEMO` (`1` = démo), `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (contrôle anti-robot
+`NEXT_PUBLIC_STOREFRONT_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (contrôle anti-robot
 Cloudflare Turnstile, sinon celui demandé par l'API). `TEMPLATE_BASE_PATH` publie le site dans un sous-dossier
-(`/maquis`).
+(par exemple `/commande`).
 
 ## À déclarer dans la console RestauSpace
 
