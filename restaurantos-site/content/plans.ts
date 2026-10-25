@@ -41,7 +41,7 @@ const audiences: Record<string, string> = {
 
 const highlights: Record<string, string[]> = {
   Essentiel: ['Commandes, caisse, cuisine et réservations', 'Carte, salle, stock et équipe', 'Programme de fidélité'],
-  Pro: ['Tout Essentiel, plus :', 'Site de commande en ligne inclus', 'Campagnes, cartes cadeaux et automatisations', 'API et webhooks inclus', 'Support prioritaire'],
+  Pro: ['Tout Essentiel, plus :', 'Campagnes, cartes cadeaux et automatisations', 'API et webhooks inclus', 'Support prioritaire'],
   'Multi-sites': ['Tout Pro, plus :', '5 établissements, extensibles', 'Rapports consolidés de tous vos établissements'],
 };
 

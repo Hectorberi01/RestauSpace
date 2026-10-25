@@ -40,7 +40,7 @@ export const loadPlanFeatures = (signal?: AbortSignal) => api<PlanFeatures>('/bi
 export function requiredPlan(code: string): string {
   if (code === Feature.ReportingConsolidated) return 'Multi-sites';
   if (code === Feature.Loyalty || code === Feature.NotificationsOwnAccount) return 'Essentiel';
-  if (code === Feature.StorefrontMobileApp || code === Feature.StorefrontKiosk) return 'Option';
+  if (code === Feature.StorefrontWeb || code === Feature.StorefrontMobileApp || code === Feature.StorefrontKiosk) return 'Option';
   return 'Pro';
 }
 

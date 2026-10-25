@@ -339,7 +339,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -462,7 +462,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -585,7 +585,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -708,7 +708,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -1152,7 +1152,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -1275,7 +1275,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -1398,7 +1398,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {
@@ -1521,7 +1521,7 @@
         },
         {
           "featureCode": "storefront.web",
-          "enabled": true,
+          "enabled": false,
           "limit": null
         },
         {

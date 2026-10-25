@@ -407,7 +407,7 @@ export function OnlineSales() {
               <span className={cx('grid size-10 shrink-0 place-items-center rounded-xl', on ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-ink-500')} aria-hidden="true"><Icon className="size-5" /></span>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-semibold">{kindLabel[kind]}{on ? <Badge tone="green">Disponible</Badge> : <PlanBadge force feature={kindFeature[kind]} />}</p>
-                <p className="text-sm text-ink-500">{on ? kindHint[kind] : kind === 'Web' ? 'Inclus dans le plan Pro, ou avec l’option Site web.' : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
+                <p className="text-sm text-ink-500">{on ? kindHint[kind] : `Disponible avec l’option ${kindLabel[kind]}, sur tous les plans.`}</p>
                 {!on && <Link href={kind === 'Web' ? '/abonnement' : '/abonnement#options'} className="mt-1 inline-block text-sm font-medium text-brand-700 hover:underline">{kind === 'Web' ? 'Voir les plans' : 'Ajouter cette option'}</Link>}
               </div>
             </Card>

@@ -39,7 +39,7 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Quelle différence entre les plans ?',
-        a: 'Essentiel couvre le service : commandes, caisse, cuisine, carte, réservations, salle, stock, équipe et programme de fidélité. Pro ajoute le site de commande en ligne, les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks, et le support prioritaire. Multi-sites ajoute les rapports consolidés de tous vos établissements. Les volumes (établissements, équipe, commandes, messages) augmentent aussi d’un plan à l’autre.',
+        a: 'Essentiel couvre le service : commandes, caisse, cuisine, carte, réservations, salle, stock, équipe et programme de fidélité. Pro ajoute les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks, et le support prioritaire. Multi-sites ajoute les rapports consolidés de tous vos établissements. Les volumes (établissements, équipe, commandes, messages) augmentent aussi d’un plan à l’autre.',
       },
       {
         q: 'Comment fonctionne l’essai gratuit ?',
@@ -47,7 +47,7 @@ export const faq: QuestionGroup[] = [
       },
       {
         q: 'Quelles options puis-je ajouter ?',
-        a: 'Site web, application mobile, borne (prix par borne), API et webhooks, et établissement supplémentaire. Le site web, l’API et les webhooks sont déjà inclus dans Pro et Multi-sites. L’établissement supplémentaire est disponible à partir de Pro.',
+        a: 'Site web, application mobile, borne (prix par borne), API et webhooks, et établissement supplémentaire. L’API et les webhooks sont déjà inclus dans Pro et Multi-sites ; le site web est une option sur tous les plans. L’établissement supplémentaire est disponible à partir de Pro.',
       },
       {
         q: 'Les messages à mes clients sont-ils limités ?',
@@ -78,11 +78,11 @@ export const faq: QuestionGroup[] = [
     questions: [
       {
         q: 'Quels modules sont inclus dans mon plan ?',
-        a: 'Tous les plans incluent les commandes, la caisse, la cuisine, la carte, les réservations, la salle, le stock, l’équipe, les fiches clients et le programme de fidélité. Le site de commande, les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks sont inclus à partir de Pro ; les rapports consolidés, dans Multi-sites. Le comparatif complet est sur la page Tarifs.',
+        a: 'Tous les plans incluent les commandes, la caisse, la cuisine, la carte, les réservations, la salle, le stock, l’équipe, les fiches clients et le programme de fidélité. Les campagnes, les cartes cadeaux, les automatisations, les rapports avancés, l’API et les webhooks sont inclus à partir de Pro ; les rapports consolidés, dans Multi-sites. Le site de commande en ligne est une option sur tous les plans. Le comparatif complet est sur la page Tarifs.',
       },
       {
         q: 'Mes clients peuvent-ils commander en ligne ?',
-        a: 'Oui : site de commande à vos couleurs, application mobile, borne en libre-service et commande à table par QR code. Le client paie en ligne ou au comptoir, et suit sa commande en direct. Le site est inclus dans Pro et Multi-sites, en option sur Essentiel ; l’application et la borne sont des options sur tous les plans.',
+        a: 'Oui : site de commande à vos couleurs, application mobile, borne en libre-service et commande à table par QR code. Le client paie en ligne ou au comptoir, et suit sa commande en direct. Le site, l’application et la borne sont des options, sur tous les plans.',
       },
       {
         q: 'Puis-je gérer plusieurs établissements ?',

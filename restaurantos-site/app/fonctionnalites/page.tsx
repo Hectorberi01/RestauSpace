@@ -52,7 +52,7 @@ export default function Features() {
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-600">
               Une solution complète pour simplifier votre quotidien, gagner du temps en service et offrir une meilleure
-              expérience à vos clients. Certains modules, comme le site de commande, les campagnes ou l’API, sont inclus à partir du plan Pro.
+              expérience à vos clients. Certains modules, comme les campagnes ou l’API, sont inclus à partir du plan Pro ; le site de commande en ligne est une option sur tous les plans.
             </p>
             <Link href="/decouvrir" className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
               <span className="grid size-9 place-items-center rounded-full bg-white text-brand-600 shadow-md shadow-brand-900/10 ring-1 ring-brand-100 transition group-hover:scale-110"><Play className="ml-0.5 size-4 fill-current" aria-hidden="true" /></span>

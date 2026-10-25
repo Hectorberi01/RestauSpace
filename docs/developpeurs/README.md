@@ -14,7 +14,7 @@
 | Adresse | `{{API_URL}}/v1/storefront/…` | `{{API_URL}}/v1/…` |
 | Événements | Suivi d'une commande par interrogation | Webhooks signés (Console › Intégrations › Webhooks) |
 | Description OpenAPI | `{{API_URL}}/openapi/storefront.json` (publique) | Fournie sur demande |
-| Plan du restaurant | Site web inclus dans Pro et Multi-sites, en option sur Essentiel ; application et borne en option sur tous les plans | Clés d'API et webhooks inclus dans Pro et Multi-sites, en option (« API et webhooks ») sur Essentiel |
+| Plan du restaurant | Site web, application et borne en option sur tous les plans | Clés d'API et webhooks inclus dans Pro et Multi-sites, en option (« API et webhooks ») sur Essentiel |
 
 Dans les exemples, `{{API_URL}}` désigne l'adresse de l'API de la plateforme ; elle est donnée dans la console, à côté
 de la clé.
