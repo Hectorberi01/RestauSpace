@@ -25,7 +25,7 @@ public static class IdentityApplicationErrors
     public static readonly DomainError TokenInvalid = new("identity.token.invalid", "The link is invalid or has expired.");
 
     public static readonly DomainError PasswordEmpty = new("identity.password.empty", "Password is required.");
-    public static readonly DomainError PasswordTooShort = new("identity.password.too_short", "Password must contain at least 8 characters.");
+    public static readonly DomainError PasswordTooShort = new("identity.password.too_short", "Password is too short.");
     public static readonly DomainError PasswordCompromised = new("identity.password.compromised", "This password appears in known data breaches; choose another one.");
     public static readonly DomainError PasswordTooLong = new("identity.password.too_long", "Password cannot exceed 128 characters.");
 }

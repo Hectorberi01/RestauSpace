@@ -19,3 +19,6 @@ deploy/database/backups/
 deploy/database/rclone/
 
 Claude outputs/
+
+# Secrets de developpement local (ne pas versionner ; voir le .example)
+src/Host/SaasRestaurant.Host/appsettings.Development.json

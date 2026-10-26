@@ -145,10 +145,10 @@ export function PasswordDialog({open, onClose, onDone}: {open: boolean; onClose:
           onClose();
         }, 'Mot de passe modifié. Vos autres appareils ont été déconnectés.');
       }}
-      footer={<><Button type="button" variant="outline" onClick={onClose}>Annuler</Button><Button type="submit" disabled={busy || mismatch || next.length < 8}>Changer le mot de passe</Button></>}>
+      footer={<><Button type="button" variant="outline" onClick={onClose}>Annuler</Button><Button type="submit" disabled={busy || mismatch || next.length < 12}>Changer le mot de passe</Button></>}>
       <div className="form-fields single">
         <label>Mot de passe actuel<PasswordInput label="le mot de passe actuel" autoComplete="current-password" value={current} onChange={setCurrent} /></label>
-        <label>Nouveau mot de passe<PasswordInput label="le nouveau mot de passe" autoComplete="new-password" value={next} onChange={setNext} /><small className="muted">8 caractères au moins.</small></label>
+        <label>Nouveau mot de passe<PasswordInput label="le nouveau mot de passe" autoComplete="new-password" value={next} onChange={setNext} /><small className="muted">12 caractères au moins.</small></label>
         <label>Confirmation<PasswordInput label="la confirmation" autoComplete="new-password" value={confirm} onChange={setConfirm} />{mismatch && <small className="field-error">Les deux mots de passe ne correspondent pas.</small>}</label>
       </div>
     </Shell>

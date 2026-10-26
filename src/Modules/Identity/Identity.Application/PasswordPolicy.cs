@@ -5,7 +5,10 @@ namespace Identity.Application;
 /// <summary>Règles sur le mot de passe en clair, vérifiées avant hachage. Le domaine ne voit jamais que le hash.</summary>
 public static class PasswordPolicy
 {
-    public const int MinLength = 8;
+    public const int DefaultMinLength = 8;
+
+    /// <summary>Minimum fixe au demarrage depuis la configuration (Identity:Passwords:MinLength) ; 8 par defaut.</summary>
+    public static int MinLength { get; set; } = DefaultMinLength;
 
     // Borne haute : le hachage est volontairement lent, une entrée non bornée est un déni de service.
     public const int MaxLength = 128;

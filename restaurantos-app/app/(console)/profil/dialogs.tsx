@@ -128,7 +128,7 @@ export function PasswordDialog({open, onClose, onDone}: {open: boolean; onClose:
     <Modal open={open} onClose={onClose} title="Changer le mot de passe" footer={
       <>
         <Button variant="secondary" onClick={onClose}>Annuler</Button>
-        <Button type="submit" form="password-form" busy={busy === 'password'} disabled={mismatch || next.length < 8}>Changer le mot de passe</Button>
+        <Button type="submit" form="password-form" busy={busy === 'password'} disabled={mismatch || next.length < 12}>Changer le mot de passe</Button>
       </>
     }>
       <form id="password-form" className="space-y-4" onSubmit={event => {
@@ -140,7 +140,7 @@ export function PasswordDialog({open, onClose, onDone}: {open: boolean; onClose:
         }, 'Mot de passe modifié. Vos autres appareils ont été déconnectés.');
       }}>
         <Field label="Mot de passe actuel"><PasswordInput id="current-password" label="le mot de passe actuel" autoComplete="current-password" value={current} onChange={setCurrent} /></Field>
-        <Field label="Nouveau mot de passe" hint="8 caractères au moins. Évitez un mot de passe utilisé ailleurs.">
+        <Field label="Nouveau mot de passe" hint="12 caractères au moins. Évitez un mot de passe utilisé ailleurs.">
           <PasswordInput id="new-password" label="le nouveau mot de passe" autoComplete="new-password" value={next} onChange={setNext} />
         </Field>
         <Field label="Confirmation" hint={mismatch ? 'Les deux mots de passe ne correspondent pas.' : undefined}>

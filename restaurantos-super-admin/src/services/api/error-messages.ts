@@ -90,7 +90,7 @@ export const errorMessages: Record<string, string> = {
   'identity.password.compromised': 'Ce mot de passe figure dans des fuites de données connues : choisissez-en un autre.',
   'identity.password.empty': 'Saisissez un mot de passe.',
   'identity.password.too_long': 'Le mot de passe ne peut pas dépasser 128 caractères.',
-  'identity.password.too_short': 'Le mot de passe doit contenir au moins 8 caractères.',
+  'identity.password.too_short': 'Le mot de passe doit contenir au moins 12 caractères.',
   'identity.session.already_revoked': 'Cette session est déjà fermée.',
   'identity.session.expired': 'Session expirée : reconnectez-vous.',
   'identity.session.not_found': 'Cette session est déjà fermée.',

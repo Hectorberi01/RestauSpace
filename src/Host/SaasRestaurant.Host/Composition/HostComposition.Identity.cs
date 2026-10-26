@@ -153,6 +153,8 @@ internal static partial class HostComposition
             builder.Services.AddIdentityLogEmails(ConfigureEmails);
         }
 
+        Identity.Application.PasswordPolicy.MinLength =
+            builder.Configuration.GetValue("Identity:Passwords:MinLength", Identity.Application.PasswordPolicy.DefaultMinLength);
         if (builder.Configuration.GetValue<bool>("Identity:Passwords:RejectCompromised"))
         {
             builder.Services.AddIdentityCompromisedPasswordCheck();

@@ -836,7 +836,7 @@ const messages: Record<string, string> = {
   'printing.receipt.printer_elsewhere': 'Cette imprimante est coupée ou appartient à un autre établissement.',
   'printing.printer.station_invalid': 'Un poste ne se choisit que pour une imprimante de bons de cuisine.',
   'identity.token.invalid': 'Ce lien n’est plus valable : il a expiré ou a déjà servi. Demandez-en un nouveau.',
-  'identity.password.too_short': 'Le mot de passe doit contenir au moins 8 caractères.',
+  'identity.password.too_short': 'Le mot de passe doit contenir au moins 12 caractères.',
   'identity.password.too_long': 'Le mot de passe ne peut pas dépasser 128 caractères.',
   'identity.password.compromised': 'Ce mot de passe figure dans des fuites de données connues : choisissez-en un autre.',
   'identity.password.empty': 'Saisissez un mot de passe.',

@@ -1,0 +1,93 @@
+// Gabarit : copier en appsettings.Development.json et remplir les cles (base64 32 octets : openssl rand -base64 32).
+{
+  "ConnectionStrings": {
+    "SaasRestaurant": "Host=localhost;Port=5433;Database=saasrestaurant;Username=saasrestaurant;Password=saasrestaurant"
+  },
+  "Database": {
+    "MigrateOnStartup": true
+  },
+  "Identity": {
+    "TwoFactor": {
+      "SecretKey": ""
+    },
+    "Emails": {
+      "WriteToLog": true,
+      "Links": {
+        "VerifyEmail": "http://localhost:3001/verifier-email?token={token}",
+        "ResetPassword": "http://localhost:3001/reinitialiser?token={token}",
+        "AcceptInvitation": "http://localhost:3001/activer?token={token}"
+      }
+    }
+  },
+  "DevSeed": {
+    "Enabled": true,
+    "AdminEmail": "admin@example.com",
+    "OwnerEmail": "restaurateur@example.com",
+    "Password": "ChangeMoiEnLocal2026!",
+    "RestaurantName": "Restaurant de test",
+    "CurrencyCode": "XOF",
+    "TimeZoneId": "Africa/Porto-Novo",
+    "CountryCode": "BJ",
+    "City": "Cotonou"
+  },
+  "Authorization": {
+    "PlatformAdminEmails": [
+      "admin@example.com"
+    ]
+  },
+  "Payments": {
+    "CredentialsKey": "",
+    "EnableSandbox": true,
+    "PublicApiBaseUrl": "http://localhost:5080",
+    "CheckoutReturnUrl": "http://localhost:3002"
+  },
+  "Files": {
+    "Storage": "Local",
+    "Local": {
+      "Directory": "data/files",
+      "PublicBaseUrl": "http://localhost:5080",
+      "SigningKey": ""
+    },
+    "PublicMedia": {
+      "BaseUrl": "http://localhost:5080",
+      "SigningKey": ""
+    }
+  },
+  "Storefront": {
+    "TrackingKey": ""
+  },
+  "Notifications": {
+    "CredentialsKey": "",
+    "OtpKey": "",
+    "EnableFakeProvider": true,
+    "DefaultLanguage": "fr",
+    "UnsubscribePageUrl": "http://localhost:3002/desinscription"
+  },
+  "Integrations": {
+    "SecretsKey": ""
+  },
+  "Observability": {
+    "ServiceName": "saasrestaurant-api",
+    "OtlpEndpoint": "http://localhost:4327",
+    "TraceSampleRatio": 1.0,
+    "PlatformMetrics": {
+      "Enabled": true,
+      "IntervalSeconds": 60
+    }
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3002",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001",
+      "http://127.0.0.1:3002"
+    ]
+  },
+  "Fiscal": {
+    "TokenKey": "",
+    "SandboxBaseUrl": "https://developper.impots.bj/sygmef-emcf/api/",
+    "ProductionBaseUrl": "https://sygmef.impots.bj/emcf/api/"
+  }
+}
